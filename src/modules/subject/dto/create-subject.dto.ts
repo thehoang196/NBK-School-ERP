@@ -20,10 +20,10 @@ export class CreateSubjectDto {
   @Matches(UUID_REGEX, { message: 'schoolId phải là UUID hợp lệ' })
   schoolId: string;
 
-  @ApiProperty({ description: 'Mã môn học', example: 'TOAN' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ description: 'Mã môn học (tự sinh nếu để trống)', example: 'TOAN' })
+  @IsOptional()
   @IsString()
-  code: string;
+  code?: string;
 
   @ApiProperty({ description: 'Tên môn học', example: 'Toán' })
   @IsNotEmpty()

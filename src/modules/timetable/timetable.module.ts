@@ -6,11 +6,16 @@ import { TimetableVersionEntity } from './entities/timetable-version.entity';
 import { TimetableSlotEntity } from './entities/timetable-slot.entity';
 import { ActualTimetableSlotEntity } from './entities/actual-timetable-slot.entity';
 import { TeacherEntity } from '../teacher/entities/teacher.entity';
+import { SubjectEntity } from '../subject/entities/subject.entity';
+import { ClassEntity } from '../class/entities/class.entity';
+import { PeriodDefinitionEntity } from '../academic/entities/period-definition.entity';
+import { RoomEntity } from '../room/entities/room.entity';
 import { TimetableVersionController } from './controllers/timetable-version.controller';
 import { TimetableSlotController } from './controllers/timetable-slot.controller';
 import { TimetableGenerationController } from './controllers/timetable-generation.controller';
 import { DragDropController } from './controllers/drag-drop.controller';
 import { TimetableExportController } from './controllers/timetable-export.controller';
+import { TimetableImportController } from './controllers/timetable-import.controller';
 import { TimetableService } from './services/timetable.service';
 import { TimetableVersionService } from './services/timetable-version.service';
 import { TimetableSlotService } from './services/timetable-slot.service';
@@ -20,6 +25,7 @@ import { TimetablePublishService } from './services/timetable-publish.service';
 import { TimetableGeneratorService } from './services/timetable-generator.service';
 import { DragDropService } from './services/drag-drop.service';
 import { TimetableExportService } from './services/timetable-export.service';
+import { TimetableImportService } from './services/timetable-import.service';
 import { TimetableVersionRepository } from './repositories/timetable-version.repository';
 import { TimetableSlotRepository } from './repositories/timetable-slot.repository';
 // import { TimetableGenerationProcessor } from './processors'; // TODO: Enable when Redis is available
@@ -31,6 +37,10 @@ import { TimetableSlotRepository } from './repositories/timetable-slot.repositor
       TimetableSlotEntity,
       ActualTimetableSlotEntity,
       TeacherEntity,
+      SubjectEntity,
+      ClassEntity,
+      PeriodDefinitionEntity,
+      RoomEntity,
     ]),
     // TODO: Enable BullModule when Redis is available
     // BullModule.forRootAsync({
@@ -54,6 +64,7 @@ import { TimetableSlotRepository } from './repositories/timetable-slot.repositor
     TimetableGenerationController,
     DragDropController,
     TimetableExportController,
+    TimetableImportController,
   ],
   providers: [
     TimetableService,
@@ -65,6 +76,7 @@ import { TimetableSlotRepository } from './repositories/timetable-slot.repositor
     TimetableGeneratorService,
     DragDropService,
     TimetableExportService,
+    TimetableImportService,
     TimetableVersionRepository,
     TimetableSlotRepository,
     // TimetableGenerationProcessor, // TODO: Enable when Redis is available

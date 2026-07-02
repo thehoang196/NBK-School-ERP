@@ -111,29 +111,22 @@ export class ImportProcessor {
 
   getTeacherColumnMappings(): ColumnMapping[] {
     return [
-      { header: 'Mã nhân viên', field: 'employeeCode', required: true },
-      { header: 'Họ và tên', field: 'fullName', required: true },
-      { header: 'Tên viết tắt', field: 'shortName', required: false },
+      { header: 'Mã NV', field: 'employeeCode', required: true },
+      { header: 'Họ và Tên', field: 'fullName', required: true },
+      { header: 'Tên gọi', field: 'shortName', required: false },
+      { header: 'Khối', field: 'gradeName', required: false },
+      { header: 'Tổ bộ môn', field: 'departmentName', required: false },
+      { header: 'Chức danh/chức vụ', field: 'jobTitle', required: false },
+      { header: 'Cấp bậc quản lý', field: 'managementLevel', required: false },
       { header: 'Giới tính', field: 'gender', required: false },
-      { header: 'Ngày sinh', field: 'dateOfBirth', required: false },
-      { header: 'Số điện thoại', field: 'phone', required: false },
-      { header: 'Email', field: 'email', required: false, validator: this.validateEmail },
-      { header: 'Chức vụ', field: 'position', required: false },
-      { header: 'Loại GV', field: 'teacherType', required: false },
-      { header: 'Số tiết tối đa/tuần', field: 'maxPeriodsPerWeek', required: false, validator: this.validatePositiveNumber },
-      { header: 'Số tiết tối thiểu/tuần', field: 'minPeriodsPerWeek', required: false, validator: this.validatePositiveNumber },
-      { header: 'Số tiết tối đa/ngày', field: 'maxPeriodsPerDay', required: false, validator: this.validatePositiveNumber },
+      { header: 'Max tiết/tuần', field: 'maxPeriodsPerWeek', required: false, validator: this.validatePositiveNumber },
     ];
   }
 
   getSubjectColumnMappings(): ColumnMapping[] {
     return [
-      { header: 'Mã môn', field: 'code', required: true },
-      { header: 'Tên môn', field: 'name', required: true },
-      { header: 'Tên viết tắt', field: 'shortName', required: false },
-      { header: 'Loại môn', field: 'subjectType', required: false },
+      { header: 'Môn học', field: 'name', required: true },
       { header: 'Số tiết/tuần', field: 'periodsPerWeek', required: false, validator: this.validatePositiveNumber },
-      { header: 'Tiết đôi', field: 'isDoublePeriod', required: false },
     ];
   }
 
@@ -143,6 +136,16 @@ export class ImportProcessor {
       { header: 'Khối', field: 'gradeName', required: true },
       { header: 'Sĩ số', field: 'studentCount', required: false, validator: this.validatePositiveNumber },
       { header: 'GVCN', field: 'homeroomTeacherCode', required: false },
+    ];
+  }
+
+  getDepartmentColumnMappings(): ColumnMapping[] {
+    return [
+      { header: 'Tổ bộ môn', field: 'name', required: true },
+      { header: 'Mã Trường', field: 'schoolCode', required: false },
+      { header: 'Tên Trường', field: 'schoolName', required: false },
+      { header: 'Tên Tổ trưởng', field: 'headTeacherName', required: false },
+      { header: 'Mã NV Tổ trưởng', field: 'headTeacherCode', required: false },
     ];
   }
 

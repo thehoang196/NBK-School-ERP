@@ -24,7 +24,11 @@ async function bootstrap() {
   app.useGlobalInterceptors(new TransformInterceptor());
 
   // CORS
-  app.enableCors();
+  const corsOrigins = process.env['CORS_ORIGINS'];
+  app.enableCors({
+    origin: corsOrigins ? corsOrigins.split(',').map((o) => o.trim()) : '*',
+    credentials: true,
+  });
 
   // Swagger
   const config = new DocumentBuilder()

@@ -12,6 +12,12 @@ export class TeacherQueryDto extends PaginationDto {
   @Matches(UUID_REGEX, { message: 'schoolId phải là UUID hợp lệ' })
   schoolId?: string;
 
+  @ApiPropertyOptional({ description: 'Lọc theo khối' })
+  @IsOptional()
+  @IsString()
+  @Matches(UUID_REGEX, { message: 'gradeId phải là UUID hợp lệ' })
+  gradeId?: string;
+
   @ApiPropertyOptional({ description: 'Lọc theo tổ bộ môn' })
   @IsOptional()
   @IsString()

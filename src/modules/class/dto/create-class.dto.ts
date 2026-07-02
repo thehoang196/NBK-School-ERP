@@ -17,11 +17,11 @@ export class CreateClassDto {
   @Matches(UUID_REGEX, { message: 'gradeId phải là UUID hợp lệ' })
   gradeId: string;
 
-  @ApiProperty({ description: 'ID năm học' })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ description: 'ID năm học (nếu không truyền sẽ lấy năm học hiện tại)' })
+  @IsOptional()
   @IsString()
   @Matches(UUID_REGEX, { message: 'academicYearId phải là UUID hợp lệ' })
-  academicYearId: string;
+  academicYearId?: string;
 
   @ApiProperty({ description: 'Tên lớp', example: '10A1' })
   @IsNotEmpty()

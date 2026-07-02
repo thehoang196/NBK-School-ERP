@@ -7,3 +7,4 @@ export { TimetableComparisonService } from './timetable-comparison.service';
 export { TimetablePublishService } from './timetable-publish.service';
 export { TimetableExportService } from './timetable-export.service';
 export { DragDropService } from './drag-drop.service';
+export { TimetableImportService } from './timetable-import.service';

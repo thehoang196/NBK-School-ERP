@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 
 export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
+  const sslEnabled = configService.get<string>('DB_SSL', 'false') === 'true';
 
   return {
     type: 'postgres',
@@ -16,6 +17,15 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     migrationsRun: isProduction,
     synchronize: false,
     logging: !isProduction,
-    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+    extra: sslEnabled
+      ? { ssl: { rejectUnauthorized: false } }
+      : {},
+    // Connection pool settings for production
+    ...(isProduction && {
+      poolSize: 10,
+      connectTimeoutMS: 10000,
+      maxQueryExecutionTime: 30000,
+    }),
   };
 };

@@ -8,6 +8,7 @@ import {
   IsArray,
   Min,
   Max,
+  MaxLength,
   Matches,
 } from 'class-validator';
 import { Gender, TeacherType, TeacherStatus } from '../../../common/enums/status.enum';
@@ -21,12 +22,18 @@ export class UpdateTeacherDto {
   @IsString()
   employeeCode?: string;
 
+  @ApiPropertyOptional({ description: 'Số CCCD', example: '001234567890' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  citizenId?: string;
+
   @ApiPropertyOptional({ description: 'Họ tên đầy đủ', example: 'Nguyễn Văn A' })
   @IsOptional()
   @IsString()
   fullName?: string;
 
-  @ApiPropertyOptional({ description: 'Tên viết tắt', example: 'NVA' })
+  @ApiPropertyOptional({ description: 'Tên gọi (hiển thị trên TKB)', example: 'A' })
   @IsOptional()
   @IsString()
   shortName?: string;
@@ -51,11 +58,29 @@ export class UpdateTeacherDto {
   @IsEmail()
   email?: string;
 
+  @ApiPropertyOptional({ description: 'ID khối (grade)' })
+  @IsOptional()
+  @IsString()
+  @Matches(UUID_REGEX, { message: 'gradeId phải là UUID hợp lệ' })
+  gradeId?: string;
+
   @ApiPropertyOptional({ description: 'ID tổ bộ môn' })
   @IsOptional()
   @IsString()
   @Matches(UUID_REGEX, { message: 'departmentId phải là UUID hợp lệ' })
   departmentId?: string;
+
+  @ApiPropertyOptional({ description: 'Chức danh', example: 'Giáo viên chính' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  jobTitle?: string;
+
+  @ApiPropertyOptional({ description: 'Cấp bậc quản lý', example: 'Tổ trưởng' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  managementLevel?: string;
 
   @ApiPropertyOptional({ description: 'Chức vụ', example: 'Tổ trưởng' })
   @IsOptional()

@@ -1,14 +1,21 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { ClassRepository } from '../repositories/class.repository';
 import { ClassEntity } from '../entities/class.entity';
 import { CreateClassDto } from '../dto/create-class.dto';
 import { UpdateClassDto } from '../dto/update-class.dto';
 import { ClassQueryDto } from '../dto/class-query.dto';
 import { PaginatedResponse } from '../../../common/interfaces/api-response.interface';
+import { AcademicYearEntity } from '../../academic/entities/academic-year.entity';
 
 @Injectable()
 export class ClassService {
-  constructor(private readonly classRepository: ClassRepository) {}
+  constructor(
+    private readonly classRepository: ClassRepository,
+    @InjectRepository(AcademicYearEntity)
+    private readonly academicYearRepo: Repository<AcademicYearEntity>,
+  ) {}
 
   async findAll(query: ClassQueryDto): Promise<PaginatedResponse<ClassEntity>> {
     const [data, total] = await this.classRepository.findAll(query);
@@ -36,15 +43,27 @@ export class ClassService {
   }
 
   async create(dto: CreateClassDto): Promise<ClassEntity> {
+    let academicYearId = dto.academicYearId;
+
+    if (!academicYearId) {
+      const currentYear = await this.academicYearRepo.findOne({
+        where: { schoolId: dto.schoolId, isCurrent: true, deletedAt: IsNull() },
+      });
+      if (!currentYear) {
+        throw new BadRequestException('Không tìm thấy năm học hiện tại. Vui lòng thiết lập năm học trước.');
+      }
+      academicYearId = currentYear.id;
+    }
+
     const existing = await this.classRepository.findByNameInGradeAndYear(
       dto.gradeId,
-      dto.academicYearId,
+      academicYearId,
       dto.name,
     );
     if (existing) {
       throw new BadRequestException('Tên lớp đã tồn tại trong khối và năm học này');
     }
-    return this.classRepository.create(dto);
+    return this.classRepository.create({ ...dto, academicYearId });
   }
 
   async update(id: string, dto: UpdateClassDto): Promise<ClassEntity> {

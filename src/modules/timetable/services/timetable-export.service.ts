@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
@@ -8,6 +8,11 @@ import { GradeEntity } from '../../class/entities/grade.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { SemesterEntity } from '../../academic/entities/semester.entity';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
+
+export interface ExportResult {
+  buffer: Buffer;
+  filename: string;
+}
 
 interface TimetableCell {
   subjectName: string;
@@ -40,7 +45,7 @@ export class TimetableExportService {
     private readonly versionRepo: TimetableVersionRepository,
   ) {}
 
-  async exportToExcel(options: ExportOptions): Promise<ExcelJS.Buffer> {
+  async exportToExcel(options: ExportOptions): Promise<ExportResult> {
     const version = await this.versionRepo.findById(options.versionId);
     if (!version) {
       throw new NotFoundException('Không tìm thấy phiên bản TKB');
@@ -55,14 +60,21 @@ export class TimetableExportService {
     // Get all slots with relations
     const slots = await this.slotRepo.findByVersion(options.versionId);
 
+    // Validate version is not empty (0 slots)
+    if (!slots || slots.length === 0) {
+      throw new BadRequestException('TKB trống, không có dữ liệu để xuất');
+    }
+
     // Group slots by grade
     const classRepo = this.dataSource.getRepository(ClassEntity);
     const gradeRepo = this.dataSource.getRepository(GradeEntity);
 
     let grades: GradeEntity[];
+    let gradeName: string | null = null;
     if (options.gradeId) {
       const grade = await gradeRepo.findOne({ where: { id: options.gradeId } });
       grades = grade ? [grade] : [];
+      gradeName = grade?.name || null;
     } else {
       grades = await gradeRepo.find({ order: { level: 'ASC' } });
     }
@@ -115,7 +127,10 @@ export class TimetableExportService {
     // Add "Mã giáo viên" sheet
     await this.buildTeacherCodeSheet(workbook, slots);
 
-    return workbook.xlsx.writeBuffer() as Promise<ExcelJS.Buffer>;
+    const buffer = (await workbook.xlsx.writeBuffer()) as unknown as Buffer;
+    const filename = this.generateFilename(gradeName, new Date());
+
+    return { buffer, filename };
   }
 
   private async buildGradeSheet(
@@ -318,6 +333,34 @@ export class TimetableExportService {
       sheet.getCell(row, 4).value = teacher.shortName;
       row++;
     }
+  }
+
+  /**
+   * Generate export filename following format: TKB_{gradeName or TatCa}_{YYYY-MM-DD}.xlsx
+   * Removes diacritics and special characters from gradeName for filename safety.
+   */
+  generateFilename(gradeName: string | null, exportDate: Date): string {
+    const safeName = gradeName
+      ? this.removeDiacritics(gradeName).replace(/[^a-zA-Z0-9]/g, '')
+      : 'TatCa';
+
+    const year = exportDate.getFullYear();
+    const month = String(exportDate.getMonth() + 1).padStart(2, '0');
+    const day = String(exportDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    return `TKB_${safeName}_${dateStr}.xlsx`;
+  }
+
+  /**
+   * Remove Vietnamese diacritics from a string.
+   */
+  private removeDiacritics(str: string): string {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
   }
 
   /**

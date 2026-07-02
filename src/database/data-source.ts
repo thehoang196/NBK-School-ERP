@@ -3,6 +3,9 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
+const isProduction = process.env['NODE_ENV'] === 'production';
+const sslEnabled = process.env['DB_SSL'] === 'true';
+
 export default new DataSource({
   type: 'postgres',
   host: process.env['DB_HOST'] || 'localhost',
@@ -13,4 +16,8 @@ export default new DataSource({
   entities: [__dirname + '/../modules/**/*.entity{.ts,.js}'],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: false,
+  ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+  extra: sslEnabled
+    ? { ssl: { rejectUnauthorized: false } }
+    : {},
 });

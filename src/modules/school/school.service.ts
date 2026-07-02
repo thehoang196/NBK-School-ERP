@@ -49,7 +49,7 @@ export class SchoolService {
       email: dto.email || null,
       principalName: dto.principalName || null,
       parentSchoolId: dto.parentSchoolId || null,
-      status: dto.status,
+      ...(dto.status && { status: dto.status }),
     });
   }
 

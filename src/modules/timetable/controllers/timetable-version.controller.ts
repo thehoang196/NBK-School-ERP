@@ -25,10 +25,14 @@ import { TimetableVersionService } from '../services/timetable-version.service';
 import { TimetableComparisonService } from '../services/timetable-comparison.service';
 import { CreateTimetableVersionDto } from '../dto/create-timetable-version.dto';
 import { UpdateTimetableVersionDto } from '../dto/update-timetable-version.dto';
+import { SaveTimetableVersionDto } from '../dto/save-timetable-version.dto';
+import { OverwriteSlotsDto } from '../dto/overwrite-slots.dto';
 import { TimetableVersionQueryDto, CompareVersionsDto } from '../dto/timetable-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { SchoolScopeGuard } from '../../../common/guards/school-scope.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { CurrentUser, CurrentUserPayload } from '../../../common/decorators/current-user.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
 import { ApiResponse as ApiResponseType } from '../../../common/interfaces/api-response.interface';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
@@ -42,7 +46,7 @@ interface JwtUser {
 
 @ApiTags('Timetable Versions')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SchoolScopeGuard)
 @Controller('api/v1/timetable-versions')
 export class TimetableVersionController {
   constructor(
@@ -106,6 +110,60 @@ export class TimetableVersionController {
       success: true,
       data,
       message: 'Tạo phiên bản TKB thành công',
+    };
+  }
+
+  @Post('save')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Lưu TKB thành phiên bản mới' })
+  @ApiResponse({ status: 201, description: 'Phiên bản TKB mới được tạo thành công' })
+  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
+  async saveAsNewVersion(
+    @Body() dto: SaveTimetableVersionDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<ApiResponseType<TimetableVersionEntity>> {
+    const version = await this.timetableVersionService.saveAsNewVersion(dto, user.schoolId ?? '');
+    return {
+      success: true,
+      data: version,
+      message: `Đã lưu phiên bản "${version.name}" (v${version.versionNumber}) thành công`,
+    };
+  }
+
+  @Post(':id/clone')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Tạo bản sao nháp từ phiên bản' })
+  @ApiResponse({ status: 201, description: 'Bản sao được tạo thành công' })
+  @ApiResponse({ status: 400, description: 'Không thể tạo bản sao từ phiên bản nháp' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy phiên bản' })
+  async cloneVersion(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApiResponseType<TimetableVersionEntity>> {
+    const data = await this.timetableVersionService.cloneVersion(id);
+    return {
+      success: true,
+      data,
+      message: `Tạo bản sao nháp "${data.name}" (v${data.versionNumber}) thành công`,
+    };
+  }
+
+  @Put(':id/slots')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
+  @ApiOperation({ summary: 'Ghi đè slots phiên bản DRAFT' })
+  @ApiResponse({ status: 200, description: 'Ghi đè slots thành công' })
+  @ApiResponse({ status: 400, description: 'Phiên bản không ở trạng thái nháp' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy phiên bản' })
+  async overwriteSlots(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: OverwriteSlotsDto,
+  ): Promise<ApiResponseType<null>> {
+    await this.timetableVersionService.overwriteSlots(id, dto.slots);
+    return {
+      success: true,
+      data: null,
+      message: 'Ghi đè dữ liệu TKB thành công',
     };
   }
 

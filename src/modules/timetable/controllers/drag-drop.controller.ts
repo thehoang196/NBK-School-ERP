@@ -19,12 +19,13 @@ import {
 } from '../dto/drag-drop.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { SchoolScopeGuard } from '../../../common/guards/school-scope.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
 
 @ApiTags('Timetable Drag & Drop')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SchoolScopeGuard)
 @Controller('api/v1/timetable-dnd')
 export class DragDropController {
   constructor(private readonly dragDropService: DragDropService) {}

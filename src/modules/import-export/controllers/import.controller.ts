@@ -130,6 +130,38 @@ export class ImportController {
     return this.importService.importClasses(file, schoolId);
   }
 
+  @Post('departments')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Import danh sách tổ bộ môn từ Excel' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'File Excel (.xlsx)',
+        },
+        schoolId: {
+          type: 'string',
+          format: 'uuid',
+          description: 'ID trường',
+        },
+      },
+      required: ['file', 'schoolId'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Kết quả import', type: ImportResultDto })
+  @ApiResponse({ status: 400, description: 'File không hợp lệ' })
+  async importDepartments(
+    @UploadedFile() file: Express.Multer.File,
+    @Query('schoolId') schoolId: string,
+  ): Promise<ImportResultDto> {
+    return this.importService.importDepartments(file, schoolId);
+  }
+
   @Post('timetable')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
   @UseInterceptors(FileInterceptor('file'))
@@ -173,7 +205,7 @@ export class ImportController {
   @ApiOperation({ summary: 'Tải file mẫu import' })
   @ApiParam({
     name: 'type',
-    enum: ['teachers', 'subjects', 'classes', 'timetable'],
+    enum: ['teachers', 'subjects', 'classes', 'timetable', 'departments'],
     description: 'Loại template cần tải',
   })
   @ApiResponse({ status: 200, description: 'File Excel template' })

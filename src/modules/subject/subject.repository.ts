@@ -57,6 +57,12 @@ export class SubjectRepository {
     });
   }
 
+  async countBySchool(schoolId: string): Promise<number> {
+    return this.repo.count({
+      where: { schoolId, deletedAt: IsNull() },
+    });
+  }
+
   async create(data: Partial<SubjectEntity>): Promise<SubjectEntity> {
     const entity = this.repo.create(data);
     return this.repo.save(entity);

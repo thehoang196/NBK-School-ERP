@@ -26,6 +26,7 @@ import { CheckConflictsDto } from '../dto/check-conflicts.dto';
 import { TimetableSlotQueryDto } from '../dto/timetable-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { SchoolScopeGuard } from '../../../common/guards/school-scope.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
 import { ApiResponse as ApiResponseType } from '../../../common/interfaces/api-response.interface';
@@ -34,7 +35,7 @@ import { ConflictResult } from '../services/conflict-detection.service';
 
 @ApiTags('Timetable Slots')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SchoolScopeGuard)
 @Controller('api/v1/timetable-slots')
 export class TimetableSlotController {
   constructor(private readonly timetableService: TimetableService) {}

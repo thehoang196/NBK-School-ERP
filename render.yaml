@@ -3,19 +3,23 @@ databases:
     plan: free
     databaseName: stms
     user: stms_user
+    ipAllowList: [] # Allow all connections (Render internal)
 
 services:
   - type: web
     name: stms-backend
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
-    startCommand: npm run start:prod
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/main
+    healthCheckPath: /api/v1/health
+    numInstances: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: DB_HOST
         fromDatabase:
           name: stms-db
@@ -36,6 +40,12 @@ services:
         fromDatabase:
           name: stms-db
           property: database
+      - key: DB_SSL
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: stms-db
+          property: connectionString
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -44,3 +54,5 @@ services:
         value: ""
       - key: REDIS_PORT
         value: "6379"
+      - key: CORS_ORIGINS
+        value: "https://stms-frontend.onrender.com"

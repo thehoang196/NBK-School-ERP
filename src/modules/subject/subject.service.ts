@@ -49,11 +49,40 @@ export class SubjectService {
   }
 
   async create(dto: CreateSubjectDto): Promise<SubjectEntity> {
-    const existing = await this.subjectRepository.findByCode(dto.schoolId, dto.code);
-    if (existing) {
-      throw new BadRequestException('Mã môn học đã tồn tại trong trường này');
+    // Auto-generate code from name if not provided
+    if (!dto.code) {
+      dto.code = dto.name
+        .split(/\s+/)
+        .map((w) => w.charAt(0).toUpperCase())
+        .join('') || dto.name.substring(0, 5).toUpperCase();
     }
+
+    // Check duplicate code, append suffix if needed
+    let code = dto.code;
+    let suffix = 1;
+    while (await this.subjectRepository.findByCode(dto.schoolId, code)) {
+      code = `${dto.code}${suffix}`;
+      suffix++;
+    }
+    dto.code = code;
+
+    // Auto-generate color if not provided
+    if (!dto.colorCode) {
+      const count = await this.subjectRepository.countBySchool(dto.schoolId);
+      dto.colorCode = this.generateColor(count);
+    }
+
     return this.subjectRepository.create(dto);
+  }
+
+  private generateColor(index: number): string {
+    const colors = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+      '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
+      '#eab308', '#d946ef', '#0891b2', '#65a30d', '#dc2626',
+    ];
+    return colors[index % colors.length];
   }
 
   async update(id: string, dto: UpdateSubjectDto): Promise<SubjectEntity> {

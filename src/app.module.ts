@@ -16,6 +16,7 @@ import { TeachingAssignmentModule } from './modules/teaching-assignment/teaching
 import { EventModule } from './modules/event/event.module';
 import { ImportExportModule } from './modules/import-export/import-export.module';
 import { CompensationModule } from './modules/compensation/compensation.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { CompensationModule } from './modules/compensation/compensation.module';
       inject: [ConfigService],
     }),
     EventEmitterModule.forRoot(),
+    HealthModule,
     AuthModule,
     SchoolModule,
     AcademicModule,

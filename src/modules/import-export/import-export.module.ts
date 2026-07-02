@@ -4,6 +4,8 @@ import { TeacherEntity } from '../teacher/entities/teacher.entity';
 import { SubjectEntity } from '../subject/entities/subject.entity';
 import { ClassEntity } from '../class/entities/class.entity';
 import { GradeEntity } from '../class/entities/grade.entity';
+import { DepartmentEntity } from '../department/entities/department.entity';
+import { SchoolEntity } from '../school/entities/school.entity';
 import { TimetableSlotEntity } from '../timetable/entities/timetable-slot.entity';
 import { TimetableVersionEntity } from '../timetable/entities/timetable-version.entity';
 import { PeriodDefinitionEntity } from '../academic/entities/period-definition.entity';
@@ -22,6 +24,8 @@ import { ImportProcessor } from './processors/import.processor';
       SubjectEntity,
       ClassEntity,
       GradeEntity,
+      DepartmentEntity,
+      SchoolEntity,
       TimetableSlotEntity,
       TimetableVersionEntity,
       PeriodDefinitionEntity,

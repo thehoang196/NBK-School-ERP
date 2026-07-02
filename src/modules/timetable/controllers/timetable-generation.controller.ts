@@ -12,12 +12,13 @@ import { TimetableGeneratorService } from '../services/timetable-generator.servi
 import { GenerateTimetableDto } from '../dto/generate-timetable.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
+import { SchoolScopeGuard } from '../../../common/guards/school-scope.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
 
 @ApiTags('Timetable Generation')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SchoolScopeGuard)
 @Controller('api/v1/timetable-generation')
 export class TimetableGenerationController {
   constructor(private readonly generatorService: TimetableGeneratorService) {}

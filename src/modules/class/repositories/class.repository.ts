@@ -17,6 +17,7 @@ export class ClassRepository {
 
     const queryBuilder = this.repo.createQueryBuilder('class')
       .leftJoinAndSelect('class.grade', 'grade')
+      .leftJoinAndSelect('class.school', 'school')
       .where('class.deletedAt IS NULL');
 
     if (schoolId) {

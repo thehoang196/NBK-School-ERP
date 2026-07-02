@@ -2,6 +2,8 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { Gender, TeacherType, TeacherStatus } from '../../../common/enums/status.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
+import { GradeEntity } from '../../class/entities/grade.entity';
+import { DepartmentEntity } from '../../department/entities/department.entity';
 
 export interface UnavailableSlot {
   dayOfWeek: number;
@@ -19,6 +21,9 @@ export class TeacherEntity extends BaseEntity {
 
   @Column({ name: 'employee_code', type: 'varchar', length: 20, unique: true })
   employeeCode: string;
+
+  @Column({ name: 'citizen_id', type: 'varchar', length: 20, nullable: true })
+  citizenId: string | null;
 
   @Column({ name: 'full_name', type: 'varchar', length: 100 })
   fullName: string;
@@ -38,8 +43,25 @@ export class TeacherEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   email: string | null;
 
+  @Column({ name: 'grade_id', type: 'uuid', nullable: true })
+  gradeId: string | null;
+
+  @ManyToOne(() => GradeEntity)
+  @JoinColumn({ name: 'grade_id' })
+  grade: GradeEntity;
+
   @Column({ name: 'department_id', type: 'uuid', nullable: true })
   departmentId: string | null;
+
+  @ManyToOne(() => DepartmentEntity)
+  @JoinColumn({ name: 'department_id' })
+  department: DepartmentEntity;
+
+  @Column({ name: 'job_title', type: 'varchar', length: 100, nullable: true })
+  jobTitle: string | null;
+
+  @Column({ name: 'management_level', type: 'varchar', length: 50, nullable: true })
+  managementLevel: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   position: string | null;

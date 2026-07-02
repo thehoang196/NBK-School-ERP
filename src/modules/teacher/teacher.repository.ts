@@ -12,14 +12,20 @@ export class TeacherRepository {
   ) {}
 
   async findAll(query: TeacherQueryDto): Promise<[TeacherEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, departmentId, status, search } = query;
+    const { page, limit, sortBy, sortOrder, schoolId, gradeId, departmentId, status, search } = query;
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.repo.createQueryBuilder('teacher')
+      .leftJoinAndSelect('teacher.grade', 'grade')
+      .leftJoinAndSelect('teacher.department', 'department')
       .where('teacher.deletedAt IS NULL');
 
     if (schoolId) {
       queryBuilder.andWhere('teacher.schoolId = :schoolId', { schoolId });
+    }
+
+    if (gradeId) {
+      queryBuilder.andWhere('teacher.gradeId = :gradeId', { gradeId });
     }
 
     if (departmentId) {
@@ -32,7 +38,7 @@ export class TeacherRepository {
 
     if (search) {
       queryBuilder.andWhere(
-        '(teacher.fullName ILIKE :search OR teacher.employeeCode ILIKE :search)',
+        '(teacher.fullName ILIKE :search OR teacher.employeeCode ILIKE :search OR teacher.citizenId ILIKE :search)',
         { search: `%${search}%` },
       );
     }
@@ -51,7 +57,7 @@ export class TeacherRepository {
   async findById(id: string): Promise<TeacherEntity | null> {
     return this.repo.findOne({
       where: { id, deletedAt: IsNull() },
-      relations: { school: true },
+      relations: { school: true, grade: true, department: true },
     });
   }
 

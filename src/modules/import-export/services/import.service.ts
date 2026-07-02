@@ -6,11 +6,14 @@ import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { SubjectEntity } from '../../subject/entities/subject.entity';
 import { ClassEntity } from '../../class/entities/class.entity';
 import { GradeEntity } from '../../class/entities/grade.entity';
+import { DepartmentEntity } from '../../department/entities/department.entity';
+import { SchoolEntity } from '../../school/entities/school.entity';
 import { TimetableSlotEntity } from '../../timetable/entities/timetable-slot.entity';
 import { PeriodDefinitionEntity } from '../../academic/entities/period-definition.entity';
 import { AcademicYearEntity } from '../../academic/entities/academic-year.entity';
 import { ImportResultDto, ImportError } from '../dto/import-result.dto';
 import { ImportProcessor } from '../processors/import.processor';
+import { Gender } from '../../../common/enums/status.enum';
 
 @Injectable()
 export class ImportService {
@@ -23,6 +26,10 @@ export class ImportService {
     private readonly classRepo: Repository<ClassEntity>,
     @InjectRepository(GradeEntity)
     private readonly gradeRepo: Repository<GradeEntity>,
+    @InjectRepository(DepartmentEntity)
+    private readonly departmentRepo: Repository<DepartmentEntity>,
+    @InjectRepository(SchoolEntity)
+    private readonly schoolRepo: Repository<SchoolEntity>,
     @InjectRepository(TimetableSlotEntity)
     private readonly timetableSlotRepo: Repository<TimetableSlotEntity>,
     @InjectRepository(PeriodDefinitionEntity)
@@ -52,6 +59,153 @@ export class ImportService {
     const allErrors: ImportError[] = [];
     let successCount = 0;
 
+    for (const row of parsedRows) {
+      if (row.errors.length > 0) {
+        allErrors.push(...row.errors);
+        continue;
+      }
+
+      const employeeCode = row.data['employeeCode'] as string;
+      if (!employeeCode) {
+        allErrors.push({
+          row: row.rowNumber,
+          field: 'employeeCode',
+          message: 'Trường "Mã NV" là bắt buộc',
+          value: '',
+        });
+        continue;
+      }
+
+      // Check duplicate employeeCode
+      const existing = await this.teacherRepo.findOne({
+        where: {
+          employeeCode,
+          schoolId,
+          deletedAt: IsNull(),
+        },
+      });
+
+      if (existing) {
+        allErrors.push({
+          row: row.rowNumber,
+          field: 'employeeCode',
+          message: `Mã nhân viên "${employeeCode}" đã tồn tại`,
+          value: employeeCode,
+        });
+        continue;
+      }
+
+      // Lookup grade by name if provided
+      let gradeId: string | null = null;
+      const gradeName = row.data['gradeName'] as string | null;
+      if (gradeName) {
+        const grade = await this.gradeRepo.findOne({
+          where: { name: gradeName, schoolId },
+        });
+        if (!grade) {
+          allErrors.push({
+            row: row.rowNumber,
+            field: 'gradeName',
+            message: `Không tìm thấy khối "${gradeName}"`,
+            value: gradeName,
+          });
+          continue;
+        }
+        gradeId = grade.id;
+      }
+
+      // Lookup department by name if provided
+      let departmentId: string | null = null;
+      const departmentName = row.data['departmentName'] as string | null;
+      if (departmentName) {
+        const department = await this.departmentRepo.findOne({
+          where: { name: departmentName, schoolId },
+        });
+        if (!department) {
+          allErrors.push({
+            row: row.rowNumber,
+            field: 'departmentName',
+            message: `Không tìm thấy tổ/môn "${departmentName}"`,
+            value: departmentName,
+          });
+          continue;
+        }
+        departmentId = department.id;
+      }
+
+      // Parse gender
+      let gender: Gender | null = null;
+      const genderRaw = row.data['gender'] as string | null;
+      if (genderRaw) {
+        const genderLower = genderRaw.toLowerCase().trim();
+        if (genderLower === 'nam' || genderLower === 'male') {
+          gender = Gender.MALE;
+        } else if (genderLower === 'nữ' || genderLower === 'nu' || genderLower === 'female') {
+          gender = Gender.FEMALE;
+        } else if (genderLower === 'khác' || genderLower === 'khac' || genderLower === 'other') {
+          gender = Gender.OTHER;
+        }
+      }
+
+      // Parse maxPeriodsPerWeek
+      const maxPeriodsPerWeek = row.data['maxPeriodsPerWeek']
+        ? Number(row.data['maxPeriodsPerWeek'])
+        : 20;
+
+      try {
+        const teacher = this.teacherRepo.create({
+          schoolId,
+          employeeCode,
+          fullName: row.data['fullName'] as string,
+          shortName: (row.data['shortName'] as string) || null,
+          gradeId,
+          departmentId,
+          jobTitle: (row.data['jobTitle'] as string) || null,
+          managementLevel: (row.data['managementLevel'] as string) || null,
+          gender,
+          maxPeriodsPerWeek,
+        });
+
+        await this.teacherRepo.save(teacher);
+        successCount++;
+      } catch (saveError: unknown) {
+        const errMsg = saveError instanceof Error ? saveError.message : 'Lỗi không xác định khi lưu';
+        allErrors.push({
+          row: row.rowNumber,
+          field: 'save',
+          message: errMsg,
+          value: employeeCode,
+        });
+      }
+    }
+
+    return {
+      totalRows: parsedRows.length,
+      successCount,
+      errorCount: allErrors.length > 0 ? parsedRows.length - successCount : 0,
+      errors: allErrors,
+    };
+  }
+
+  async importDepartments(
+    file: Express.Multer.File,
+    schoolId: string,
+  ): Promise<ImportResultDto> {
+    this.validateFile(file);
+
+    const workbook = await this.importProcessor.parseExcelFile(file.buffer);
+    const worksheet = workbook.worksheets[0];
+
+    if (!worksheet) {
+      throw new BadRequestException('File không có sheet dữ liệu');
+    }
+
+    const columnMappings = this.importProcessor.getDepartmentColumnMappings();
+    const parsedRows = this.importProcessor.parseWorksheet(worksheet, columnMappings);
+
+    const allErrors: ImportError[] = [];
+    let successCount = 0;
+
     await this.dataSource.transaction(async (manager) => {
       for (const row of parsedRows) {
         if (row.errors.length > 0) {
@@ -59,11 +213,32 @@ export class ImportService {
           continue;
         }
 
-        // Check duplicate employeeCode
-        const existing = await manager.findOne(TeacherEntity, {
+        const name = row.data['name'] as string;
+
+        // Determine effective schoolId: if schoolCode is provided, look up the school
+        let effectiveSchoolId = schoolId;
+        const schoolCode = row.data['schoolCode'] as string | null;
+        if (schoolCode) {
+          const school = await manager.findOne(SchoolEntity, {
+            where: { code: schoolCode, deletedAt: IsNull() },
+          });
+          if (!school) {
+            allErrors.push({
+              row: row.rowNumber,
+              field: 'schoolCode',
+              message: `Không tìm thấy trường với mã "${schoolCode}"`,
+              value: schoolCode,
+            });
+            continue;
+          }
+          effectiveSchoolId = school.id;
+        }
+
+        // Check duplicate department name within school
+        const existing = await manager.findOne(DepartmentEntity, {
           where: {
-            employeeCode: row.data['employeeCode'] as string,
-            schoolId,
+            name,
+            schoolId: effectiveSchoolId,
             deletedAt: IsNull(),
           },
         });
@@ -71,41 +246,61 @@ export class ImportService {
         if (existing) {
           allErrors.push({
             row: row.rowNumber,
-            field: 'employeeCode',
-            message: `Mã nhân viên "${row.data['employeeCode']}" đã tồn tại`,
-            value: row.data['employeeCode'] as string,
+            field: 'name',
+            message: `Tổ bộ môn "${name}" đã tồn tại trong trường`,
+            value: name,
           });
           continue;
         }
 
-        const teacher = manager.create(TeacherEntity, {
-          schoolId,
-          employeeCode: row.data['employeeCode'] as string,
-          fullName: row.data['fullName'] as string,
-          shortName: (row.data['shortName'] as string) || null,
-          phone: (row.data['phone'] as string) || null,
-          email: (row.data['email'] as string) || null,
-          position: (row.data['position'] as string) || null,
-          maxPeriodsPerWeek: row.data['maxPeriodsPerWeek']
-            ? Number(row.data['maxPeriodsPerWeek'])
-            : 20,
-          minPeriodsPerWeek: row.data['minPeriodsPerWeek']
-            ? Number(row.data['minPeriodsPerWeek'])
-            : 0,
-          maxPeriodsPerDay: row.data['maxPeriodsPerDay']
-            ? Number(row.data['maxPeriodsPerDay'])
-            : 6,
-        });
+        // Lookup headTeacher by employeeCode if provided
+        let headTeacherId: string | null = null;
+        const headTeacherCode = row.data['headTeacherCode'] as string | null;
+        if (headTeacherCode) {
+          const teacher = await manager.findOne(TeacherEntity, {
+            where: {
+              employeeCode: headTeacherCode,
+              schoolId: effectiveSchoolId,
+              deletedAt: IsNull(),
+            },
+          });
+          if (!teacher) {
+            allErrors.push({
+              row: row.rowNumber,
+              field: 'headTeacherCode',
+              message: `Không tìm thấy giáo viên với mã NV "${headTeacherCode}"`,
+              value: headTeacherCode,
+            });
+            continue;
+          }
+          headTeacherId = teacher.id;
+        }
 
-        await manager.save(teacher);
-        successCount++;
+        try {
+          const department = manager.create(DepartmentEntity, {
+            schoolId: effectiveSchoolId,
+            name,
+            headTeacherId,
+          });
+
+          await manager.save(department);
+          successCount++;
+        } catch (saveError: unknown) {
+          const errMsg = saveError instanceof Error ? saveError.message : 'Lỗi không xác định khi lưu';
+          allErrors.push({
+            row: row.rowNumber,
+            field: 'save',
+            message: errMsg,
+            value: name,
+          });
+        }
       }
     });
 
     return {
       totalRows: parsedRows.length,
       successCount,
-      errorCount: allErrors.length > 0 ? parsedRows.length - successCount : 0,
+      errorCount: parsedRows.length - successCount,
       errors: allErrors,
     };
   }
@@ -128,6 +323,7 @@ export class ImportService {
 
     const allErrors: ImportError[] = [];
     let successCount = 0;
+    let colorIndex = 0;
 
     await this.dataSource.transaction(async (manager) => {
       for (const row of parsedRows) {
@@ -136,10 +332,17 @@ export class ImportService {
           continue;
         }
 
-        // Check duplicate code
+        const name = row.data['name'] as string;
+        // Auto-generate code from name (uppercase initials of words)
+        const code = name
+          .split(/\s+/)
+          .map((w: string) => w.charAt(0).toUpperCase())
+          .join('') || name.substring(0, 5).toUpperCase();
+
+        // Check duplicate name within school
         const existing = await manager.findOne(SubjectEntity, {
           where: {
-            code: row.data['code'] as string,
+            name,
             schoolId,
             deletedAt: IsNull(),
           },
@@ -148,22 +351,25 @@ export class ImportService {
         if (existing) {
           allErrors.push({
             row: row.rowNumber,
-            field: 'code',
-            message: `Mã môn "${row.data['code']}" đã tồn tại`,
-            value: row.data['code'] as string,
+            field: 'name',
+            message: `Môn học "${name}" đã tồn tại`,
+            value: name,
           });
           continue;
         }
 
+        // Auto-generate color
+        const colorCode = this.generateSubjectColor(colorIndex);
+        colorIndex++;
+
         const subject = manager.create(SubjectEntity, {
           schoolId,
-          code: row.data['code'] as string,
-          name: row.data['name'] as string,
-          shortName: (row.data['shortName'] as string) || null,
+          code,
+          name,
           periodsPerWeek: row.data['periodsPerWeek']
             ? Number(row.data['periodsPerWeek'])
-            : 0,
-          isDoublePeriod: row.data['isDoublePeriod'] === 'true' || row.data['isDoublePeriod'] === '1',
+            : 6,
+          colorCode,
         });
 
         await manager.save(subject);
@@ -396,8 +602,11 @@ export class ImportService {
       case 'timetable':
         this.buildTimetableTemplate(worksheet);
         break;
+      case 'departments':
+        this.buildDepartmentTemplate(worksheet);
+        break;
       default:
-        throw new BadRequestException(`Loại template "${type}" không hợp lệ. Chấp nhận: teachers, subjects, classes, timetable`);
+        throw new BadRequestException(`Loại template "${type}" không hợp lệ. Chấp nhận: teachers, subjects, classes, timetable, departments`);
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -406,34 +615,28 @@ export class ImportService {
 
   private buildTeacherTemplate(worksheet: import('exceljs').Worksheet): void {
     worksheet.columns = [
-      { header: 'Mã nhân viên', key: 'employeeCode', width: 15 },
-      { header: 'Họ và tên', key: 'fullName', width: 25 },
-      { header: 'Tên viết tắt', key: 'shortName', width: 15 },
+      { header: 'Mã NV', key: 'employeeCode', width: 15 },
+      { header: 'Họ và Tên', key: 'fullName', width: 25 },
+      { header: 'Tên gọi', key: 'shortName', width: 15 },
+      { header: 'Khối', key: 'gradeName', width: 15 },
+      { header: 'Tổ bộ môn', key: 'departmentName', width: 20 },
+      { header: 'Chức danh/chức vụ', key: 'jobTitle', width: 20 },
+      { header: 'Cấp bậc quản lý', key: 'managementLevel', width: 18 },
       { header: 'Giới tính', key: 'gender', width: 12 },
-      { header: 'Ngày sinh', key: 'dateOfBirth', width: 15 },
-      { header: 'Số điện thoại', key: 'phone', width: 15 },
-      { header: 'Email', key: 'email', width: 25 },
-      { header: 'Chức vụ', key: 'position', width: 15 },
-      { header: 'Loại GV', key: 'teacherType', width: 15 },
-      { header: 'Số tiết tối đa/tuần', key: 'maxPeriodsPerWeek', width: 18 },
-      { header: 'Số tiết tối thiểu/tuần', key: 'minPeriodsPerWeek', width: 20 },
-      { header: 'Số tiết tối đa/ngày', key: 'maxPeriodsPerDay', width: 18 },
+      { header: 'Max tiết/tuần', key: 'maxPeriodsPerWeek', width: 15 },
     ];
 
     // Add sample row
     worksheet.addRow({
-      employeeCode: 'GV001',
-      fullName: 'Nguyễn Văn A',
-      shortName: 'A',
-      gender: 'male',
-      dateOfBirth: '1990-01-15',
-      phone: '0901234567',
-      email: 'nguyenvana@school.edu.vn',
-      position: 'Giáo viên',
-      teacherType: 'full_time',
+      employeeCode: '001176019610',
+      fullName: 'Nguyễn Thị Lan Hương',
+      shortName: 'Lan Hương -T',
+      gradeName: 'THCS',
+      departmentName: 'TOÁN',
+      jobTitle: 'GVCN 7D0, GVBM',
+      managementLevel: 'Tổ trưởng, Nhóm trưởng',
+      gender: 'Nữ',
       maxPeriodsPerWeek: 20,
-      minPeriodsPerWeek: 12,
-      maxPeriodsPerDay: 6,
     });
 
     this.styleHeaderRow(worksheet);
@@ -441,21 +644,13 @@ export class ImportService {
 
   private buildSubjectTemplate(worksheet: import('exceljs').Worksheet): void {
     worksheet.columns = [
-      { header: 'Mã môn', key: 'code', width: 12 },
-      { header: 'Tên môn', key: 'name', width: 25 },
-      { header: 'Tên viết tắt', key: 'shortName', width: 15 },
-      { header: 'Loại môn', key: 'subjectType', width: 15 },
+      { header: 'Môn học', key: 'name', width: 25 },
       { header: 'Số tiết/tuần', key: 'periodsPerWeek', width: 15 },
-      { header: 'Tiết đôi', key: 'isDoublePeriod', width: 12 },
     ];
 
     worksheet.addRow({
-      code: 'TOAN',
       name: 'Toán học',
-      shortName: 'Toán',
-      subjectType: 'required',
-      periodsPerWeek: 5,
-      isDoublePeriod: 'false',
+      periodsPerWeek: 6,
     });
 
     this.styleHeaderRow(worksheet);
@@ -501,6 +696,26 @@ export class ImportService {
     this.styleHeaderRow(worksheet);
   }
 
+  private buildDepartmentTemplate(worksheet: import('exceljs').Worksheet): void {
+    worksheet.columns = [
+      { header: 'Tổ bộ môn', key: 'name', width: 25 },
+      { header: 'Mã Trường', key: 'schoolCode', width: 15 },
+      { header: 'Tên Trường', key: 'schoolName', width: 30 },
+      { header: 'Tên Tổ trưởng', key: 'headTeacherName', width: 25 },
+      { header: 'Mã NV Tổ trưởng', key: 'headTeacherCode', width: 18 },
+    ];
+
+    worksheet.addRow({
+      name: 'TOÁN',
+      schoolCode: 'DMS',
+      schoolName: 'Diamond School',
+      headTeacherName: 'Nguyễn Thị Lan Hương',
+      headTeacherCode: '001176019610',
+    });
+
+    this.styleHeaderRow(worksheet);
+  }
+
   private styleHeaderRow(worksheet: import('exceljs').Worksheet): void {
     const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true };
@@ -510,6 +725,16 @@ export class ImportService {
       fgColor: { argb: 'FF4472C4' },
     };
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  }
+
+  private generateSubjectColor(index: number): string {
+    const colors = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+      '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
+      '#eab308', '#d946ef', '#0891b2', '#65a30d', '#dc2626',
+    ];
+    return colors[index % colors.length];
   }
 
   private validateFile(file: Express.Multer.File): void {
