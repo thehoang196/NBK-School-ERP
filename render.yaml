@@ -1,0 +1,46 @@
+databases:
+  - name: stms-db
+    plan: free
+    databaseName: stms
+    user: stms_user
+
+services:
+  - type: web
+    name: stms-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        fromDatabase:
+          name: stms-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: stms-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: stms-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: stms-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: stms-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: REDIS_HOST
+        value: ""
+      - key: REDIS_PORT
+        value: "6379"
