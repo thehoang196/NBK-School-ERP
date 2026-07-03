@@ -3,15 +3,15 @@ databases:
     plan: free
     databaseName: stms
     user: stms_user
-    region: singapore
-    ipAllowList: [] # Allow all connections (Render internal)
+    region: oregon
+    ipAllowList: []
 
 services:
   - type: web
     name: stms-backend
     runtime: node
     plan: free
-    region: singapore
+    region: oregon
     buildCommand: npm install --include=dev && npm run build
     startCommand: node dist/main
     healthCheckPath: /api/v1/health
@@ -27,6 +27,26 @@ services:
         fromDatabase:
           name: stms-db
           property: connectionString
+      - key: DB_HOST
+        fromDatabase:
+          name: stms-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: stms-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: stms-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: stms-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: stms-db
+          property: database
       - key: DB_SSL
         value: "true"
       - key: JWT_SECRET
