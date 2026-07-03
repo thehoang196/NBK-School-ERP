@@ -3,6 +3,7 @@ databases:
     plan: free
     databaseName: stms
     user: stms_user
+    region: singapore
     ipAllowList: [] # Allow all connections (Render internal)
 
 services:
