@@ -23,32 +23,12 @@ services:
         value: production
       - key: PORT
         value: "10000"
-      - key: DB_HOST
-        fromDatabase:
-          name: stms-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: stms-db
-          property: port
-      - key: DB_USERNAME
-        fromDatabase:
-          name: stms-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: stms-db
-          property: password
-      - key: DB_DATABASE
-        fromDatabase:
-          name: stms-db
-          property: database
-      - key: DB_SSL
-        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: stms-db
           property: connectionString
+      - key: DB_SSL
+        value: "true"
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
@@ -58,4 +38,4 @@ services:
       - key: REDIS_PORT
         value: "6379"
       - key: CORS_ORIGINS
-        value: "https://stms-frontend.onrender.com"
+        value: "https://nbk-ems-frontend.onrender.com"
