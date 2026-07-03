@@ -27,5 +27,8 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       connectTimeoutMS: 10000,
       maxQueryExecutionTime: 30000,
     }),
+    // Retry connection on startup (useful for Render where DB may not be ready immediately)
+    retryAttempts: isProduction ? 10 : 3,
+    retryDelay: 3000,
   };
 };
