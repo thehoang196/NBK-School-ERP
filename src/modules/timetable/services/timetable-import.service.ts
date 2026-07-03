@@ -402,7 +402,7 @@ export class TimetableImportService {
    */
   async generateTemplate(): Promise<Buffer> {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'STMS';
+    workbook.creator = 'NBK_EMS';
     workbook.created = new Date();
 
     const worksheet = workbook.addWorksheet('Template Import TKB');

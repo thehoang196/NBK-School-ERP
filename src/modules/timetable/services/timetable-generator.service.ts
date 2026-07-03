@@ -320,7 +320,7 @@ export class TimetableGeneratorService {
     const hours = periods.map(p => `Period${p.periodNumber}`);
 
     return {
-      institution: 'STMS',
+      institution: 'NBK_EMS',
       teachers: teachers.map(t => ({ id: t.id, name: t.fullName })),
       subjects: subjects.map(s => ({ id: s.id, name: s.name })),
       activities: [], // Will be filled from teaching assignments

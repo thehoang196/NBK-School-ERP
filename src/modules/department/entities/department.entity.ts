@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
+import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 
 @Entity('departments')
 export class DepartmentEntity extends BaseEntity {
@@ -16,4 +17,8 @@ export class DepartmentEntity extends BaseEntity {
 
   @Column({ name: 'head_teacher_id', type: 'uuid', nullable: true })
   headTeacherId: string | null;
+
+  @ManyToOne(() => TeacherEntity, { nullable: true })
+  @JoinColumn({ name: 'head_teacher_id' })
+  headTeacher: TeacherEntity | null;
 }

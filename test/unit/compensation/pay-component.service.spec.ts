@@ -15,6 +15,7 @@ describe('PayComponentService', () => {
   const mockPayComponent: PayComponentEntity = {
     id: '550e8400-e29b-41d4-a716-446655440001',
     schoolId: '550e8400-e29b-41d4-a716-446655440000',
+    school: undefined as never,
     code: 'BASIC_SALARY',
     name: 'Lương cơ bản',
     type: PayComponentType.EARNING,

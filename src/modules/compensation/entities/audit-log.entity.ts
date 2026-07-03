@@ -1,5 +1,6 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { UserEntity } from '../../auth/entities/user.entity';
 
 @Entity('compensation_audit_logs')
 export class AuditLogEntity extends BaseEntity {
@@ -20,6 +21,10 @@ export class AuditLogEntity extends BaseEntity {
 
   @Column({ name: 'performed_by', type: 'uuid' })
   performedBy: string;
+
+  @ManyToOne(() => UserEntity)
+  @JoinColumn({ name: 'performed_by' })
+  performer: UserEntity;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata: Record<string, unknown> | null;

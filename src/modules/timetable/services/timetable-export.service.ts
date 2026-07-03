@@ -87,7 +87,7 @@ export class TimetableExportService {
       : null;
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'STMS';
+    workbook.creator = 'NBK_EMS';
     workbook.created = new Date();
 
     for (const grade of grades) {

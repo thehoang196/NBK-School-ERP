@@ -16,6 +16,7 @@ describe('ClassService', () => {
     academicYearId: 'year-uuid',
     name: '10A1',
     homeroomTeacherId: null,
+    homeroomTeacher: null,
     studentCount: 35,
     status: EntityStatus.ACTIVE,
     createdAt: new Date(),

@@ -1,12 +1,17 @@
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { EntityStatus } from '../../../common/enums/status.enum';
 import { PayComponentType } from '../enums';
+import { SchoolEntity } from '../../school/entities/school.entity';
 
 @Entity('pay_components')
 export class PayComponentEntity extends BaseEntity {
   @Column({ name: 'school_id', type: 'uuid' })
   schoolId: string;
+
+  @ManyToOne(() => SchoolEntity)
+  @JoinColumn({ name: 'school_id' })
+  school: SchoolEntity;
 
   @Column({ type: 'varchar', length: 50 })
   code: string;

@@ -72,6 +72,6 @@ export class TeacherController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.teacherService.remove(id);
-    return { message: 'Xóa giáo viên thành công' };
+    return { success: true, data: null, message: 'Xóa giáo viên thành công' };
   }
 }

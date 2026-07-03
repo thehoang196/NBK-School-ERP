@@ -13,6 +13,7 @@ describe('DepartmentService', () => {
     schoolId: 'school-uuid',
     name: 'Tổ Toán - Tin',
     headTeacherId: null,
+    headTeacher: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

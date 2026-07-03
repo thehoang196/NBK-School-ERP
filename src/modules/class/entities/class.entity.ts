@@ -4,6 +4,7 @@ import { EntityStatus } from '../../../common/enums/status.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { GradeEntity } from './grade.entity';
 import { AcademicYearEntity } from '../../academic/entities/academic-year.entity';
+import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 
 @Entity('classes')
 export class ClassEntity extends BaseEntity {
@@ -33,6 +34,10 @@ export class ClassEntity extends BaseEntity {
 
   @Column({ name: 'homeroom_teacher_id', type: 'uuid', nullable: true })
   homeroomTeacherId: string | null;
+
+  @ManyToOne(() => TeacherEntity, { nullable: true })
+  @JoinColumn({ name: 'homeroom_teacher_id' })
+  homeroomTeacher: TeacherEntity | null;
 
   @Column({ name: 'student_count', type: 'int', default: 0 })
   studentCount: number;

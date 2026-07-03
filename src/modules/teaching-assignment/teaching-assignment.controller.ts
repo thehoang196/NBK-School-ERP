@@ -54,7 +54,12 @@ export class TeachingAssignmentController {
   @ApiResponse({ status: 200, description: 'Thành công' })
   @ApiQuery({ name: 'semesterId', required: true, description: 'ID học kỳ' })
   async getAllWorkloads(@Query('semesterId') semesterId: string) {
-    return this.teachingAssignmentService.checkAllWorkloads(semesterId);
+    const data = await this.teachingAssignmentService.checkAllWorkloads(semesterId);
+    return {
+      success: true,
+      data,
+      message: 'Lấy thông tin khối lượng giảng dạy thành công',
+    };
   }
 
   @Get('workload/:teacherId')
@@ -68,7 +73,12 @@ export class TeachingAssignmentController {
     @Param('teacherId', ParseUUIDPipe) teacherId: string,
     @Query('semesterId') semesterId: string,
   ) {
-    return this.teachingAssignmentService.checkWorkload(teacherId, semesterId);
+    const data = await this.teachingAssignmentService.checkWorkload(teacherId, semesterId);
+    return {
+      success: true,
+      data,
+      message: 'Lấy thông tin khối lượng giảng dạy thành công',
+    };
   }
 
   @Get(':id')
@@ -129,7 +139,7 @@ export class TeachingAssignmentController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.teachingAssignmentService.remove(id);
-    return { message: 'Xóa phân công giảng dạy thành công' };
+    return { success: true, data: null, message: 'Xóa phân công giảng dạy thành công' };
   }
 
   @Post('bulk')

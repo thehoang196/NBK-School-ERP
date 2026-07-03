@@ -72,6 +72,6 @@ export class SchoolController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.schoolService.remove(id);
-    return { message: 'Xóa trường thành công' };
+    return { success: true, data: null, message: 'Xóa trường thành công' };
   }
 }

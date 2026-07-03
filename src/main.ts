@@ -32,8 +32,8 @@ async function bootstrap() {
 
   // Swagger
   const config = new DocumentBuilder()
-    .setTitle('STMS API')
-    .setDescription('Hệ thống Quản lý Thời khóa biểu Trường học')
+    .setTitle('NBK_EMS API')
+    .setDescription('NBK Education Management System - Hệ thống Quản lý Giáo dục NBK')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -42,7 +42,7 @@ async function bootstrap() {
 
   const port = process.env['PORT'] || 3000;
   await app.listen(port);
-  console.log(`🚀 STMS API running on http://localhost:${port}`);
+  console.log(`🚀 NBK_EMS API running on http://localhost:${port}`);
   console.log(`📚 Swagger UI: http://localhost:${port}/api/docs`);
 }
 

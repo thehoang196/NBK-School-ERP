@@ -51,6 +51,8 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
 
   const createMockVersion = (overrides: Partial<TimetableVersionEntity> = {}): TimetableVersionEntity => ({
     id: versionId,
+    schoolId: null,
+    school: null,
     semesterId,
     name: 'TKB HK1 v1',
     versionNumber: 1,
