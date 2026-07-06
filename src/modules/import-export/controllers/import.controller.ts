@@ -18,18 +18,27 @@ import {
   ApiConsumes,
   ApiBody,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { ImportService } from '../services/import.service';
 import { ImportResultDto } from '../dto/import-result.dto';
+import { ImportBatchResponseDto } from '../dto/import-batch-response.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import {
+  CurrentUser,
+  CurrentUserPayload,
+} from '../../../common/decorators/current-user.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
+import { ConflictStrategy } from '../enums/conflict-strategy.enum';
 
 @ApiTags('Import')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Throttle({ strict: { ttl: 60000, limit: 10 } })
 @Controller('api/v1/import')
 export class ImportController {
   constructor(private readonly importService: ImportService) {}
@@ -48,22 +57,41 @@ export class ImportController {
           format: 'binary',
           description: 'File Excel (.xlsx)',
         },
-        schoolId: {
-          type: 'string',
-          format: 'uuid',
-          description: 'ID trường',
-        },
       },
-      required: ['file', 'schoolId'],
+      required: ['file'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Kết quả import', type: ImportResultDto })
+  @ApiQuery({ name: 'schoolId', type: 'string', description: 'ID trường' })
+  @ApiQuery({
+    name: 'conflictStrategy',
+    enum: ConflictStrategy,
+    required: false,
+    description:
+      'Chiến lược xử lý trùng lặp: strict (fail), upsert (ghi đè), merge (chỉ update non-null)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Kết quả import (đồng bộ)',
+    type: ImportResultDto,
+  })
+  @ApiResponse({
+    status: 202,
+    description: 'Import async đã được tạo (file lớn > 100 dòng)',
+    type: ImportBatchResponseDto,
+  })
   @ApiResponse({ status: 400, description: 'File không hợp lệ' })
   async importTeachers(
     @UploadedFile() file: Express.Multer.File,
     @Query('schoolId') schoolId: string,
-  ): Promise<ImportResultDto> {
-    return this.importService.importTeachers(file, schoolId);
+    @Query('conflictStrategy') conflictStrategy?: ConflictStrategy,
+    @CurrentUser() user?: CurrentUserPayload,
+  ): Promise<ImportResultDto | ImportBatchResponseDto> {
+    return this.importService.importTeachers(
+      file,
+      schoolId,
+      conflictStrategy || ConflictStrategy.STRICT,
+      user?.id,
+    );
   }
 
   @Post('subjects')
@@ -89,7 +117,11 @@ export class ImportController {
       required: ['file', 'schoolId'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Kết quả import', type: ImportResultDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Kết quả import',
+    type: ImportResultDto,
+  })
   @ApiResponse({ status: 400, description: 'File không hợp lệ' })
   async importSubjects(
     @UploadedFile() file: Express.Multer.File,
@@ -121,7 +153,11 @@ export class ImportController {
       required: ['file', 'schoolId'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Kết quả import', type: ImportResultDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Kết quả import',
+    type: ImportResultDto,
+  })
   @ApiResponse({ status: 400, description: 'File không hợp lệ' })
   async importClasses(
     @UploadedFile() file: Express.Multer.File,
@@ -153,7 +189,11 @@ export class ImportController {
       required: ['file', 'schoolId'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Kết quả import', type: ImportResultDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Kết quả import',
+    type: ImportResultDto,
+  })
   @ApiResponse({ status: 400, description: 'File không hợp lệ' })
   async importDepartments(
     @UploadedFile() file: Express.Multer.File,
@@ -190,7 +230,11 @@ export class ImportController {
       required: ['file', 'schoolId', 'versionId'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Kết quả import', type: ImportResultDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Kết quả import',
+    type: ImportResultDto,
+  })
   @ApiResponse({ status: 400, description: 'File không hợp lệ' })
   async importTimetable(
     @UploadedFile() file: Express.Multer.File,
@@ -199,6 +243,26 @@ export class ImportController {
   ): Promise<ImportResultDto> {
     return this.importService.importTimetable(file, schoolId, versionId);
   }
+
+  // ─── BATCH STATUS ───────────────────────────────────────────────────────
+
+  @Get('batches/:batchId')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: 'Lấy trạng thái/tiến độ import batch' })
+  @ApiParam({ name: 'batchId', type: 'string', description: 'ID batch import' })
+  @ApiResponse({
+    status: 200,
+    description: 'Trạng thái batch import',
+    type: ImportBatchResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy batch' })
+  async getImportBatchStatus(
+    @Param('batchId') batchId: string,
+  ): Promise<ImportBatchResponseDto> {
+    return this.importService.getImportBatchStatus(batchId);
+  }
+
+  // ─── TEMPLATE DOWNLOAD ─────────────────────────────────────────────────
 
   @Get('template/:type')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
@@ -217,7 +281,8 @@ export class ImportController {
     const buffer = await this.importService.generateTemplate(type);
 
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename=template-${type}.xlsx`,
       'Content-Length': buffer.length,
     });

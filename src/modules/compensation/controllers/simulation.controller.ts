@@ -1,10 +1,10 @@
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { SimulationService } from '../services/simulation.service';
 import { SimulateDto } from '../dto/calculation/simulate.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -21,7 +21,9 @@ export class SimulationController {
 
   @Post('simulate')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
-  @ApiOperation({ summary: 'Mô phỏng tính lương cho một giáo viên (không lưu dữ liệu)' })
+  @ApiOperation({
+    summary: 'Mô phỏng tính lương cho một giáo viên (không lưu dữ liệu)',
+  })
   @ApiResponse({ status: 200, description: 'Kết quả mô phỏng chi tiết' })
   @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
   async simulate(@Body() dto: SimulateDto) {

@@ -1,6 +1,17 @@
-import { Tokenizer, TokenType, TokenizerError } from '../../../src/modules/compensation/formula-engine/tokenizer';
-import { Parser, ParseError, ASTNode } from '../../../src/modules/compensation/formula-engine/parser';
-import { Evaluator, EvaluationError } from '../../../src/modules/compensation/formula-engine/evaluator';
+import {
+  Tokenizer,
+  TokenType,
+  TokenizerError,
+} from '../../../src/modules/compensation/formula-engine/tokenizer';
+import {
+  Parser,
+  ParseError,
+  ASTNode,
+} from '../../../src/modules/compensation/formula-engine/parser';
+import {
+  Evaluator,
+  EvaluationError,
+} from '../../../src/modules/compensation/formula-engine/evaluator';
 import { FormulaValidator } from '../../../src/modules/compensation/formula-engine/validator';
 import { DependencyExtractor } from '../../../src/modules/compensation/formula-engine/dependency-extractor';
 import { CircularDependencyDetector } from '../../../src/modules/compensation/formula-engine/circular-dependency-detector';
@@ -11,34 +22,62 @@ describe('Formula Engine', () => {
     it('should tokenize numbers', () => {
       const tokenizer = new Tokenizer('123 45.67');
       const tokens = tokenizer.tokenize();
-      expect(tokens[0]).toEqual({ type: TokenType.NUMBER, value: '123', position: 0 });
-      expect(tokens[1]).toEqual({ type: TokenType.NUMBER, value: '45.67', position: 4 });
+      expect(tokens[0]).toEqual({
+        type: TokenType.NUMBER,
+        value: '123',
+        position: 0,
+      });
+      expect(tokens[1]).toEqual({
+        type: TokenType.NUMBER,
+        value: '45.67',
+        position: 4,
+      });
     });
 
     it('should tokenize strings', () => {
       const tokenizer = new Tokenizer('"hello" \'world\'');
       const tokens = tokenizer.tokenize();
-      expect(tokens[0]).toEqual({ type: TokenType.STRING, value: 'hello', position: 0 });
-      expect(tokens[1]).toEqual({ type: TokenType.STRING, value: 'world', position: 8 });
+      expect(tokens[0]).toEqual({
+        type: TokenType.STRING,
+        value: 'hello',
+        position: 0,
+      });
+      expect(tokens[1]).toEqual({
+        type: TokenType.STRING,
+        value: 'world',
+        position: 8,
+      });
     });
 
     it('should tokenize identifiers', () => {
       const tokenizer = new Tokenizer('BASIC_SALARY x');
       const tokens = tokenizer.tokenize();
-      expect(tokens[0]).toEqual({ type: TokenType.IDENTIFIER, value: 'BASIC_SALARY', position: 0 });
-      expect(tokens[1]).toEqual({ type: TokenType.IDENTIFIER, value: 'x', position: 13 });
+      expect(tokens[0]).toEqual({
+        type: TokenType.IDENTIFIER,
+        value: 'BASIC_SALARY',
+        position: 0,
+      });
+      expect(tokens[1]).toEqual({
+        type: TokenType.IDENTIFIER,
+        value: 'x',
+        position: 13,
+      });
     });
 
     it('should tokenize operators', () => {
       const tokenizer = new Tokenizer('+ - * / %');
       const tokens = tokenizer.tokenize();
-      expect(tokens.filter((t) => t.type === TokenType.OPERATOR)).toHaveLength(5);
+      expect(tokens.filter((t) => t.type === TokenType.OPERATOR)).toHaveLength(
+        5,
+      );
     });
 
     it('should tokenize comparison operators', () => {
       const tokenizer = new Tokenizer('== != > < >= <=');
       const tokens = tokenizer.tokenize();
-      expect(tokens.filter((t) => t.type === TokenType.COMPARISON_OP)).toHaveLength(6);
+      expect(
+        tokens.filter((t) => t.type === TokenType.COMPARISON_OP),
+      ).toHaveLength(6);
     });
 
     it('should tokenize parentheses and commas', () => {
@@ -304,9 +343,7 @@ describe('Formula Engine', () => {
     it('should not include variables as dependencies', () => {
       const parser = new Parser('BASIC_SALARY * RATE');
       const ast = parser.parse();
-      const extractor = new DependencyExtractor(
-        new Set(['BASIC_SALARY']),
-      );
+      const extractor = new DependencyExtractor(new Set(['BASIC_SALARY']));
       const deps = extractor.extract(ast);
       expect(deps).toContain('BASIC_SALARY');
       expect(deps).not.toContain('RATE');
@@ -316,7 +353,10 @@ describe('Formula Engine', () => {
       const parser = new Parser('BASIC_SALARY * RATE + BONUS');
       const ast = parser.parse();
       const extractor = new DependencyExtractor(new Set(['BASIC_SALARY']));
-      const varRefs = extractor.extractVariableRefs(ast, new Set(['RATE', 'BONUS']));
+      const varRefs = extractor.extractVariableRefs(
+        ast,
+        new Set(['RATE', 'BONUS']),
+      );
       expect(varRefs).toContain('RATE');
       expect(varRefs).toContain('BONUS');
       expect(varRefs).not.toContain('BASIC_SALARY');

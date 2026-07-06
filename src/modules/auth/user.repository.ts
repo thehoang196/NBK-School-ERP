@@ -50,9 +50,7 @@ export class UserRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findAllFiltered(
-    query: UserQueryDto,
-  ): Promise<[UserEntity[], number]> {
+  async findAllFiltered(query: UserQueryDto): Promise<[UserEntity[], number]> {
     const { page, limit, sortBy, sortOrder, search, role, schoolId } = query;
     const skip = (page - 1) * limit;
 

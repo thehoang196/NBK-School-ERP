@@ -9,7 +9,10 @@ export class VariableQueryDto extends PaginationDto {
   @IsEnum(VariableScope)
   scope?: VariableScope;
 
-  @ApiPropertyOptional({ description: 'Lọc theo kiểu dữ liệu', enum: VariableDataType })
+  @ApiPropertyOptional({
+    description: 'Lọc theo kiểu dữ liệu',
+    enum: VariableDataType,
+  })
   @IsOptional()
   @IsEnum(VariableDataType)
   dataType?: VariableDataType;

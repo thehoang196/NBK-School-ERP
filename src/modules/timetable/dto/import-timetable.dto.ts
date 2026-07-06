@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID, IsInt, IsString, IsArray, Min, ValidateNested } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsUUID,
+  IsInt,
+  IsString,
+  IsArray,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -18,7 +26,10 @@ export class ImportTimetableDto {
  * Validates: Requirements 1.5, 1.7
  */
 export class TimetableImportErrorDto {
-  @ApiProperty({ description: 'Số dòng trong file Excel (bắt đầu từ 2)', example: 5 })
+  @ApiProperty({
+    description: 'Số dòng trong file Excel (bắt đầu từ 2)',
+    example: 5,
+  })
   @IsInt()
   @Min(2)
   row: number;
@@ -27,11 +38,17 @@ export class TimetableImportErrorDto {
   @IsString()
   field: string;
 
-  @ApiProperty({ description: 'Mô tả lỗi chi tiết', example: 'Không tìm thấy giáo viên với mã NV001' })
+  @ApiProperty({
+    description: 'Mô tả lỗi chi tiết',
+    example: 'Không tìm thấy giáo viên với mã NV001',
+  })
   @IsString()
   message: string;
 
-  @ApiProperty({ description: 'Giá trị gốc trong file Excel', example: 'NV001' })
+  @ApiProperty({
+    description: 'Giá trị gốc trong file Excel',
+    example: 'NV001',
+  })
   @IsString()
   value: string;
 }
@@ -41,7 +58,10 @@ export class TimetableImportErrorDto {
  * Validates: Requirements 1.5, 1.7
  */
 export class TimetableImportResultDto {
-  @ApiProperty({ description: 'Tổng số dòng dữ liệu (không tính header)', example: 150 })
+  @ApiProperty({
+    description: 'Tổng số dòng dữ liệu (không tính header)',
+    example: 150,
+  })
   @IsInt()
   @Min(0)
   totalRows: number;

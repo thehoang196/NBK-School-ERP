@@ -39,7 +39,9 @@ export class CreateDepartments1748900010000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_departments_school_name"`);
     await queryRunner.query(`DROP INDEX "IDX_departments_school_id"`);
-    await queryRunner.query(`ALTER TABLE "departments" DROP CONSTRAINT "FK_departments_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "departments" DROP CONSTRAINT "FK_departments_school"`,
+    );
     await queryRunner.query(`DROP TABLE "departments"`);
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { EventRepository } from './event.repository';
 import { EventEntity } from './entities/event.entity';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -71,16 +75,22 @@ export class EventService {
     const updateData: Partial<EventEntity> = {};
 
     if (dto.title !== undefined) updateData.title = dto.title;
-    if (dto.description !== undefined) updateData.description = dto.description ?? null;
+    if (dto.description !== undefined)
+      updateData.description = dto.description ?? null;
     if (dto.eventType !== undefined) updateData.eventType = dto.eventType;
-    if (dto.startDate !== undefined) updateData.startDate = new Date(dto.startDate);
+    if (dto.startDate !== undefined)
+      updateData.startDate = new Date(dto.startDate);
     if (dto.endDate !== undefined) updateData.endDate = new Date(dto.endDate);
     if (dto.allDay !== undefined) updateData.allDay = dto.allDay;
-    if (dto.affectsSchedule !== undefined) updateData.affectsSchedule = dto.affectsSchedule;
+    if (dto.affectsSchedule !== undefined)
+      updateData.affectsSchedule = dto.affectsSchedule;
     if (dto.isRecurring !== undefined) updateData.isRecurring = dto.isRecurring;
-    if (dto.recurrenceRule !== undefined) updateData.recurrenceRule = dto.recurrenceRule ?? null;
-    if (dto.affectedGrades !== undefined) updateData.affectedGrades = dto.affectedGrades ?? null;
-    if (dto.affectedClasses !== undefined) updateData.affectedClasses = dto.affectedClasses ?? null;
+    if (dto.recurrenceRule !== undefined)
+      updateData.recurrenceRule = dto.recurrenceRule ?? null;
+    if (dto.affectedGrades !== undefined)
+      updateData.affectedGrades = dto.affectedGrades ?? null;
+    if (dto.affectedClasses !== undefined)
+      updateData.affectedClasses = dto.affectedClasses ?? null;
     if (dto.status !== undefined) updateData.status = dto.status;
 
     const updated = await this.eventRepository.update(id, updateData);
@@ -112,7 +122,9 @@ export class EventService {
     const end = new Date(endDate);
 
     if (start > end) {
-      throw new BadRequestException('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc');
+      throw new BadRequestException(
+        'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc',
+      );
     }
   }
 }

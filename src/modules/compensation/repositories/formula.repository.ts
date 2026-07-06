@@ -13,10 +13,20 @@ export class FormulaRepository {
   ) {}
 
   async findAll(query: FormulaQueryDto): Promise<[FormulaEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, payComponentId, status, search } = query;
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      schoolId,
+      payComponentId,
+      status,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('f')
+    const queryBuilder = this.repo
+      .createQueryBuilder('f')
       .where('f.deletedAt IS NULL');
 
     if (schoolId) {
@@ -24,7 +34,9 @@ export class FormulaRepository {
     }
 
     if (payComponentId) {
-      queryBuilder.andWhere('f.payComponentId = :payComponentId', { payComponentId });
+      queryBuilder.andWhere('f.payComponentId = :payComponentId', {
+        payComponentId,
+      });
     }
 
     if (status) {
@@ -32,7 +44,9 @@ export class FormulaRepository {
     }
 
     if (search) {
-      queryBuilder.andWhere('f.expression ILIKE :search', { search: `%${search}%` });
+      queryBuilder.andWhere('f.expression ILIKE :search', {
+        search: `%${search}%`,
+      });
     }
 
     if (sortBy) {
@@ -52,23 +66,37 @@ export class FormulaRepository {
     });
   }
 
-  async findByPayComponentId(payComponentId: string, schoolId: string): Promise<FormulaEntity[]> {
+  async findByPayComponentId(
+    payComponentId: string,
+    schoolId: string,
+  ): Promise<FormulaEntity[]> {
     return this.repo.find({
       where: { payComponentId, schoolId, deletedAt: IsNull() },
       order: { version: 'DESC' },
     });
   }
 
-  async findLatestByPayComponent(payComponentId: string, schoolId: string): Promise<FormulaEntity | null> {
+  async findLatestByPayComponent(
+    payComponentId: string,
+    schoolId: string,
+  ): Promise<FormulaEntity | null> {
     return this.repo.findOne({
       where: { payComponentId, schoolId, deletedAt: IsNull() },
       order: { version: 'DESC' },
     });
   }
 
-  async findPublishedByPayComponent(payComponentId: string, schoolId: string): Promise<FormulaEntity | null> {
+  async findPublishedByPayComponent(
+    payComponentId: string,
+    schoolId: string,
+  ): Promise<FormulaEntity | null> {
     return this.repo.findOne({
-      where: { payComponentId, schoolId, status: FormulaStatus.PUBLISHED, deletedAt: IsNull() },
+      where: {
+        payComponentId,
+        schoolId,
+        status: FormulaStatus.PUBLISHED,
+        deletedAt: IsNull(),
+      },
       order: { version: 'DESC' },
     });
   }
@@ -80,24 +108,34 @@ export class FormulaRepository {
   }
 
   async findByVariableRef(variableCode: string): Promise<FormulaEntity[]> {
-    return this.repo.createQueryBuilder('f')
+    return this.repo
+      .createQueryBuilder('f')
       .where('f.deletedAt IS NULL')
       .andWhere('f.status = :status', { status: FormulaStatus.PUBLISHED })
-      .andWhere(`f.variableRefs @> :code`, { code: JSON.stringify([variableCode]) })
+      .andWhere(`f.variableRefs @> :code`, {
+        code: JSON.stringify([variableCode]),
+      })
       .getMany();
   }
 
   async findByDependency(payComponentCode: string): Promise<FormulaEntity[]> {
-    return this.repo.createQueryBuilder('f')
+    return this.repo
+      .createQueryBuilder('f')
       .where('f.deletedAt IS NULL')
       .andWhere('f.status = :status', { status: FormulaStatus.PUBLISHED })
-      .andWhere(`f.dependencies @> :code`, { code: JSON.stringify([payComponentCode]) })
+      .andWhere(`f.dependencies @> :code`, {
+        code: JSON.stringify([payComponentCode]),
+      })
       .getMany();
   }
 
-  async getMaxVersion(payComponentId: string, schoolId: string): Promise<number> {
-    const result = await this.repo.createQueryBuilder('f')
-      .select('MAX(f.version)', 'maxVersion')
+  async getMaxVersion(
+    payComponentId: string,
+    schoolId: string,
+  ): Promise<number> {
+    const result = await this.repo
+      .createQueryBuilder('f')
+      .select('MAX(f.formula_version)', 'maxVersion')
       .where('f.payComponentId = :payComponentId', { payComponentId })
       .andWhere('f.schoolId = :schoolId', { schoolId })
       .getRawOne();
@@ -110,7 +148,10 @@ export class FormulaRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<FormulaEntity>): Promise<FormulaEntity | null> {
+  async update(
+    id: string,
+    data: Partial<FormulaEntity>,
+  ): Promise<FormulaEntity | null> {
     await this.repo.update(id, data as Record<string, unknown>);
     return this.findById(id);
   }

@@ -49,7 +49,9 @@ export class CreateRooms1748900009000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_rooms_school_code"`);
     await queryRunner.query(`DROP INDEX "IDX_rooms_school_id"`);
-    await queryRunner.query(`ALTER TABLE "rooms" DROP CONSTRAINT "FK_rooms_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "rooms" DROP CONSTRAINT "FK_rooms_school"`,
+    );
     await queryRunner.query(`DROP TABLE "rooms"`);
     await queryRunner.query(`DROP TYPE "room_status_enum"`);
   }

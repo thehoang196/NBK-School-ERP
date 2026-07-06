@@ -46,7 +46,9 @@ export class Evaluator {
         return this.evaluateFunctionCall(node.name, node.arguments);
 
       default:
-        throw new EvaluationError(`Unknown node type: ${(node as ASTNode).type}`);
+        throw new EvaluationError(
+          `Unknown node type: ${(node as ASTNode).type}`,
+        );
     }
   }
 
@@ -69,7 +71,11 @@ export class Evaluator {
     }
   }
 
-  private evaluateBinary(operator: string, left: ASTNode, right: ASTNode): number {
+  private evaluateBinary(
+    operator: string,
+    left: ASTNode,
+    right: ASTNode,
+  ): number {
     const leftVal = this.evaluate(left);
     const rightVal = this.evaluate(right);
 

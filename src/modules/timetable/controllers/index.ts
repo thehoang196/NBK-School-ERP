@@ -4,3 +4,5 @@ export { TimetableGenerationController } from './timetable-generation.controller
 export { DragDropController } from './drag-drop.controller';
 export { TimetableExportController } from './timetable-export.controller';
 export { TimetableImportController } from './timetable-import.controller';
+export { ConflictController } from './conflict.controller';
+export { CrossSchoolTimetableController } from './cross-school-timetable.controller';

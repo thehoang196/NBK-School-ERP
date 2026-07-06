@@ -4,7 +4,7 @@ import {
   ConflictException,
   BadRequestException,
 } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, IsNull } from 'typeorm';
 import { TeachingAssignmentRepository } from './teaching-assignment.repository';
 import { TeachingAssignmentEntity } from './entities/teaching-assignment.entity';
 import {
@@ -18,12 +18,22 @@ import {
 } from './dto';
 import { PaginatedResponse } from '../../common/interfaces/api-response.interface';
 import { TeacherEntity } from '../teacher/entities/teacher.entity';
+import { ClassEntity } from '../class/entities/class.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { TeacherSubjectService } from '../teacher/teacher-subject.service';
+import { TeacherSchoolAssignmentService } from '../teacher-school-assignment/teacher-school-assignment.service';
+import { CrossCampusErrors } from '../teacher-school-assignment/errors/cross-campus.errors';
 
 const MISSING_QUALIFICATION_WARNING =
   'Giáo viên chưa được khai báo là có thể dạy môn học này';
+
+/** Response for aggregated workload across all schools */
+export interface AggregatedWorkloadResponse {
+  totalPeriods: number;
+  bySchool: Array<{ schoolId: string; periods: number }>;
+  isOverloaded: boolean;
+}
 
 @Injectable()
 export class TeachingAssignmentService {
@@ -32,13 +42,17 @@ export class TeachingAssignmentService {
     private readonly dataSource: DataSource,
     @InjectRepository(TeacherEntity)
     private readonly teacherRepo: Repository<TeacherEntity>,
+    @InjectRepository(ClassEntity)
+    private readonly classRepo: Repository<ClassEntity>,
     private readonly teacherSubjectService: TeacherSubjectService,
+    private readonly teacherSchoolAssignmentService: TeacherSchoolAssignmentService,
   ) {}
 
   async findAll(
     query: TeachingAssignmentQueryDto,
   ): Promise<PaginatedResponse<TeachingAssignmentEntity>> {
-    const [data, total] = await this.teachingAssignmentRepository.findAll(query);
+    const [data, total] =
+      await this.teachingAssignmentRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
     return {
@@ -62,7 +76,9 @@ export class TeachingAssignmentService {
     return assignment;
   }
 
-  async create(dto: CreateTeachingAssignmentDto): Promise<TeachingAssignmentEntity> {
+  async create(
+    dto: CreateTeachingAssignmentDto,
+  ): Promise<TeachingAssignmentEntity> {
     await this.validateDuplicate(
       dto.semesterId,
       dto.teacherId,
@@ -70,11 +86,32 @@ export class TeachingAssignmentService {
       dto.subjectId,
     );
 
+    // Resolve schoolId from the class
+    const classEntity = await this.classRepo.findOne({
+      where: { id: dto.classId, deletedAt: IsNull() },
+    });
+    if (!classEntity) {
+      throw new BadRequestException('Không tìm thấy lớp học');
+    }
+    const schoolId = classEntity.schoolId;
+
+    // Validate teacher has active TSA for target school
+    const hasAccess =
+      await this.teacherSchoolAssignmentService.validateTeacherSchoolAccess(
+        dto.teacherId,
+        schoolId,
+      );
+    if (!hasAccess) {
+      throw CrossCampusErrors.teacherNoSchoolAssignment();
+    }
+
     return this.teachingAssignmentRepository.create({
       semesterId: dto.semesterId,
       teacherId: dto.teacherId,
       classId: dto.classId,
       subjectId: dto.subjectId,
+      schoolId,
+      assignmentStatus: 'active',
       periodsPerWeek: dto.periodsPerWeek,
       note: dto.note || null,
     });
@@ -93,11 +130,48 @@ export class TeachingAssignmentService {
 
     await this.validateDuplicate(semesterId, teacherId, classId, subjectId, id);
 
+    // If classId changed, resolve new schoolId and validate access
+    let schoolId: string | undefined;
+    if (dto.classId && dto.classId !== existing.classId) {
+      const classEntity = await this.classRepo.findOne({
+        where: { id: dto.classId, deletedAt: IsNull() },
+      });
+      if (!classEntity) {
+        throw new BadRequestException('Không tìm thấy lớp học');
+      }
+      schoolId = classEntity.schoolId;
+
+      const hasAccess =
+        await this.teacherSchoolAssignmentService.validateTeacherSchoolAccess(
+          teacherId,
+          schoolId,
+        );
+      if (!hasAccess) {
+        throw CrossCampusErrors.teacherNoSchoolAssignment();
+      }
+    }
+
+    // If teacherId changed, validate new teacher has access to the school
+    if (dto.teacherId && dto.teacherId !== existing.teacherId) {
+      const targetSchoolId = schoolId || existing.schoolId;
+      const hasAccess =
+        await this.teacherSchoolAssignmentService.validateTeacherSchoolAccess(
+          dto.teacherId,
+          targetSchoolId,
+        );
+      if (!hasAccess) {
+        throw CrossCampusErrors.teacherNoSchoolAssignment();
+      }
+    }
+
     const updated = await this.teachingAssignmentRepository.update(id, {
       ...(dto.teacherId && { teacherId: dto.teacherId }),
       ...(dto.classId && { classId: dto.classId }),
       ...(dto.subjectId && { subjectId: dto.subjectId }),
-      ...(dto.periodsPerWeek !== undefined && { periodsPerWeek: dto.periodsPerWeek }),
+      ...(schoolId && { schoolId }),
+      ...(dto.periodsPerWeek !== undefined && {
+        periodsPerWeek: dto.periodsPerWeek,
+      }),
       ...(dto.note !== undefined && { note: dto.note || null }),
     });
 
@@ -151,11 +225,33 @@ export class TeachingAssignmentService {
           );
         }
 
+        // Resolve schoolId from the class
+        const classEntity = await manager.findOne(ClassEntity, {
+          where: { id: item.classId, deletedAt: IsNull() },
+        });
+        if (!classEntity) {
+          throw new BadRequestException(
+            `Không tìm thấy lớp học ${item.classId}`,
+          );
+        }
+
+        // Validate teacher has access to school
+        const hasAccess =
+          await this.teacherSchoolAssignmentService.validateTeacherSchoolAccess(
+            item.teacherId,
+            classEntity.schoolId,
+          );
+        if (!hasAccess) {
+          throw CrossCampusErrors.teacherNoSchoolAssignment();
+        }
+
         const entity = manager.create(TeachingAssignmentEntity, {
           semesterId: item.semesterId,
           teacherId: item.teacherId,
           classId: item.classId,
           subjectId: item.subjectId,
+          schoolId: classEntity.schoolId,
+          assignmentStatus: 'active',
           periodsPerWeek: item.periodsPerWeek,
           note: item.note || null,
         });
@@ -171,9 +267,10 @@ export class TeachingAssignmentService {
   async copyFromPreviousSemester(
     dto: CopyPreviousTeachingAssignmentDto,
   ): Promise<TeachingAssignmentEntity[]> {
-    const sourceAssignments = await this.teachingAssignmentRepository.findBySemester(
-      dto.sourceSemesterId,
-    );
+    const sourceAssignments =
+      await this.teachingAssignmentRepository.findBySemester(
+        dto.sourceSemesterId,
+      );
 
     if (sourceAssignments.length === 0) {
       throw new BadRequestException(
@@ -204,6 +301,8 @@ export class TeachingAssignmentService {
           teacherId: source.teacherId,
           classId: source.classId,
           subjectId: source.subjectId,
+          schoolId: source.schoolId,
+          assignmentStatus: 'active',
           periodsPerWeek: source.periodsPerWeek,
           note: source.note,
         });
@@ -228,10 +327,11 @@ export class TeachingAssignmentService {
       throw new NotFoundException('Không tìm thấy giáo viên');
     }
 
-    const totalPeriods = await this.teachingAssignmentRepository.sumPeriodsByTeacher(
-      teacherId,
-      semesterId,
-    );
+    const totalPeriods =
+      await this.teachingAssignmentRepository.sumPeriodsByTeacher(
+        teacherId,
+        semesterId,
+      );
 
     let workloadStatus: WorkloadStatus;
     if (totalPeriods < teacher.minPeriodsPerWeek) {
@@ -286,6 +386,53 @@ export class TeachingAssignmentService {
     }
 
     return results;
+  }
+
+  /**
+   * Get aggregated workload across all schools for a teacher in a given semester.
+   * Sums periodsPerWeek from all active teaching assignments across all schools,
+   * groups by school, and compares vs teacher's maxPeriodsPerWeek.
+   *
+   * Validates: Requirements 4.3, 4.4
+   */
+  async getAggregatedWorkload(
+    teacherId: string,
+    semesterId: string,
+  ): Promise<AggregatedWorkloadResponse> {
+    const teacher = await this.teacherRepo.findOne({
+      where: { id: teacherId, deletedAt: IsNull() },
+    });
+
+    if (!teacher) {
+      throw new NotFoundException('Không tìm thấy giáo viên');
+    }
+
+    // Sum periodsPerWeek grouped by schoolId for active assignments
+    const results = await this.teachingAssignmentRepository
+      .getRepository()
+      .createQueryBuilder('ta')
+      .select('ta.school_id', 'schoolId')
+      .addSelect('COALESCE(SUM(ta.periods_per_week), 0)', 'periods')
+      .where('ta.teacher_id = :teacherId', { teacherId })
+      .andWhere('ta.semester_id = :semesterId', { semesterId })
+      .andWhere('ta.assignment_status = :status', { status: 'active' })
+      .andWhere('ta.deleted_at IS NULL')
+      .groupBy('ta.school_id')
+      .getRawMany<{ schoolId: string; periods: string }>();
+
+    const bySchool = results.map((row) => ({
+      schoolId: row.schoolId,
+      periods: parseInt(row.periods, 10),
+    }));
+
+    const totalPeriods = bySchool.reduce((sum, item) => sum + item.periods, 0);
+    const isOverloaded = totalPeriods > teacher.maxPeriodsPerWeek;
+
+    return {
+      totalPeriods,
+      bySchool,
+      isOverloaded,
+    };
   }
 
   private async validateDuplicate(

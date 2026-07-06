@@ -1,6 +1,7 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
+import { ClassEntity } from './class.entity';
 
 @Entity('grades')
 export class GradeEntity extends BaseEntity {
@@ -12,8 +13,11 @@ export class GradeEntity extends BaseEntity {
   school: SchoolEntity;
 
   @Column({ type: 'varchar', length: 50 })
-  name: string;
+  name: string; // "Khối 10"
 
   @Column({ type: 'int' })
-  level: number;
+  level: number; // 10, 11, 12
+
+  @OneToMany(() => ClassEntity, (cls) => cls.grade)
+  classes: ClassEntity[];
 }

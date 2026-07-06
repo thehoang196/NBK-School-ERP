@@ -38,7 +38,12 @@ export class UserController {
 
   @Get()
   @ApiOperation({ summary: 'Lấy danh sách người dùng (phân trang)' })
-  @ApiResponse({ status: 200, description: 'Danh sách người dùng', type: UserResponseDto, isArray: true })
+  @ApiResponse({
+    status: 200,
+    description: 'Danh sách người dùng',
+    type: UserResponseDto,
+    isArray: true,
+  })
   async findAll(@Query() query: UserQueryDto) {
     const { data, total } = await this.userService.findAll(query);
     return {
@@ -54,7 +59,11 @@ export class UserController {
 
   @Post()
   @ApiOperation({ summary: 'Tạo người dùng mới' })
-  @ApiResponse({ status: 201, description: 'Tạo thành công', type: UserResponseDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Tạo thành công',
+    type: UserResponseDto,
+  })
   @ApiResponse({ status: 409, description: 'Email đã tồn tại' })
   async create(@Body() dto: CreateUserDto) {
     const user = await this.userService.create(dto);
@@ -63,7 +72,11 @@ export class UserController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Lấy thông tin người dùng theo ID' })
-  @ApiResponse({ status: 200, description: 'Thông tin người dùng', type: UserResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Thông tin người dùng',
+    type: UserResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
   async findById(@Param('id', ParseUUIDPipe) id: string) {
     const user = await this.userService.findById(id);
@@ -72,7 +85,11 @@ export class UserController {
 
   @Put(':id')
   @ApiOperation({ summary: 'Cập nhật thông tin người dùng' })
-  @ApiResponse({ status: 200, description: 'Cập nhật thành công', type: UserResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Cập nhật thành công',
+    type: UserResponseDto,
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
   @ApiResponse({ status: 409, description: 'Email đã tồn tại' })
   async update(

@@ -61,7 +61,8 @@ export class UserService {
     const updated = await this.userRepository.update(id, {
       ...dto,
       schoolId: dto.schoolId !== undefined ? dto.schoolId || null : undefined,
-      teacherId: dto.teacherId !== undefined ? dto.teacherId || null : undefined,
+      teacherId:
+        dto.teacherId !== undefined ? dto.teacherId || null : undefined,
     });
 
     if (!updated) {

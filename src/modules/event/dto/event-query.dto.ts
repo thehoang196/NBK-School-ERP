@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsEnum, IsDateString, IsUUID, IsInt, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsDateString,
+  IsUUID,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { EventType, EventStatus } from '../entities/event.entity';
@@ -10,12 +18,18 @@ export class EventQueryDto extends PaginationDto {
   @IsUUID()
   schoolId?: string;
 
-  @ApiPropertyOptional({ enum: EventType, description: 'Lọc theo loại sự kiện' })
+  @ApiPropertyOptional({
+    enum: EventType,
+    description: 'Lọc theo loại sự kiện',
+  })
   @IsOptional()
   @IsEnum(EventType)
   eventType?: EventType;
 
-  @ApiPropertyOptional({ enum: EventStatus, description: 'Lọc theo trạng thái' })
+  @ApiPropertyOptional({
+    enum: EventStatus,
+    description: 'Lọc theo trạng thái',
+  })
   @IsOptional()
   @IsEnum(EventStatus)
   status?: EventStatus;

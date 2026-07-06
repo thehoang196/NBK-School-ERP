@@ -65,7 +65,11 @@ describe('RuleService', () => {
     it('should return paginated rules', async () => {
       ruleRepository.findAll.mockResolvedValue([[mockRule as any], 1]);
 
-      const result = await service.findAll({ page: 1, limit: 10, sortOrder: 'ASC' });
+      const result = await service.findAll({
+        page: 1,
+        limit: 10,
+        sortOrder: 'ASC',
+      });
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
@@ -82,7 +86,9 @@ describe('RuleService', () => {
 
     it('should throw NotFoundException', async () => {
       ruleRepository.findById.mockResolvedValue(null);
-      await expect(service.findById('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -106,7 +112,9 @@ describe('RuleService', () => {
     });
 
     it('should return warnings when conflicts exist', async () => {
-      ruleRepository.findByPriorityAndSchool.mockResolvedValue([mockRule as any]);
+      ruleRepository.findByPriorityAndSchool.mockResolvedValue([
+        mockRule as any,
+      ]);
       ruleRepository.create.mockResolvedValue(mockRule as any);
 
       const result = await service.create({
@@ -135,7 +143,12 @@ describe('RuleEvaluator', () => {
       name: 'IELTS THPT rate',
       conditions: [
         { field: 'subject', operator: '==', value: 'IELTS' },
-        { field: 'school_level', operator: '==', value: 'THPT', logicOp: 'AND' },
+        {
+          field: 'school_level',
+          operator: '==',
+          value: 'THPT',
+          logicOp: 'AND',
+        },
       ] as RuleCondition[],
       actionType: RuleActionType.SET_VARIABLE,
       actionTarget: 'LESSON_RATE',

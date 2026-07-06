@@ -32,15 +32,12 @@ export class FormulaEntity extends BaseEntity {
   @Column({ name: 'variable_refs', type: 'jsonb', nullable: true })
   variableRefs: string[] | null;
 
-  @Column({ type: 'int', default: 1 })
-  version: number;
+  @Column({ name: 'formula_version', type: 'int', default: 1 })
+  formulaVersion: number;
 
   @Column({ type: 'text', nullable: true })
   changelog: string | null;
 
   @Column({ type: 'enum', enum: FormulaStatus, default: FormulaStatus.DRAFT })
   status: FormulaStatus;
-
-  @Column({ name: 'created_by', type: 'uuid', nullable: true })
-  createdBy: string | null;
 }

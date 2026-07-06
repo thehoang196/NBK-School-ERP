@@ -1,8 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsInt, Min, Max, IsOptional, IsBoolean, IsArray, ValidateNested, Matches, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsInt,
+  Min,
+  Max,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  ValidateNested,
+  Matches,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Kéo GV + Môn học vào ô trống trên TKB
@@ -29,7 +41,11 @@ export class DropTeacherSubjectDto {
   @IsNotEmpty()
   classId: string;
 
-  @ApiProperty({ description: 'Ngày trong tuần đích (2=Thứ 2, 7=Thứ 7)', minimum: 2, maximum: 7 })
+  @ApiProperty({
+    description: 'Ngày trong tuần đích (2=Thứ 2, 7=Thứ 7)',
+    minimum: 2,
+    maximum: 7,
+  })
   @IsInt()
   @Min(2)
   @Max(7)
@@ -45,7 +61,10 @@ export class DropTeacherSubjectDto {
   @Matches(UUID_REGEX, { message: 'roomId phải là UUID hợp lệ' })
   roomId?: string;
 
-  @ApiPropertyOptional({ description: 'Tiết đôi (tự động chiếm thêm tiết kế tiếp)', default: false })
+  @ApiPropertyOptional({
+    description: 'Tiết đôi (tự động chiếm thêm tiết kế tiếp)',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isDoublePeriod?: boolean;
@@ -61,7 +80,11 @@ export class MoveSlotDto {
   @IsNotEmpty()
   slotId: string;
 
-  @ApiProperty({ description: 'Ngày trong tuần đích (2=Thứ 2, 7=Thứ 7)', minimum: 2, maximum: 7 })
+  @ApiProperty({
+    description: 'Ngày trong tuần đích (2=Thứ 2, 7=Thứ 7)',
+    minimum: 2,
+    maximum: 7,
+  })
   @IsInt()
   @Min(2)
   @Max(7)
@@ -129,6 +152,11 @@ export class PreviewDropDto {
   @IsNotEmpty()
   classId: string;
 
+  @ApiProperty({ description: 'ID môn học' })
+  @Matches(UUID_REGEX, { message: 'subjectId phải là UUID hợp lệ' })
+  @IsNotEmpty()
+  subjectId: string;
+
   @ApiProperty({ description: 'Ngày trong tuần (2-7)' })
   @IsInt()
   @Min(2)
@@ -189,13 +217,19 @@ export class BatchDropDto {
   @IsNotEmpty()
   classId: string;
 
-  @ApiProperty({ description: 'Danh sách các ô đích', type: [BatchDropTargetDto] })
+  @ApiProperty({
+    description: 'Danh sách các ô đích',
+    type: [BatchDropTargetDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => BatchDropTargetDto)
   targets: BatchDropTargetDto[];
 
-  @ApiPropertyOptional({ description: 'Bỏ qua các ô bị xung đột (chỉ tạo ô hợp lệ)', default: false })
+  @ApiPropertyOptional({
+    description: 'Bỏ qua các ô bị xung đột (chỉ tạo ô hợp lệ)',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   skipConflicts?: boolean;
@@ -222,7 +256,9 @@ export class AvailableTeachersQueryDto {
   @IsNotEmpty()
   periodId: string;
 
-  @ApiPropertyOptional({ description: 'Lọc theo ID môn học (chỉ GV dạy được môn này)' })
+  @ApiPropertyOptional({
+    description: 'Lọc theo ID môn học (chỉ GV dạy được môn này)',
+  })
   @IsOptional()
   @IsString()
   subjectId?: string;

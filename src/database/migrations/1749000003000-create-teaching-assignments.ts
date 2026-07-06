@@ -75,9 +75,15 @@ export class CreateTeachingAssignments1749000003000 implements MigrationInterfac
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(`DROP INDEX "IDX_teaching_assignments_semester_class"`);
-    await queryRunner.query(`DROP INDEX "IDX_teaching_assignments_semester_teacher"`);
-    await queryRunner.query(`DROP INDEX "UQ_teaching_assignments_semester_teacher_class_subject"`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_teaching_assignments_semester_class"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "IDX_teaching_assignments_semester_teacher"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "UQ_teaching_assignments_semester_teacher_class_subject"`,
+    );
 
     // Drop foreign key constraints
     await queryRunner.query(`

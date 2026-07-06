@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import * as ExcelJS from 'exceljs';
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
@@ -52,10 +56,12 @@ export class TimetableExportService {
     }
 
     // Get semester info
-    const semester = await this.dataSource.getRepository(SemesterEntity).findOne({
-      where: { id: version.semesterId },
-      relations: { academicYear: true },
-    });
+    const semester = await this.dataSource
+      .getRepository(SemesterEntity)
+      .findOne({
+        where: { id: version.semesterId },
+        relations: { academicYear: true },
+      });
 
     // Get all slots with relations
     const slots = await this.slotRepo.findByVersion(options.versionId);
@@ -100,12 +106,15 @@ export class TimetableExportService {
       if (classes.length === 0) continue;
 
       // Filter slots for classes in this grade
-      const classIds = classes.map(c => c.id);
-      const gradeSlots = slots.filter(s => classIds.includes(s.classId));
+      const classIds = classes.map((c) => c.id);
+      const gradeSlots = slots.filter((s) => classIds.includes(s.classId));
 
       // Determine max periods per day from slots
-      const periodNumbers = [...new Set(gradeSlots.map(s => s.period?.periodNumber || 0))].sort((a, b) => a - b);
-      const maxPeriods = periodNumbers.length > 0 ? Math.max(...periodNumbers) : 8;
+      const periodNumbers = [
+        ...new Set(gradeSlots.map((s) => s.period?.periodNumber || 0)),
+      ].sort((a, b) => a - b);
+      const maxPeriods =
+        periodNumbers.length > 0 ? Math.max(...periodNumbers) : 8;
 
       await this.buildGradeSheet(
         workbook,
@@ -148,11 +157,11 @@ export class TimetableExportService {
     const sheet = workbook.addWorksheet(`Khối ${grade.level}`);
 
     // Column widths
-    sheet.getColumn(1).width = 8;  // Thứ
-    sheet.getColumn(2).width = 5;  // Tiết
+    sheet.getColumn(1).width = 8; // Thứ
+    sheet.getColumn(2).width = 5; // Tiết
     for (let i = 0; i < classes.length; i++) {
-      sheet.getColumn(3 + i * 2).width = 10;     // Môn
-      sheet.getColumn(4 + i * 2).width = 12;     // GV
+      sheet.getColumn(3 + i * 2).width = 10; // Môn
+      sheet.getColumn(4 + i * 2).width = 12; // GV
     }
 
     let row = 1;
@@ -165,7 +174,8 @@ export class TimetableExportService {
     row++;
 
     // Header: TKB title
-    sheet.getCell(row, 1).value = `THỜI KHÓA BIỂU HỌC KỲ ${semesterNumber === 1 ? 'I' : 'II'} KHỐI ${grade.level} - NĂM HỌC ${academicYearName}`;
+    sheet.getCell(row, 1).value =
+      `THỜI KHÓA BIỂU HỌC KỲ ${semesterNumber === 1 ? 'I' : 'II'} KHỐI ${grade.level} - NĂM HỌC ${academicYearName}`;
     sheet.mergeCells(row, 1, row, 2 + classes.length * 2 - 1);
     sheet.getRow(row).font = { bold: true, size: 14 };
     sheet.getRow(row).alignment = { horizontal: 'center' };
@@ -198,7 +208,11 @@ export class TimetableExportService {
       const periodNum = slot.period?.periodNumber || 0;
       const key = `${slot.classId}-${slot.dayOfWeek}-${periodNum}`;
       slotMap.set(key, {
-        subjectName: slot.subject?.shortName || slot.subject?.code || slot.subject?.name || '',
+        subjectName:
+          slot.subject?.shortName ||
+          slot.subject?.code ||
+          slot.subject?.name ||
+          '',
         teacherName: slot.teacher?.shortName || slot.teacher?.fullName || '',
       });
     }
@@ -215,7 +229,10 @@ export class TimetableExportService {
           if (maxPeriods > 1) {
             sheet.mergeCells(currentRow, 1, currentRow + maxPeriods - 1, 1);
           }
-          sheet.getCell(currentRow, 1).alignment = { vertical: 'middle', horizontal: 'center' };
+          sheet.getCell(currentRow, 1).alignment = {
+            vertical: 'middle',
+            horizontal: 'center',
+          };
           sheet.getCell(currentRow, 1).font = { bold: true };
         }
 
@@ -230,8 +247,12 @@ export class TimetableExportService {
 
           sheet.getCell(currentRow, 3 + i * 2).value = cell?.subjectName || '';
           sheet.getCell(currentRow, 4 + i * 2).value = cell?.teacherName || '';
-          sheet.getCell(currentRow, 3 + i * 2).alignment = { horizontal: 'center' };
-          sheet.getCell(currentRow, 4 + i * 2).alignment = { horizontal: 'center' };
+          sheet.getCell(currentRow, 3 + i * 2).alignment = {
+            horizontal: 'center',
+          };
+          sheet.getCell(currentRow, 4 + i * 2).alignment = {
+            horizontal: 'center',
+          };
         }
 
         row++;
@@ -264,7 +285,10 @@ export class TimetableExportService {
     }
   }
 
-  private async buildSubjectCodeSheet(workbook: ExcelJS.Workbook, slots: TimetableSlotEntity[]): Promise<void> {
+  private async buildSubjectCodeSheet(
+    workbook: ExcelJS.Workbook,
+    slots: TimetableSlotEntity[],
+  ): Promise<void> {
     const sheet = workbook.addWorksheet('Mã môn học');
 
     sheet.getColumn(1).width = 5;
@@ -277,7 +301,10 @@ export class TimetableExportService {
     sheet.getRow(1).font = { bold: true };
 
     // Unique subjects
-    const subjectMap = new Map<string, { code: string; name: string; shortName: string }>();
+    const subjectMap = new Map<
+      string,
+      { code: string; name: string; shortName: string }
+    >();
     for (const slot of slots) {
       if (slot.subject && !subjectMap.has(slot.subjectId)) {
         subjectMap.set(slot.subjectId, {
@@ -298,7 +325,10 @@ export class TimetableExportService {
     }
   }
 
-  private async buildTeacherCodeSheet(workbook: ExcelJS.Workbook, slots: TimetableSlotEntity[]): Promise<void> {
+  private async buildTeacherCodeSheet(
+    workbook: ExcelJS.Workbook,
+    slots: TimetableSlotEntity[],
+  ): Promise<void> {
     const sheet = workbook.addWorksheet('Mã giáo viên');
 
     sheet.getColumn(1).width = 5;
@@ -313,13 +343,18 @@ export class TimetableExportService {
     sheet.getRow(1).font = { bold: true };
 
     // Unique teachers
-    const teacherMap = new Map<string, { code: string; fullName: string; shortName: string }>();
+    const teacherMap = new Map<
+      string,
+      { code: string; fullName: string; shortName: string }
+    >();
     for (const slot of slots) {
       if (slot.teacher && !teacherMap.has(slot.teacherId)) {
         teacherMap.set(slot.teacherId, {
           code: slot.teacher.employeeCode,
           fullName: slot.teacher.fullName,
-          shortName: slot.teacher.shortName || this.getTeacherShortName(slot.teacher.fullName),
+          shortName:
+            slot.teacher.shortName ||
+            this.getTeacherShortName(slot.teacher.fullName),
         });
       }
     }
@@ -374,7 +409,10 @@ export class TimetableExportService {
     if (parts.length === 1) return parts[0];
 
     const lastName = parts[parts.length - 1];
-    const initials = parts.slice(0, -1).map(p => p.charAt(0).toUpperCase()).join('.');
+    const initials = parts
+      .slice(0, -1)
+      .map((p) => p.charAt(0).toUpperCase())
+      .join('.');
     return `${lastName} ${initials}`;
   }
 }

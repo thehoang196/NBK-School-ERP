@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
-import { CalculationService, TeacherData } from '../../../src/modules/compensation/services/calculation.service';
+import {
+  CalculationService,
+  TeacherData,
+} from '../../../src/modules/compensation/services/calculation.service';
 import { FormulaRepository } from '../../../src/modules/compensation/repositories/formula.repository';
 import { PayComponentRepository } from '../../../src/modules/compensation/repositories/pay-component.repository';
 import { SalarySlipRepository } from '../../../src/modules/compensation/repositories/salary-slip.repository';
@@ -9,7 +12,11 @@ import { RuleEvaluator } from '../../../src/modules/compensation/services/rule-e
 import { DependencyGraphService } from '../../../src/modules/compensation/services/dependency-graph.service';
 import { PayPeriodService } from '../../../src/modules/compensation/services/pay-period.service';
 import { PolicyService } from '../../../src/modules/compensation/services/policy.service';
-import { PayPeriodStatus, PayComponentType, FormulaStatus } from '../../../src/modules/compensation/enums';
+import {
+  PayPeriodStatus,
+  PayComponentType,
+  FormulaStatus,
+} from '../../../src/modules/compensation/enums';
 import { EntityStatus } from '../../../src/common/enums/status.enum';
 
 describe('CalculationService', () => {
@@ -168,10 +175,7 @@ describe('CalculationService', () => {
       payPeriodService.findById.mockResolvedValue(closedPeriod as never);
 
       await expect(
-        service.calculate(
-          { schoolId: 'school-1', payPeriodId: 'pp-1' },
-          [],
-        ),
+        service.calculate({ schoolId: 'school-1', payPeriodId: 'pp-1' }, []),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -181,18 +185,20 @@ describe('CalculationService', () => {
       formulaRepository.findPublishedBySchool.mockResolvedValue([]);
 
       await expect(
-        service.calculate(
-          { schoolId: 'school-1', payPeriodId: 'pp-1' },
-          [],
-        ),
+        service.calculate({ schoolId: 'school-1', payPeriodId: 'pp-1' }, []),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should calculate salary for teachers successfully', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
       variableService.resolveValue.mockImplementation(async (code: string) => {
         const values: Record<string, string> = {
@@ -202,14 +208,19 @@ describe('CalculationService', () => {
         };
         return values[code] || null;
       });
-      salarySlipRepository.deleteDraftByTeacherAndPeriod.mockResolvedValue(undefined);
-      salarySlipRepository.create.mockImplementation(async (data) => ({
-        id: 'slip-1',
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      } as never));
+      salarySlipRepository.deleteDraftByTeacherAndPeriod.mockResolvedValue(
+        undefined,
+      );
+      salarySlipRepository.create.mockImplementation(
+        async (data) =>
+          ({
+            id: 'slip-1',
+            ...data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            deletedAt: null,
+          }) as never,
+      );
 
       const teachers: TeacherData[] = [
         { id: 'teacher-1', schoolId: 'school-1' },
@@ -229,8 +240,13 @@ describe('CalculationService', () => {
     it('should continue calculating other teachers when one fails', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
 
       // First teacher will fail (missing variable), second succeeds
@@ -248,14 +264,19 @@ describe('CalculationService', () => {
         };
         return values[code] || '0';
       });
-      salarySlipRepository.deleteDraftByTeacherAndPeriod.mockResolvedValue(undefined);
-      salarySlipRepository.create.mockImplementation(async (data) => ({
-        id: 'slip-1',
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      } as never));
+      salarySlipRepository.deleteDraftByTeacherAndPeriod.mockResolvedValue(
+        undefined,
+      );
+      salarySlipRepository.create.mockImplementation(
+        async (data) =>
+          ({
+            id: 'slip-1',
+            ...data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            deletedAt: null,
+          }) as never,
+      );
 
       const teachers: TeacherData[] = [
         { id: 'teacher-1', schoolId: 'school-1' },
@@ -275,29 +296,41 @@ describe('CalculationService', () => {
     it('should be idempotent - deletes existing drafts before creating new ones', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
       variableService.resolveValue.mockResolvedValue('100');
-      salarySlipRepository.deleteDraftByTeacherAndPeriod.mockResolvedValue(undefined);
-      salarySlipRepository.create.mockImplementation(async (data) => ({
-        id: 'slip-new',
-        ...data,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      } as never));
+      salarySlipRepository.deleteDraftByTeacherAndPeriod.mockResolvedValue(
+        undefined,
+      );
+      salarySlipRepository.create.mockImplementation(
+        async (data) =>
+          ({
+            id: 'slip-new',
+            ...data,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            deletedAt: null,
+          }) as never,
+      );
 
       const teachers: TeacherData[] = [
         { id: 'teacher-1', schoolId: 'school-1' },
       ];
 
-      await service.calculate({ schoolId: 'school-1', payPeriodId: 'pp-1' }, teachers);
-
-      expect(salarySlipRepository.deleteDraftByTeacherAndPeriod).toHaveBeenCalledWith(
-        'teacher-1',
-        'pp-1',
+      await service.calculate(
+        { schoolId: 'school-1', payPeriodId: 'pp-1' },
+        teachers,
       );
+
+      expect(
+        salarySlipRepository.deleteDraftByTeacherAndPeriod,
+      ).toHaveBeenCalledWith('teacher-1', 'pp-1');
     });
   });
 });

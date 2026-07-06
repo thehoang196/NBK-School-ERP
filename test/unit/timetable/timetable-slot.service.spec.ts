@@ -1,8 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { TimetableSlotService } from '../../../src/modules/timetable/services/timetable-slot.service';
 import { TimetableSlotRepository } from '../../../src/modules/timetable/repositories/timetable-slot.repository';
-import { ConflictDetectionService, ConflictType, ConflictResult } from '../../../src/modules/timetable/services/conflict-detection.service';
+import {
+  ConflictDetectionService,
+  ConflictType,
+  ConflictResult,
+} from '../../../src/modules/timetable/services/conflict-detection.service';
+import { ConflictOrchestrationService } from '../../../src/modules/timetable/services/conflict-orchestration.service';
+import {
+  HardConflictDetectedException,
+  SoftConflictRequiresOverrideException,
+} from '../../../src/modules/timetable/exceptions/conflict.exception';
+import { ConflictCheckResult } from '../../../src/modules/timetable/interfaces/conflict.interface';
+import { ConflictSeverity } from '../../../src/modules/timetable/enums/conflict.enum';
 import { TimetableSlotEntity } from '../../../src/modules/timetable/entities/timetable-slot.entity';
 import { CreateTimetableSlotDto } from '../../../src/modules/timetable/dto/create-timetable-slot.dto';
 import { UpdateTimetableSlotDto } from '../../../src/modules/timetable/dto/update-timetable-slot.dto';
@@ -11,11 +22,16 @@ import { CheckConflictsDto } from '../../../src/modules/timetable/dto/check-conf
 describe('TimetableSlotService', () => {
   let service: TimetableSlotService;
   let slotRepo: jest.Mocked<TimetableSlotRepository>;
-  let conflictService: jest.Mocked<ConflictDetectionService>;
+  let conflictDetectionService: jest.Mocked<ConflictDetectionService>;
+  let conflictOrchestrationService: jest.Mocked<ConflictOrchestrationService>;
+
+  const schoolId = '99999999-9999-9999-9999-999999999999';
+  const userId = '88888888-8888-8888-8888-888888888888';
 
   const mockSlot: TimetableSlotEntity = {
     id: '11111111-1111-1111-1111-111111111111',
     versionId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+    schoolId: '99999999-9999-9999-9999-999999999999',
     version: {} as TimetableSlotEntity['version'],
     dayOfWeek: 2,
     periodId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -34,6 +50,14 @@ describe('TimetableSlotService', () => {
     deletedAt: null,
   };
 
+  const noConflictsResult: ConflictCheckResult = {
+    hasHardConflicts: false,
+    hasSoftConflicts: false,
+    conflicts: [],
+    hardCount: 0,
+    softCount: 0,
+  };
+
   beforeEach(async () => {
     const mockSlotRepo = {
       findById: jest.fn(),
@@ -45,22 +69,39 @@ describe('TimetableSlotService', () => {
       softDelete: jest.fn(),
     };
 
-    const mockConflictService = {
+    const mockConflictDetectionService = {
       checkSlotConflicts: jest.fn(),
       checkAllConflicts: jest.fn(),
+      detectConflicts: jest.fn(),
+      buildIndexes: jest.fn(),
+    };
+
+    const mockConflictOrchestrationService = {
+      checkSingleSlot: jest.fn(),
+      checkFullVersion: jest.fn(),
+      checkBatch: jest.fn(),
+      overrideSoftConflicts: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TimetableSlotService,
         { provide: TimetableSlotRepository, useValue: mockSlotRepo },
-        { provide: ConflictDetectionService, useValue: mockConflictService },
+        {
+          provide: ConflictDetectionService,
+          useValue: mockConflictDetectionService,
+        },
+        {
+          provide: ConflictOrchestrationService,
+          useValue: mockConflictOrchestrationService,
+        },
       ],
     }).compile();
 
     service = module.get<TimetableSlotService>(TimetableSlotService);
     slotRepo = module.get(TimetableSlotRepository);
-    conflictService = module.get(ConflictDetectionService);
+    conflictDetectionService = module.get(ConflictDetectionService);
+    conflictOrchestrationService = module.get(ConflictOrchestrationService);
   });
 
   it('should be defined', () => {
@@ -81,18 +122,25 @@ describe('TimetableSlotService', () => {
     };
 
     it('should create slot when no conflicts exist', async () => {
-      conflictService.checkSlotConflicts.mockResolvedValue([]);
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        noConflictsResult,
+      );
       slotRepo.create.mockResolvedValue(mockSlot);
 
-      const result = await service.create(createDto);
+      const result = await service.create(createDto, schoolId, userId);
 
-      expect(conflictService.checkSlotConflicts).toHaveBeenCalledWith(
-        createDto.versionId,
-        createDto.dayOfWeek,
-        createDto.periodId,
-        createDto.teacherId,
-        createDto.classId,
-        createDto.roomId,
+      expect(conflictOrchestrationService.checkSingleSlot).toHaveBeenCalledWith(
+        {
+          versionId: createDto.versionId,
+          dayOfWeek: createDto.dayOfWeek,
+          periodId: createDto.periodId,
+          teacherId: createDto.teacherId,
+          classId: createDto.classId,
+          roomId: createDto.roomId,
+          subjectId: createDto.subjectId,
+        },
+        schoolId,
+        userId,
       );
       expect(slotRepo.create).toHaveBeenCalledWith({
         versionId: createDto.versionId,
@@ -107,48 +155,110 @@ describe('TimetableSlotService', () => {
       expect(result).toEqual(mockSlot);
     });
 
-    it('should create slot when only warning-level conflicts exist', async () => {
-      const warningConflict: ConflictResult = {
-        type: ConflictType.TEACHER_MAX_PERIODS,
-        severity: 'warning',
-        message: 'Giáo viên đã đạt số tiết tối đa/ngày',
-        details: { teacherId: createDto.teacherId, dayOfWeek: 2 },
+    it('should throw HardConflictDetectedException when hard conflicts exist', async () => {
+      const hardConflictResult: ConflictCheckResult = {
+        hasHardConflicts: true,
+        hasSoftConflicts: false,
+        conflicts: [
+          {
+            type: 'TEACHER_DOUBLE_BOOKED' as never,
+            severity: ConflictSeverity.ERROR,
+            message: 'GV đã có tiết dạy',
+            details: { teacherId: createDto.teacherId },
+          },
+        ],
+        hardCount: 1,
+        softCount: 0,
       };
-      conflictService.checkSlotConflicts.mockResolvedValue([warningConflict]);
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        hardConflictResult,
+      );
+
+      await expect(service.create(createDto, schoolId, userId)).rejects.toThrow(
+        HardConflictDetectedException,
+      );
+    });
+
+    it('should throw SoftConflictRequiresOverrideException when soft conflicts exist without override', async () => {
+      const softConflictResult: ConflictCheckResult = {
+        hasHardConflicts: false,
+        hasSoftConflicts: true,
+        conflicts: [
+          {
+            type: 'TEACHER_MAX_PERIODS_PER_DAY_EXCEEDED' as never,
+            severity: ConflictSeverity.WARNING,
+            message: 'GV quá tải',
+            details: {
+              teacherId: createDto.teacherId,
+              currentCount: 5,
+              maxAllowed: 4,
+            },
+          },
+        ],
+        hardCount: 0,
+        softCount: 1,
+      };
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        softConflictResult,
+      );
+
+      await expect(service.create(createDto, schoolId, userId)).rejects.toThrow(
+        SoftConflictRequiresOverrideException,
+      );
+    });
+
+    it('should proceed when soft conflicts exist with valid override', async () => {
+      const softConflictResult: ConflictCheckResult = {
+        hasHardConflicts: false,
+        hasSoftConflicts: true,
+        conflicts: [
+          {
+            type: 'TEACHER_MAX_PERIODS_PER_DAY_EXCEEDED' as never,
+            severity: ConflictSeverity.WARNING,
+            message: 'GV quá tải',
+            details: {
+              teacherId: createDto.teacherId,
+              currentCount: 5,
+              maxAllowed: 4,
+            },
+          },
+        ],
+        hardCount: 0,
+        softCount: 1,
+      };
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        softConflictResult,
+      );
       slotRepo.create.mockResolvedValue(mockSlot);
 
-      const result = await service.create(createDto);
+      const override = { reason: 'GV đồng ý dạy thêm tiết theo yêu cầu' };
+      const result = await service.create(
+        createDto,
+        schoolId,
+        userId,
+        override,
+      );
 
       expect(slotRepo.create).toHaveBeenCalled();
       expect(result).toEqual(mockSlot);
     });
 
-    it('should throw BadRequestException when error-level conflicts exist', async () => {
-      const errorConflict: ConflictResult = {
-        type: ConflictType.TEACHER_CONFLICT,
-        severity: 'error',
-        message: 'Giáo viên đã có tiết dạy vào thời điểm này',
-        details: { slotId: 'existing-slot', teacherId: createDto.teacherId, dayOfWeek: 2, periodId: createDto.periodId },
-      };
-      conflictService.checkSlotConflicts.mockResolvedValue([errorConflict]);
-
-      await expect(service.create(createDto)).rejects.toThrow(BadRequestException);
-    });
-
     it('should handle roomId as null when not provided', async () => {
-      const dtoNoRoom: CreateTimetableSlotDto = { ...createDto, roomId: undefined };
-      conflictService.checkSlotConflicts.mockResolvedValue([]);
+      const dtoNoRoom: CreateTimetableSlotDto = {
+        ...createDto,
+        roomId: undefined,
+      };
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        noConflictsResult,
+      );
       slotRepo.create.mockResolvedValue({ ...mockSlot, roomId: null });
 
-      await service.create(dtoNoRoom);
+      await service.create(dtoNoRoom, schoolId, userId);
 
-      expect(conflictService.checkSlotConflicts).toHaveBeenCalledWith(
-        dtoNoRoom.versionId,
-        dtoNoRoom.dayOfWeek,
-        dtoNoRoom.periodId,
-        dtoNoRoom.teacherId,
-        dtoNoRoom.classId,
-        null,
+      expect(conflictOrchestrationService.checkSingleSlot).toHaveBeenCalledWith(
+        expect.objectContaining({ roomId: undefined }),
+        schoolId,
+        userId,
       );
       expect(slotRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ roomId: null }),
@@ -159,7 +269,10 @@ describe('TimetableSlotService', () => {
   // === FIND BY VERSION ===
   describe('findByVersion()', () => {
     it('should return all slots for a version', async () => {
-      const slots = [mockSlot, { ...mockSlot, id: '22222222-2222-2222-2222-222222222222' }];
+      const slots = [
+        mockSlot,
+        { ...mockSlot, id: '22222222-2222-2222-2222-222222222222' },
+      ];
       slotRepo.findByVersion.mockResolvedValue(slots);
 
       const result = await service.findByVersion(mockSlot.versionId);
@@ -191,8 +304,12 @@ describe('TimetableSlotService', () => {
     it('should throw NotFoundException when slot not found', async () => {
       slotRepo.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.findById('non-existent-id')).rejects.toThrow('Không tìm thấy slot TKB');
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy slot TKB',
+      );
     });
   });
 
@@ -207,19 +324,31 @@ describe('TimetableSlotService', () => {
     it('should update slot when no conflicts exist', async () => {
       const updatedSlot = { ...mockSlot, dayOfWeek: 3 };
       slotRepo.findById.mockResolvedValue(mockSlot);
-      conflictService.checkSlotConflicts.mockResolvedValue([]);
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        noConflictsResult,
+      );
       slotRepo.update.mockResolvedValue(updatedSlot);
 
-      const result = await service.update(mockSlot.id, updateDto);
+      const result = await service.update(
+        mockSlot.id,
+        updateDto,
+        schoolId,
+        userId,
+      );
 
-      expect(conflictService.checkSlotConflicts).toHaveBeenCalledWith(
-        mockSlot.versionId,
-        updateDto.dayOfWeek,
-        updateDto.periodId,
-        updateDto.teacherId,
-        mockSlot.classId,
-        mockSlot.roomId,
-        mockSlot.id, // excludeSlotId
+      expect(conflictOrchestrationService.checkSingleSlot).toHaveBeenCalledWith(
+        {
+          versionId: mockSlot.versionId,
+          dayOfWeek: updateDto.dayOfWeek,
+          periodId: updateDto.periodId,
+          teacherId: updateDto.teacherId,
+          classId: mockSlot.classId,
+          roomId: mockSlot.roomId,
+          subjectId: mockSlot.subjectId,
+          excludeSlotId: mockSlot.id,
+        },
+        schoolId,
+        userId,
       );
       expect(slotRepo.update).toHaveBeenCalledWith(mockSlot.id, {
         dayOfWeek: 3,
@@ -232,38 +361,59 @@ describe('TimetableSlotService', () => {
     it('should throw NotFoundException if slot does not exist', async () => {
       slotRepo.findById.mockResolvedValue(null);
 
-      await expect(service.update('non-existent-id', updateDto)).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('non-existent-id', updateDto, schoolId, userId),
+      ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw BadRequestException on error-level conflicts', async () => {
-      const errorConflict: ConflictResult = {
-        type: ConflictType.ROOM_CONFLICT,
-        severity: 'error',
-        message: 'Phòng học đã được sử dụng vào thời điểm này',
-        details: { roomId: mockSlot.roomId!, dayOfWeek: 3, periodId: 'new-period-id' },
+    it('should throw HardConflictDetectedException on hard conflicts', async () => {
+      const hardConflictResult: ConflictCheckResult = {
+        hasHardConflicts: true,
+        hasSoftConflicts: false,
+        conflicts: [
+          {
+            type: 'ROOM_DOUBLE_BOOKED' as never,
+            severity: ConflictSeverity.ERROR,
+            message: 'Phòng học đã được sử dụng',
+            details: { roomId: mockSlot.roomId! },
+          },
+        ],
+        hardCount: 1,
+        softCount: 0,
       };
       slotRepo.findById.mockResolvedValue(mockSlot);
-      conflictService.checkSlotConflicts.mockResolvedValue([errorConflict]);
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        hardConflictResult,
+      );
 
-      await expect(service.update(mockSlot.id, updateDto)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(mockSlot.id, updateDto, schoolId, userId),
+      ).rejects.toThrow(HardConflictDetectedException);
     });
 
     it('should use existing slot values for unset fields in conflict check', async () => {
       const partialUpdate: UpdateTimetableSlotDto = { roomId: 'new-room-id' };
       slotRepo.findById.mockResolvedValue(mockSlot);
-      conflictService.checkSlotConflicts.mockResolvedValue([]);
+      conflictOrchestrationService.checkSingleSlot.mockResolvedValue(
+        noConflictsResult,
+      );
       slotRepo.update.mockResolvedValue({ ...mockSlot, roomId: 'new-room-id' });
 
-      await service.update(mockSlot.id, partialUpdate);
+      await service.update(mockSlot.id, partialUpdate, schoolId, userId);
 
-      expect(conflictService.checkSlotConflicts).toHaveBeenCalledWith(
-        mockSlot.versionId,
-        mockSlot.dayOfWeek, // from existing
-        mockSlot.periodId,  // from existing
-        mockSlot.teacherId, // from existing
-        mockSlot.classId,   // from existing
-        'new-room-id',      // from dto
-        mockSlot.id,
+      expect(conflictOrchestrationService.checkSingleSlot).toHaveBeenCalledWith(
+        {
+          versionId: mockSlot.versionId,
+          dayOfWeek: mockSlot.dayOfWeek,
+          periodId: mockSlot.periodId,
+          teacherId: mockSlot.teacherId,
+          classId: mockSlot.classId,
+          roomId: 'new-room-id',
+          subjectId: mockSlot.subjectId,
+          excludeSlotId: mockSlot.id,
+        },
+        schoolId,
+        userId,
       );
     });
   });
@@ -283,11 +433,13 @@ describe('TimetableSlotService', () => {
     it('should throw NotFoundException if slot not found', async () => {
       slotRepo.findById.mockResolvedValue(null);
 
-      await expect(service.delete('non-existent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
-  // === CHECK CONFLICTS ===
+  // === CHECK CONFLICTS (legacy) ===
   describe('checkConflicts()', () => {
     it('should delegate to conflict detection service', async () => {
       const dto: CheckConflictsDto = {
@@ -304,14 +456,20 @@ describe('TimetableSlotService', () => {
           type: ConflictType.TEACHER_CONFLICT,
           severity: 'error',
           message: 'Giáo viên đã có tiết dạy vào thời điểm này',
-          details: { teacherId: dto.teacherId, dayOfWeek: 2, periodId: dto.periodId },
+          details: {
+            teacherId: dto.teacherId,
+            dayOfWeek: 2,
+            periodId: dto.periodId,
+          },
         },
       ];
-      conflictService.checkSlotConflicts.mockResolvedValue(expectedConflicts);
+      conflictDetectionService.checkSlotConflicts.mockResolvedValue(
+        expectedConflicts,
+      );
 
       const result = await service.checkConflicts(dto);
 
-      expect(conflictService.checkSlotConflicts).toHaveBeenCalledWith(
+      expect(conflictDetectionService.checkSlotConflicts).toHaveBeenCalledWith(
         dto.versionId,
         dto.dayOfWeek,
         dto.periodId,
@@ -333,11 +491,11 @@ describe('TimetableSlotService', () => {
         excludeSlotId: '11111111-1111-1111-1111-111111111111',
       };
 
-      conflictService.checkSlotConflicts.mockResolvedValue([]);
+      conflictDetectionService.checkSlotConflicts.mockResolvedValue([]);
 
       await service.checkConflicts(dto);
 
-      expect(conflictService.checkSlotConflicts).toHaveBeenCalledWith(
+      expect(conflictDetectionService.checkSlotConflicts).toHaveBeenCalledWith(
         dto.versionId,
         dto.dayOfWeek,
         dto.periodId,
@@ -357,7 +515,7 @@ describe('TimetableSlotService', () => {
         classId: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
       };
 
-      conflictService.checkSlotConflicts.mockResolvedValue([]);
+      conflictDetectionService.checkSlotConflicts.mockResolvedValue([]);
 
       const result = await service.checkConflicts(dto);
 

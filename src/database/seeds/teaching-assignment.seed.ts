@@ -14,7 +14,9 @@ interface AssignmentSeedData {
   note: string | null;
 }
 
-export async function seedTeachingAssignments(dataSource: DataSource): Promise<void> {
+export async function seedTeachingAssignments(
+  dataSource: DataSource,
+): Promise<void> {
   console.log('📋 Seeding teaching assignment data...');
 
   const assignmentRepo = dataSource.getRepository(TeachingAssignmentEntity);
@@ -28,7 +30,9 @@ export async function seedTeachingAssignments(dataSource: DataSource): Promise<v
   // Check idempotency - look for existing teaching assignments
   const existingCount = await assignmentRepo.count();
   if (existingCount > 0) {
-    console.log('⏭️  Teaching assignment seed data already exists, skipping...');
+    console.log(
+      '⏭️  Teaching assignment seed data already exists, skipping...',
+    );
     return;
   }
 
@@ -43,7 +47,9 @@ export async function seedTeachingAssignments(dataSource: DataSource): Promise<v
     where: { schoolId: school.id, name: 'Năm học 2024-2025' },
   });
   if (!academicYear) {
-    console.log('⚠️  Academic year 2024-2025 not found. Please run timetable seed first.');
+    console.log(
+      '⚠️  Academic year 2024-2025 not found. Please run timetable seed first.',
+    );
     return;
   }
 
@@ -65,11 +71,36 @@ export async function seedTeachingAssignments(dataSource: DataSource): Promise<v
 
   // Assignment data: Teacher → Subject mapping for class 10A1
   const assignmentData: AssignmentSeedData[] = [
-    { teacherCode: 'GV001', subjectCode: 'TOAN', periodsPerWeek: 4, note: 'Mai → Toán' },
-    { teacherCode: 'GV002', subjectCode: 'VAN', periodsPerWeek: 3, note: 'Hùng → Văn' },
-    { teacherCode: 'GV003', subjectCode: 'ANH', periodsPerWeek: 3, note: 'Hoa → Anh' },
-    { teacherCode: 'GV004', subjectCode: 'LY', periodsPerWeek: 2, note: 'Tuấn → Lý' },
-    { teacherCode: 'GV005', subjectCode: 'HOA', periodsPerWeek: 2, note: 'Lan → Hóa' },
+    {
+      teacherCode: 'GV001',
+      subjectCode: 'TOAN',
+      periodsPerWeek: 4,
+      note: 'Mai → Toán',
+    },
+    {
+      teacherCode: 'GV002',
+      subjectCode: 'VAN',
+      periodsPerWeek: 3,
+      note: 'Hùng → Văn',
+    },
+    {
+      teacherCode: 'GV003',
+      subjectCode: 'ANH',
+      periodsPerWeek: 3,
+      note: 'Hoa → Anh',
+    },
+    {
+      teacherCode: 'GV004',
+      subjectCode: 'LY',
+      periodsPerWeek: 2,
+      note: 'Tuấn → Lý',
+    },
+    {
+      teacherCode: 'GV005',
+      subjectCode: 'HOA',
+      periodsPerWeek: 2,
+      note: 'Lan → Hóa',
+    },
   ];
 
   for (const data of assignmentData) {
@@ -100,7 +131,9 @@ export async function seedTeachingAssignments(dataSource: DataSource): Promise<v
     });
 
     if (existing) {
-      console.log(`⏭️  Assignment ${data.teacherCode} → ${data.subjectCode} already exists, skipping...`);
+      console.log(
+        `⏭️  Assignment ${data.teacherCode} → ${data.subjectCode} already exists, skipping...`,
+      );
       continue;
     }
 
@@ -113,7 +146,9 @@ export async function seedTeachingAssignments(dataSource: DataSource): Promise<v
       note: data.note,
     });
 
-    console.log(`✅ Assignment: ${teacher.shortName || teacher.fullName} → ${subject.shortName || subject.name} (${data.periodsPerWeek} tiết/tuần)`);
+    console.log(
+      `✅ Assignment: ${teacher.shortName || teacher.fullName} → ${subject.shortName || subject.name} (${data.periodsPerWeek} tiết/tuần)`,
+    );
   }
 
   console.log('🎉 Teaching assignment seed completed!');

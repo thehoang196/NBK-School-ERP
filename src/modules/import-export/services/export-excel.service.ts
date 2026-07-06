@@ -7,7 +7,7 @@ import { TimetableVersionEntity } from '../../timetable/entities/timetable-versi
 import { ClassEntity } from '../../class/entities/class.entity';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { ExportQueryDto, ExportViewType } from '../dto/export-query.dto';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 interface SlotData {
   dayOfWeek: number;
@@ -73,7 +73,7 @@ export class ExportExcelService {
     // Get the latest published version
     const publishedVersion = await this.versionRepo.findOne({
       where: {
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         deletedAt: IsNull(),
       },
       order: { createdAt: 'DESC' },
@@ -100,14 +100,20 @@ export class ExportExcelService {
       .andWhere('slot.deletedAt IS NULL');
 
     if (query.classId) {
-      queryBuilder.andWhere('slot.classId = :classId', { classId: query.classId });
+      queryBuilder.andWhere('slot.classId = :classId', {
+        classId: query.classId,
+      });
     }
 
     if (query.teacherId) {
-      queryBuilder.andWhere('slot.teacherId = :teacherId', { teacherId: query.teacherId });
+      queryBuilder.andWhere('slot.teacherId = :teacherId', {
+        teacherId: query.teacherId,
+      });
     }
 
-    queryBuilder.orderBy('slot.dayOfWeek', 'ASC').addOrderBy('period.periodNumber', 'ASC');
+    queryBuilder
+      .orderBy('slot.dayOfWeek', 'ASC')
+      .addOrderBy('period.periodNumber', 'ASC');
 
     const slots = await queryBuilder.getMany();
 
@@ -183,7 +189,8 @@ export class ExportExcelService {
     viewMode: 'class' | 'teacher',
   ): void {
     // Determine max periods
-    const maxPeriod = slots.reduce((max, s) => Math.max(max, s.periodNumber), 0) || 10;
+    const maxPeriod =
+      slots.reduce((max, s) => Math.max(max, s.periodNumber), 0) || 10;
 
     // Header row: Tiết | Thứ 2 | Thứ 3 | ... | Thứ 7
     const headers = ['Tiết'];
@@ -213,9 +220,10 @@ export class ExportExcelService {
         );
 
         if (slot) {
-          const cellContent = viewMode === 'class'
-            ? `${slot.subjectName}\n${slot.teacherName}`
-            : `${slot.subjectName}\n${slot.className}`;
+          const cellContent =
+            viewMode === 'class'
+              ? `${slot.subjectName}\n${slot.teacherName}`
+              : `${slot.subjectName}\n${slot.className}`;
           rowData.push(cellContent);
         } else {
           rowData.push('');

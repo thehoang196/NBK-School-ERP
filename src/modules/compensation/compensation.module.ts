@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AttendanceModule } from '../attendance/attendance.module';
 
 // Entities
 import { PayComponentEntity } from './entities/pay-component.entity';
@@ -11,6 +12,9 @@ import { AuditLogEntity } from './entities/audit-log.entity';
 import { PayPeriodEntity } from './entities/pay-period.entity';
 import { CompensationPolicyEntity } from './entities/compensation-policy.entity';
 import { SalarySlipEntity } from './entities/salary-slip.entity';
+import { PayrollRunEntity } from './entities/payroll-run.entity';
+import { PayrollApprovalEntity } from './entities/payroll-approval.entity';
+import { PayrollAdjustmentEntity } from './entities/payroll-adjustment.entity';
 
 // Repositories
 import { PayComponentRepository } from './repositories/pay-component.repository';
@@ -21,6 +25,9 @@ import { AuditLogRepository } from './repositories/audit-log.repository';
 import { PayPeriodRepository } from './repositories/pay-period.repository';
 import { PolicyRepository } from './repositories/policy.repository';
 import { SalarySlipRepository } from './repositories/salary-slip.repository';
+import { PayrollRunRepository } from './repositories/payroll-run.repository';
+import { PayrollApprovalRepository } from './repositories/payroll-approval.repository';
+import { PayrollAdjustmentRepository } from './repositories/payroll-adjustment.repository';
 
 // Services
 import { PayComponentService } from './services/pay-component.service';
@@ -36,6 +43,10 @@ import { SalarySlipService } from './services/salary-slip.service';
 import { SimulationService } from './services/simulation.service';
 import { AuditService } from './services/audit.service';
 import { FunctionLibraryService } from './services/function-library.service';
+import { PayrollRunService } from './services/payroll-run.service';
+import { PayrollAdjustmentService } from './services/payroll-adjustment.service';
+import { AttendanceVariableResolverService } from './services/attendance-variable-resolver.service';
+import { PayrollReportingService } from './services/payroll-reporting.service';
 
 // Controllers
 import { PayComponentController } from './controllers/pay-component.controller';
@@ -49,6 +60,9 @@ import { SalarySlipController } from './controllers/salary-slip.controller';
 import { SimulationController } from './controllers/simulation.controller';
 import { AuditController } from './controllers/audit.controller';
 import { FunctionLibraryController } from './controllers/function-library.controller';
+import { PayrollRunController } from './controllers/payroll-run.controller';
+import { PayrollAdjustmentController } from './controllers/payroll-adjustment.controller';
+import { PayrollReportingController } from './controllers/payroll-reporting.controller';
 
 @Module({
   imports: [
@@ -62,7 +76,11 @@ import { FunctionLibraryController } from './controllers/function-library.contro
       PayPeriodEntity,
       CompensationPolicyEntity,
       SalarySlipEntity,
+      PayrollRunEntity,
+      PayrollApprovalEntity,
+      PayrollAdjustmentEntity,
     ]),
+    AttendanceModule,
   ],
   controllers: [
     PayComponentController,
@@ -76,6 +94,9 @@ import { FunctionLibraryController } from './controllers/function-library.contro
     SimulationController,
     AuditController,
     FunctionLibraryController,
+    PayrollRunController,
+    PayrollAdjustmentController,
+    PayrollReportingController,
   ],
   providers: [
     // Repositories
@@ -87,6 +108,9 @@ import { FunctionLibraryController } from './controllers/function-library.contro
     PayPeriodRepository,
     PolicyRepository,
     SalarySlipRepository,
+    PayrollRunRepository,
+    PayrollApprovalRepository,
+    PayrollAdjustmentRepository,
     // Services
     PayComponentService,
     VariableService,
@@ -101,6 +125,10 @@ import { FunctionLibraryController } from './controllers/function-library.contro
     SimulationService,
     AuditService,
     FunctionLibraryService,
+    PayrollRunService,
+    PayrollAdjustmentService,
+    AttendanceVariableResolverService,
+    PayrollReportingService,
   ],
   exports: [
     PayComponentService,
@@ -115,6 +143,10 @@ import { FunctionLibraryController } from './controllers/function-library.contro
     SimulationService,
     AuditService,
     FunctionLibraryService,
+    PayrollRunService,
+    PayrollAdjustmentService,
+    AttendanceVariableResolverService,
+    PayrollReportingService,
   ],
 })
 export class CompensationModule {}

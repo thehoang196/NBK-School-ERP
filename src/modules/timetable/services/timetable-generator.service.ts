@@ -104,7 +104,11 @@ export class TimetableGeneratorService {
     private readonly slotRepo: TimetableSlotRepository,
   ) {}
 
-  async generate(semesterId: string, versionId: string, timeoutSeconds: number = 300): Promise<string> {
+  async generate(
+    semesterId: string,
+    versionId: string,
+    timeoutSeconds: number = 300,
+  ): Promise<string> {
     const jobId = `gen-${Date.now()}`;
 
     const job: GenerationJob = {
@@ -122,7 +126,7 @@ export class TimetableGeneratorService {
     this.jobs.set(jobId, job);
 
     // Run generation asynchronously
-    this.runGeneration(job, timeoutSeconds).catch(err => {
+    this.runGeneration(job, timeoutSeconds).catch((err) => {
       this.logger.error(`Generation failed: ${err.message}`);
       job.status = 'failed';
       job.message = err.message;
@@ -189,7 +193,9 @@ export class TimetableGeneratorService {
     }
 
     if (!parsed.Solution || !parsed.Solution.Activity) {
-      this.logger.warn('parseFetOutput: No Solution or Activity elements found in XML');
+      this.logger.warn(
+        'parseFetOutput: No Solution or Activity elements found in XML',
+      );
       return [];
     }
 
@@ -214,21 +220,27 @@ export class TimetableGeneratorService {
       // Validate day
       const dayOfWeek = DAY_MAP[dayName];
       if (!dayOfWeek) {
-        this.logger.warn(`parseFetOutput: Invalid day "${dayName}" for activity ${activityId}, skipping`);
+        this.logger.warn(
+          `parseFetOutput: Invalid day "${dayName}" for activity ${activityId}, skipping`,
+        );
         continue;
       }
 
       // Validate hour → periodId
       const periodId = periodMap.get(hourName);
       if (!periodId) {
-        this.logger.warn(`parseFetOutput: Unknown hour "${hourName}" for activity ${activityId}, skipping`);
+        this.logger.warn(
+          `parseFetOutput: Unknown hour "${hourName}" for activity ${activityId}, skipping`,
+        );
         continue;
       }
 
       // Lookup original activity data
       const originalActivity = activityLookup.get(activityId);
       if (!originalActivity) {
-        this.logger.warn(`parseFetOutput: Activity "${activityId}" not found in input activities, skipping`);
+        this.logger.warn(
+          `parseFetOutput: Activity "${activityId}" not found in input activities, skipping`,
+        );
         continue;
       }
 
@@ -244,7 +256,9 @@ export class TimetableGeneratorService {
       // Resolve room (optional)
       const roomId = roomName ? (roomMap.get(roomName) ?? null) : null;
       if (roomName && !roomId) {
-        this.logger.warn(`parseFetOutput: Room "${roomName}" not found in roomMap for activity ${activityId}, using null`);
+        this.logger.warn(
+          `parseFetOutput: Room "${roomName}" not found in roomMap for activity ${activityId}, using null`,
+        );
       }
 
       slots.push({
@@ -259,11 +273,16 @@ export class TimetableGeneratorService {
       });
     }
 
-    this.logger.log(`parseFetOutput: Parsed ${slots.length} slots from FET output`);
+    this.logger.log(
+      `parseFetOutput: Parsed ${slots.length} slots from FET output`,
+    );
     return slots;
   }
 
-  private async runGeneration(job: GenerationJob, _timeoutSeconds: number): Promise<void> {
+  private async runGeneration(
+    job: GenerationJob,
+    _timeoutSeconds: number,
+  ): Promise<void> {
     job.status = 'processing';
     job.progress = 10;
     job.message = 'Đang thu thập dữ liệu...';
@@ -281,7 +300,11 @@ export class TimetableGeneratorService {
 
       // Step 3: In production, call FET CLI here
       // For now, use a simple greedy algorithm as fallback
-      const slots = await this.greedyGenerate(job.semesterId, job.versionId, fetInput);
+      const slots = await this.greedyGenerate(
+        job.semesterId,
+        job.versionId,
+        fetInput,
+      );
       job.progress = 90;
       job.message = 'Đang lưu kết quả...';
 
@@ -297,7 +320,8 @@ export class TimetableGeneratorService {
       job.message = `Hoàn thành! Đã sinh ${slots.length} slot.`;
     } catch (error) {
       job.status = 'failed';
-      job.message = error instanceof Error ? error.message : 'Lỗi không xác định';
+      job.message =
+        error instanceof Error ? error.message : 'Lỗi không xác định';
       throw error;
     }
   }
@@ -310,21 +334,27 @@ export class TimetableGeneratorService {
     const roomRepo = this.dataSource.getRepository(RoomEntity);
     const periodRepo = this.dataSource.getRepository(PeriodDefinitionEntity);
 
-    const teachers = await teacherRepo.find({ where: { status: 'active' as never } });
+    const teachers = await teacherRepo.find({
+      where: { status: 'active' as never },
+    });
     const subjects = await subjectRepo.find();
     const classes = await classRepo.find();
     const rooms = await roomRepo.find();
     const periods = await periodRepo.find({ order: { periodNumber: 'ASC' } });
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const hours = periods.map(p => `Period${p.periodNumber}`);
+    const hours = periods.map((p) => `Period${p.periodNumber}`);
 
     return {
       institution: 'NBK_EMS',
-      teachers: teachers.map(t => ({ id: t.id, name: t.fullName })),
-      subjects: subjects.map(s => ({ id: s.id, name: s.name })),
+      teachers: teachers.map((t) => ({ id: t.id, name: t.fullName })),
+      subjects: subjects.map((s) => ({ id: s.id, name: s.name })),
       activities: [], // Will be filled from teaching assignments
-      rooms: rooms.map(r => ({ id: r.id, name: r.name, capacity: r.capacity })),
+      rooms: rooms.map((r) => ({
+        id: r.id,
+        name: r.name,
+        capacity: r.capacity,
+      })),
       days,
       hours,
       timeConstraints: this.buildTimeConstraints(teachers),
@@ -403,16 +433,18 @@ export class TimetableGeneratorService {
     _semesterId: string,
     versionId: string,
     fetInput: FetInput,
-  ): Promise<Array<{
-    versionId: string;
-    dayOfWeek: number;
-    periodId: string;
-    classId: string;
-    teacherId: string;
-    subjectId: string;
-    roomId: string | null;
-    isDoublePeriod: boolean;
-  }>> {
+  ): Promise<
+    Array<{
+      versionId: string;
+      dayOfWeek: number;
+      periodId: string;
+      classId: string;
+      teacherId: string;
+      subjectId: string;
+      roomId: string | null;
+      isDoublePeriod: boolean;
+    }>
+  > {
     // Simple greedy algorithm as fallback when FET is not available
     // In production, this would call FET CLI and parse results
     const slots: Array<{
@@ -426,8 +458,12 @@ export class TimetableGeneratorService {
       isDoublePeriod: boolean;
     }> = [];
 
-    this.logger.log(`FET input built with ${fetInput.teachers.length} teachers, ${fetInput.activities.length} activities`);
-    this.logger.warn('FET CLI not available - using empty result. Configure FET_EXECUTABLE_PATH in .env');
+    this.logger.log(
+      `FET input built with ${fetInput.teachers.length} teachers, ${fetInput.activities.length} activities`,
+    );
+    this.logger.warn(
+      'FET CLI not available - using empty result. Configure FET_EXECUTABLE_PATH in .env',
+    );
 
     // Return empty - in production FET would generate these
     // The activities array needs to be populated from teaching_assignments

@@ -7,7 +7,7 @@ import { TimetableVersionRepository } from '../repositories/timetable-version.re
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
 import { ConflictDetectionService } from './conflict-detection.service';
 import { TimetablePublishedEvent } from '../events/timetable-published.event';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 describe('TimetablePublishService', () => {
   let service: TimetablePublishService;
@@ -22,15 +22,36 @@ describe('TimetablePublishService', () => {
     semesterId: 'semester-1',
     name: 'TKB v1',
     versionNumber: 1,
-    status: TimetableStatus.DRAFT,
+    status: TimetableVersionStatus.DRAFT,
     publishedAt: null,
     publishedBy: null,
   };
 
   const mockSlots = [
-    { teacherId: 'teacher-1', dayOfWeek: 2, periodId: 'p1', classId: 'c1', subjectId: 's1', roomId: 'r1' },
-    { teacherId: 'teacher-2', dayOfWeek: 3, periodId: 'p2', classId: 'c2', subjectId: 's2', roomId: 'r2' },
-    { teacherId: 'teacher-1', dayOfWeek: 4, periodId: 'p3', classId: 'c3', subjectId: 's3', roomId: 'r3' },
+    {
+      teacherId: 'teacher-1',
+      dayOfWeek: 2,
+      periodId: 'p1',
+      classId: 'c1',
+      subjectId: 's1',
+      roomId: 'r1',
+    },
+    {
+      teacherId: 'teacher-2',
+      dayOfWeek: 3,
+      periodId: 'p2',
+      classId: 'c2',
+      subjectId: 's2',
+      roomId: 'r2',
+    },
+    {
+      teacherId: 'teacher-1',
+      dayOfWeek: 4,
+      periodId: 'p3',
+      classId: 'c3',
+      subjectId: 's3',
+      roomId: 'r3',
+    },
   ];
 
   const mockWeeks = [
@@ -44,7 +65,10 @@ describe('TimetablePublishService', () => {
       softDelete: jest.fn(),
       create: jest.fn().mockImplementation((_entity, data) => data),
       save: jest.fn(),
-      findOne: jest.fn().mockResolvedValue({ ...mockVersion, status: TimetableStatus.PUBLISHED }),
+      findOne: jest.fn().mockResolvedValue({
+        ...mockVersion,
+        status: TimetableVersionStatus.PUBLISHED,
+      }),
     };
 
     const mockQueryBuilder = {
@@ -114,7 +138,8 @@ describe('TimetablePublishService', () => {
     it('should emit event with unique teacherIds from slots', async () => {
       await service.publish('version-1', 'user-1');
 
-      const emittedEvent = eventEmitter.emit.mock.calls[0][1] as TimetablePublishedEvent;
+      const emittedEvent = eventEmitter.emit.mock
+        .calls[0][1] as TimetablePublishedEvent;
       // teacher-1 appears twice in mockSlots, should be deduplicated
       expect(emittedEvent.teacherIds).toHaveLength(2);
       expect(emittedEvent.teacherIds).toContain('teacher-1');
@@ -124,7 +149,8 @@ describe('TimetablePublishService', () => {
     it('should emit event with correct versionId and semesterId', async () => {
       await service.publish('version-1', 'user-1');
 
-      const emittedEvent = eventEmitter.emit.mock.calls[0][1] as TimetablePublishedEvent;
+      const emittedEvent = eventEmitter.emit.mock
+        .calls[0][1] as TimetablePublishedEvent;
       expect(emittedEvent.versionId).toBe('version-1');
       expect(emittedEvent.semesterId).toBe('semester-1');
       expect(emittedEvent.publishedBy).toBe('user-1');
@@ -135,9 +161,14 @@ describe('TimetablePublishService', () => {
       await service.publish('version-1', 'user-1');
       const after = new Date();
 
-      const emittedEvent = eventEmitter.emit.mock.calls[0][1] as TimetablePublishedEvent;
-      expect(emittedEvent.publishedAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(emittedEvent.publishedAt.getTime()).toBeLessThanOrEqual(after.getTime());
+      const emittedEvent = eventEmitter.emit.mock
+        .calls[0][1] as TimetablePublishedEvent;
+      expect(emittedEvent.publishedAt.getTime()).toBeGreaterThanOrEqual(
+        before.getTime(),
+      );
+      expect(emittedEvent.publishedAt.getTime()).toBeLessThanOrEqual(
+        after.getTime(),
+      );
     });
 
     it('should not throw if event emission fails', async () => {
@@ -153,17 +184,21 @@ describe('TimetablePublishService', () => {
     it('should NOT emit event if version is not found', async () => {
       versionRepo.findById.mockResolvedValue(null as never);
 
-      await expect(service.publish('non-existent', 'user-1')).rejects.toThrow(NotFoundException);
+      await expect(service.publish('non-existent', 'user-1')).rejects.toThrow(
+        NotFoundException,
+      );
       expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
     it('should NOT emit event if version is already published', async () => {
       versionRepo.findById.mockResolvedValue({
         ...mockVersion,
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
       } as never);
 
-      await expect(service.publish('version-1', 'user-1')).rejects.toThrow(BadRequestException);
+      await expect(service.publish('version-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
@@ -172,7 +207,9 @@ describe('TimetablePublishService', () => {
         { severity: 'error', type: 'teacher_conflict', message: 'conflict' },
       ] as never);
 
-      await expect(service.publish('version-1', 'user-1')).rejects.toThrow(BadRequestException);
+      await expect(service.publish('version-1', 'user-1')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });

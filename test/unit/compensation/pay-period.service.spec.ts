@@ -84,10 +84,16 @@ describe('PayPeriodService', () => {
   describe('updateStatus', () => {
     it('should transition from OPEN to PROCESSING', async () => {
       repository.findById.mockResolvedValue(mockPayPeriod as never);
-      const updatedPeriod = { ...mockPayPeriod, status: PayPeriodStatus.PROCESSING };
+      const updatedPeriod = {
+        ...mockPayPeriod,
+        status: PayPeriodStatus.PROCESSING,
+      };
       repository.update.mockResolvedValue(updatedPeriod as never);
 
-      const result = await service.updateStatus('pp-1', PayPeriodStatus.PROCESSING);
+      const result = await service.updateStatus(
+        'pp-1',
+        PayPeriodStatus.PROCESSING,
+      );
 
       expect(result.status).toBe(PayPeriodStatus.PROCESSING);
     });
@@ -102,7 +108,10 @@ describe('PayPeriodService', () => {
     });
 
     it('should transition from PROCESSING to CLOSED', async () => {
-      const processingPeriod = { ...mockPayPeriod, status: PayPeriodStatus.PROCESSING };
+      const processingPeriod = {
+        ...mockPayPeriod,
+        status: PayPeriodStatus.PROCESSING,
+      };
       repository.findById.mockResolvedValue(processingPeriod as never);
       const closedPeriod = { ...mockPayPeriod, status: PayPeriodStatus.CLOSED };
       repository.update.mockResolvedValue(closedPeriod as never);
@@ -133,7 +142,9 @@ describe('PayPeriodService', () => {
     it('should throw NotFoundException when not found', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existing')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('non-existing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

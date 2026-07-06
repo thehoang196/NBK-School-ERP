@@ -13,8 +13,24 @@ describe('SalarySlipService', () => {
     teacherId: 'teacher-1',
     schoolId: 'school-1',
     payPeriodId: 'pp-1',
-    earnings: [{ payComponentId: 'pc-1', payComponentCode: 'BASIC', payComponentName: 'Lương cơ bản', formula: 'RATE * HOURS', amount: 12000000 }],
-    deductions: [{ payComponentId: 'pc-2', payComponentCode: 'TAX', payComponentName: 'Thuế', formula: 'BASIC * 0.1', amount: 1200000 }],
+    earnings: [
+      {
+        payComponentId: 'pc-1',
+        payComponentCode: 'BASIC',
+        payComponentName: 'Lương cơ bản',
+        formula: 'RATE * HOURS',
+        amount: 12000000,
+      },
+    ],
+    deductions: [
+      {
+        payComponentId: 'pc-2',
+        payComponentCode: 'TAX',
+        payComponentName: 'Thuế',
+        formula: 'BASIC * 0.1',
+        amount: 1200000,
+      },
+    ],
     grossAmount: 12000000,
     totalDeductions: 1200000,
     netAmount: 10800000,
@@ -58,7 +74,9 @@ describe('SalarySlipService', () => {
     it('should throw NotFoundException when not found', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existing')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('non-existing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -80,23 +98,35 @@ describe('SalarySlipService', () => {
       const confirmedSlip = { ...mockSlip, status: SalarySlipStatus.CONFIRMED };
       repository.findById.mockResolvedValue(confirmedSlip as never);
 
-      await expect(service.confirm('slip-1')).rejects.toThrow(BadRequestException);
+      await expect(service.confirm('slip-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject confirming a slip with errors', async () => {
       const errorSlip = {
         ...mockSlip,
-        errors: [{ payComponentCode: 'TAX', error: 'Division by zero', step: 'evaluation' }],
+        errors: [
+          {
+            payComponentCode: 'TAX',
+            error: 'Division by zero',
+            step: 'evaluation',
+          },
+        ],
       };
       repository.findById.mockResolvedValue(errorSlip as never);
 
-      await expect(service.confirm('slip-1')).rejects.toThrow(BadRequestException);
+      await expect(service.confirm('slip-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
   describe('hasConfirmedSlip', () => {
     it('should return true when confirmed slip exists', async () => {
-      repository.findConfirmedByTeacherAndPeriod.mockResolvedValue(mockSlip as never);
+      repository.findConfirmedByTeacherAndPeriod.mockResolvedValue(
+        mockSlip as never,
+      );
 
       const result = await service.hasConfirmedSlip('teacher-1', 'pp-1');
 

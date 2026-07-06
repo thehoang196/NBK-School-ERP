@@ -10,7 +10,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { RuleService } from '../services/rule.service';
 import { RuleEvaluator, TeacherContext } from '../services/rule-evaluator';
 import { CreateRuleDto } from '../dto/rule/create-rule.dto';

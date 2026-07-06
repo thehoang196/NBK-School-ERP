@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { NotFoundException, ConflictException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../../../src/modules/auth/user.service';
 import { UserRepository } from '../../../src/modules/auth/user.repository';
@@ -78,7 +75,10 @@ describe('UserService', () => {
   describe('findAll', () => {
     it('should return paginated list of users', async () => {
       const query = { page: 1, limit: 10, sortOrder: 'DESC' as const };
-      userRepository.findAllFiltered.mockResolvedValue([[mockUser, mockUser2], 2]);
+      userRepository.findAllFiltered.mockResolvedValue([
+        [mockUser, mockUser2],
+        2,
+      ]);
 
       const result = await service.findAll(query);
 
@@ -229,9 +229,9 @@ describe('UserService', () => {
       const nonExistentId = '999e4567-e89b-12d3-a456-426614174000';
       userRepository.findById.mockResolvedValue(null);
 
-      await expect(
-        service.update(nonExistentId, updateDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(nonExistentId, updateDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw ConflictException when updating to existing email', async () => {
@@ -239,12 +239,12 @@ describe('UserService', () => {
       userRepository.findById.mockResolvedValue(mockUser);
       userRepository.findByEmail.mockResolvedValue(mockUser2);
 
-      await expect(
-        service.update(mockUser.id, updateEmailDto),
-      ).rejects.toThrow(ConflictException);
-      await expect(
-        service.update(mockUser.id, updateEmailDto),
-      ).rejects.toThrow('Email đã tồn tại trong hệ thống');
+      await expect(service.update(mockUser.id, updateEmailDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.update(mockUser.id, updateEmailDto)).rejects.toThrow(
+        'Email đã tồn tại trong hệ thống',
+      );
     });
 
     it('should allow updating to same email (no change)', async () => {
@@ -263,9 +263,9 @@ describe('UserService', () => {
       userRepository.findById.mockResolvedValue(mockUser);
       userRepository.update.mockResolvedValue(null);
 
-      await expect(
-        service.update(mockUser.id, updateDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update(mockUser.id, updateDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should handle schoolId and teacherId updates correctly', async () => {

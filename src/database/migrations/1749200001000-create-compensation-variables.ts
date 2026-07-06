@@ -270,12 +270,30 @@ export class CreateCompensationVariables1749200001000 implements MigrationInterf
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex('compensation_audit_logs', 'IDX_COMP_AUDIT_PERFORMED_BY');
-    await queryRunner.dropIndex('compensation_audit_logs', 'IDX_COMP_AUDIT_ENTITY');
-    await queryRunner.dropIndex('variable_overrides', 'IDX_VAR_OVERRIDES_SCOPE');
-    await queryRunner.dropIndex('variable_overrides', 'IDX_VAR_OVERRIDES_VARIABLE_ID');
-    await queryRunner.dropIndex('compensation_variables', 'IDX_COMP_VARIABLES_SCOPE');
-    await queryRunner.dropIndex('compensation_variables', 'IDX_COMP_VARIABLES_CODE');
+    await queryRunner.dropIndex(
+      'compensation_audit_logs',
+      'IDX_COMP_AUDIT_PERFORMED_BY',
+    );
+    await queryRunner.dropIndex(
+      'compensation_audit_logs',
+      'IDX_COMP_AUDIT_ENTITY',
+    );
+    await queryRunner.dropIndex(
+      'variable_overrides',
+      'IDX_VAR_OVERRIDES_SCOPE',
+    );
+    await queryRunner.dropIndex(
+      'variable_overrides',
+      'IDX_VAR_OVERRIDES_VARIABLE_ID',
+    );
+    await queryRunner.dropIndex(
+      'compensation_variables',
+      'IDX_COMP_VARIABLES_SCOPE',
+    );
+    await queryRunner.dropIndex(
+      'compensation_variables',
+      'IDX_COMP_VARIABLES_CODE',
+    );
     await queryRunner.dropTable('compensation_audit_logs');
     await queryRunner.dropTable('variable_overrides');
     await queryRunner.dropTable('compensation_variables');

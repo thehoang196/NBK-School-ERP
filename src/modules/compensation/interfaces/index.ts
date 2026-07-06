@@ -15,7 +15,12 @@ export interface SalarySlipItem {
 
 export interface CalculationSnapshot {
   variables: Record<string, string | number | boolean>;
-  ruleResults: { ruleId: string; ruleName: string; matched: boolean; action?: string }[];
+  ruleResults: {
+    ruleId: string;
+    ruleName: string;
+    matched: boolean;
+    action?: string;
+  }[];
 }
 
 export interface CalculationError {

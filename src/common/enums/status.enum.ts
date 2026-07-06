@@ -65,6 +65,16 @@ export enum TimetableStatus {
   ARCHIVED = 'archived',
 }
 
+export enum TimetableVersionStatus {
+  DRAFT = 'draft',
+  GENERATING = 'generating',
+  GENERATED = 'generated',
+  FAILED = 'failed',
+  REVIEWING = 'reviewing',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived',
+}
+
 export enum SlotStatus {
   SCHEDULED = 'scheduled',
   CANCELLED = 'cancelled',

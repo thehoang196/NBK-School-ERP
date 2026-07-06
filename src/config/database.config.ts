@@ -1,7 +1,9 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
-export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
+export const getDatabaseConfig = (
+  configService: ConfigService,
+): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
   const databaseUrl = configService.get<string>('DATABASE_URL');
 
@@ -37,9 +39,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     synchronize: false,
     logging: !isProduction,
     ssl: sslEnabled ? { rejectUnauthorized: false } : false,
-    extra: sslEnabled
-      ? { ssl: { rejectUnauthorized: false } }
-      : {},
+    extra: sslEnabled ? { ssl: { rejectUnauthorized: false } } : {},
     // Connection pool settings for production
     ...(isProduction && {
       poolSize: 10,

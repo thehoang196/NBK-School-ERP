@@ -10,7 +10,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { VariableService } from '../services/variable.service';
 import { CreateVariableDto } from '../dto/variable/create-variable.dto';
 import { UpdateVariableDto } from '../dto/variable/update-variable.dto';

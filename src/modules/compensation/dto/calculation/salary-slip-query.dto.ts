@@ -19,7 +19,10 @@ export class SalarySlipQueryDto extends PaginationDto {
   @IsUUID()
   teacherId?: string;
 
-  @ApiPropertyOptional({ enum: SalarySlipStatus, description: 'Lọc theo trạng thái' })
+  @ApiPropertyOptional({
+    enum: SalarySlipStatus,
+    description: 'Lọc theo trạng thái',
+  })
   @IsOptional()
   @IsEnum(SalarySlipStatus)
   status?: SalarySlipStatus;

@@ -87,7 +87,9 @@ export class CreateTimetableSlots1749000001000 implements MigrationInterface {
     // Drop indexes
     await queryRunner.query(`DROP INDEX "IDX_timetable_slots_version_class"`);
     await queryRunner.query(`DROP INDEX "IDX_timetable_slots_version_teacher"`);
-    await queryRunner.query(`DROP INDEX "IDX_timetable_slots_version_day_period"`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_timetable_slots_version_day_period"`,
+    );
 
     // Drop foreign key constraints
     await queryRunner.query(`

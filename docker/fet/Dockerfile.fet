@@ -1,0 +1,64 @@
+# FET (Free Educational Timetabling) v6.2.7 - CLI-only container
+# Multi-stage build to keep final image small
+# Source: https://lalescu.ro/liviu/fet/
+
+# ============================================================
+# Stage 1: Build FET from source (headless/CLI mode only)
+# ============================================================
+FROM ubuntu:22.04 AS builder
+
+ARG FET_VERSION=6.2.7
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    qt5-qmake \
+    qtbase5-dev \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and compile FET
+WORKDIR /build
+RUN wget -q "https://lalescu.ro/liviu/fet/download/fet-${FET_VERSION}.tar.bz2" \
+    && tar -xjf "fet-${FET_VERSION}.tar.bz2" \
+    && cd "fet-${FET_VERSION}" \
+    && qmake fet.pro \
+    && make -j$(nproc)
+
+# ============================================================
+# Stage 2: Minimal runtime image with only fet-cl binary
+# ============================================================
+FROM ubuntu:22.04
+
+ARG FET_VERSION=6.2.7
+ARG DEBIAN_FRONTEND=noninteractive
+
+LABEL maintainer="NBK EMS Team"
+LABEL description="FET v${FET_VERSION} CLI solver for timetable generation"
+LABEL version="${FET_VERSION}"
+
+# Install minimal Qt runtime dependencies (no GUI)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libqt5core5a \
+    libqt5xml5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy only the CLI binary from builder stage
+COPY --from=builder /build/fet-${FET_VERSION}/fet-cl /usr/local/bin/fet-cl
+RUN chmod +x /usr/local/bin/fet-cl
+
+# Create non-root user for security
+RUN groupadd -r fet && useradd -r -g fet -d /data -s /bin/false fet
+
+# Working directory for input/output files
+WORKDIR /data
+RUN chown fet:fet /data
+
+USER fet
+
+# FET CLI entrypoint
+# Usage: docker run --rm -v /path/to/data:/data nbk-ems/fet:6.2.7 --inputfile=/data/input.fet --outputdir=/data/output
+ENTRYPOINT ["fet-cl"]

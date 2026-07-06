@@ -1,12 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { CorrelationIdInterceptor } from './common/interceptors/correlation-id.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Security: HTTP headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: process.env['NODE_ENV'] === 'production',
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
 
   // Global pipes
   app.useGlobalPipes(
@@ -21,7 +31,10 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Global interceptors
-  app.useGlobalInterceptors(new TransformInterceptor());
+  app.useGlobalInterceptors(
+    new CorrelationIdInterceptor(),
+    new TransformInterceptor(),
+  );
 
   // CORS
   const corsOrigins = process.env['CORS_ORIGINS'];
@@ -33,7 +46,9 @@ async function bootstrap() {
   // Swagger
   const config = new DocumentBuilder()
     .setTitle('NBK_EMS API')
-    .setDescription('NBK Education Management System - Hệ thống Quản lý Giáo dục NBK')
+    .setDescription(
+      'NBK Education Management System - Hệ thống Quản lý Giáo dục NBK',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

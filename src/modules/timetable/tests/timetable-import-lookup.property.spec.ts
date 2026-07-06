@@ -11,13 +11,21 @@
 import * as fc from 'fast-check';
 import { IsNull } from 'typeorm';
 import { TimetableImportService } from '../services/timetable-import.service';
-import { ParsedTimetableRow, ValidatedSlotData, TimetableImportError } from '../interfaces/timetable-import.interface';
+import {
+  ParsedTimetableRow,
+  ValidatedSlotData,
+  TimetableImportError,
+} from '../interfaces/timetable-import.interface';
 
 describe('Feature: timetable-management-features, Property 2: Import lookup respects school_id scoping', () => {
   // Arbitrary: non-empty alphanumeric strings for codes/names
-  const alphanumChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const alphanumChars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const nonEmptyAlphanumString: fc.Arbitrary<string> = fc
-    .array(fc.constantFrom(...alphanumChars.split('')), { minLength: 1, maxLength: 15 })
+    .array(fc.constantFrom(...alphanumChars.split('')), {
+      minLength: 1,
+      maxLength: 15,
+    })
     .map((chars) => chars.join(''));
 
   const uuidArb: fc.Arbitrary<string> = fc.uuid();
@@ -30,10 +38,16 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
    */
   function createMockRepo<T>(entities: T[]): { find: jest.Mock } {
     return {
-      find: jest.fn().mockImplementation(({ where }: { where: { schoolId: string; deletedAt: unknown } }) => {
-        const filtered = entities.filter((e: any) => e.schoolId === where.schoolId && e.deletedAt === null);
-        return Promise.resolve(filtered);
-      }),
+      find: jest
+        .fn()
+        .mockImplementation(
+          ({ where }: { where: { schoolId: string; deletedAt: unknown } }) => {
+            const filtered = entities.filter(
+              (e: any) => e.schoolId === where.schoolId && e.deletedAt === null,
+            );
+            return Promise.resolve(filtered);
+          },
+        ),
     };
   }
 
@@ -51,21 +65,31 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
     dayOfWeek: number;
   }
 
-  const testScenarioArb: fc.Arbitrary<TestScenario> = fc.record({
-    targetSchoolId: uuidArb,
-    otherSchoolId: uuidArb,
-    teacherCode: nonEmptyAlphanumString,
-    subjectCode: nonEmptyAlphanumString,
-    className: nonEmptyAlphanumString,
-    periodNumber: periodNumberArb,
-    roomCode: nonEmptyAlphanumString,
-    dayOfWeek: dayOfWeekArb,
-  }).filter((s) => s.targetSchoolId !== s.otherSchoolId);
+  const testScenarioArb: fc.Arbitrary<TestScenario> = fc
+    .record({
+      targetSchoolId: uuidArb,
+      otherSchoolId: uuidArb,
+      teacherCode: nonEmptyAlphanumString,
+      subjectCode: nonEmptyAlphanumString,
+      className: nonEmptyAlphanumString,
+      periodNumber: periodNumberArb,
+      roomCode: nonEmptyAlphanumString,
+      dayOfWeek: dayOfWeekArb,
+    })
+    .filter((s) => s.targetSchoolId !== s.otherSchoolId);
 
   it('should return ValidatedSlotData when all entities belong to the SAME school', async () => {
     await fc.assert(
       fc.asyncProperty(testScenarioArb, async (scenario) => {
-        const { targetSchoolId, teacherCode, subjectCode, className, periodNumber, roomCode, dayOfWeek } = scenario;
+        const {
+          targetSchoolId,
+          teacherCode,
+          subjectCode,
+          className,
+          periodNumber,
+          roomCode,
+          dayOfWeek,
+        } = scenario;
 
         // Create entities belonging to the target school
         const teacherId = `teacher-${targetSchoolId.slice(0, 8)}`;
@@ -74,11 +98,46 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
         const periodId = `period-${targetSchoolId.slice(0, 8)}`;
         const roomId = `room-${targetSchoolId.slice(0, 8)}`;
 
-        const teachers = [{ id: teacherId, schoolId: targetSchoolId, employeeCode: teacherCode, deletedAt: null }];
-        const subjects = [{ id: subjectId, schoolId: targetSchoolId, code: subjectCode, deletedAt: null }];
-        const classes = [{ id: classId, schoolId: targetSchoolId, name: className, deletedAt: null }];
-        const periods = [{ id: periodId, schoolId: targetSchoolId, periodNumber, deletedAt: null }];
-        const rooms = [{ id: roomId, schoolId: targetSchoolId, code: roomCode, deletedAt: null }];
+        const teachers = [
+          {
+            id: teacherId,
+            schoolId: targetSchoolId,
+            employeeCode: teacherCode,
+            deletedAt: null,
+          },
+        ];
+        const subjects = [
+          {
+            id: subjectId,
+            schoolId: targetSchoolId,
+            code: subjectCode,
+            deletedAt: null,
+          },
+        ];
+        const classes = [
+          {
+            id: classId,
+            schoolId: targetSchoolId,
+            name: className,
+            deletedAt: null,
+          },
+        ];
+        const periods = [
+          {
+            id: periodId,
+            schoolId: targetSchoolId,
+            periodNumber,
+            deletedAt: null,
+          },
+        ];
+        const rooms = [
+          {
+            id: roomId,
+            schoolId: targetSchoolId,
+            code: roomCode,
+            deletedAt: null,
+          },
+        ];
 
         const mockTeacherRepo = createMockRepo(teachers);
         const mockSubjectRepo = createMockRepo(subjects);
@@ -96,14 +155,16 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
           mockRoomRepo as any,
         );
 
-        const rows: ParsedTimetableRow[] = [{
-          className,
-          dayOfWeek,
-          periodNumber,
-          subjectCode,
-          teacherCode,
-          roomCode,
-        }];
+        const rows: ParsedTimetableRow[] = [
+          {
+            className,
+            dayOfWeek,
+            periodNumber,
+            subjectCode,
+            teacherCode,
+            roomCode,
+          },
+        ];
 
         const result = await service.lookupEntities(rows, targetSchoolId);
 
@@ -127,14 +188,58 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
   it('should return errors when entities belong to a DIFFERENT school', async () => {
     await fc.assert(
       fc.asyncProperty(testScenarioArb, async (scenario) => {
-        const { targetSchoolId, otherSchoolId, teacherCode, subjectCode, className, periodNumber, roomCode, dayOfWeek } = scenario;
+        const {
+          targetSchoolId,
+          otherSchoolId,
+          teacherCode,
+          subjectCode,
+          className,
+          periodNumber,
+          roomCode,
+          dayOfWeek,
+        } = scenario;
 
         // Create entities belonging to the OTHER school (not the target school)
-        const teachers = [{ id: 'teacher-other', schoolId: otherSchoolId, employeeCode: teacherCode, deletedAt: null }];
-        const subjects = [{ id: 'subject-other', schoolId: otherSchoolId, code: subjectCode, deletedAt: null }];
-        const classes = [{ id: 'class-other', schoolId: otherSchoolId, name: className, deletedAt: null }];
-        const periods = [{ id: 'period-other', schoolId: otherSchoolId, periodNumber, deletedAt: null }];
-        const rooms = [{ id: 'room-other', schoolId: otherSchoolId, code: roomCode, deletedAt: null }];
+        const teachers = [
+          {
+            id: 'teacher-other',
+            schoolId: otherSchoolId,
+            employeeCode: teacherCode,
+            deletedAt: null,
+          },
+        ];
+        const subjects = [
+          {
+            id: 'subject-other',
+            schoolId: otherSchoolId,
+            code: subjectCode,
+            deletedAt: null,
+          },
+        ];
+        const classes = [
+          {
+            id: 'class-other',
+            schoolId: otherSchoolId,
+            name: className,
+            deletedAt: null,
+          },
+        ];
+        const periods = [
+          {
+            id: 'period-other',
+            schoolId: otherSchoolId,
+            periodNumber,
+            deletedAt: null,
+          },
+        ];
+        const rooms = [
+          {
+            id: 'room-other',
+            schoolId: otherSchoolId,
+            code: roomCode,
+            deletedAt: null,
+          },
+        ];
 
         const mockTeacherRepo = createMockRepo(teachers);
         const mockSubjectRepo = createMockRepo(subjects);
@@ -152,14 +257,16 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
           mockRoomRepo as any,
         );
 
-        const rows: ParsedTimetableRow[] = [{
-          className,
-          dayOfWeek,
-          periodNumber,
-          subjectCode,
-          teacherCode,
-          roomCode,
-        }];
+        const rows: ParsedTimetableRow[] = [
+          {
+            className,
+            dayOfWeek,
+            periodNumber,
+            subjectCode,
+            teacherCode,
+            roomCode,
+          },
+        ];
 
         const result = await service.lookupEntities(rows, targetSchoolId);
 
@@ -184,20 +291,31 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
 
   it('should NEVER return entities from another school regardless of matching codes', async () => {
     // This property tests mixed scenarios: entities exist in both schools with same codes
-    const mixedScenarioArb = fc.record({
-      targetSchoolId: uuidArb,
-      otherSchoolId: uuidArb,
-      teacherCode: nonEmptyAlphanumString,
-      subjectCode: nonEmptyAlphanumString,
-      className: nonEmptyAlphanumString,
-      periodNumber: periodNumberArb,
-      roomCode: nonEmptyAlphanumString,
-      dayOfWeek: dayOfWeekArb,
-    }).filter((s) => s.targetSchoolId !== s.otherSchoolId);
+    const mixedScenarioArb = fc
+      .record({
+        targetSchoolId: uuidArb,
+        otherSchoolId: uuidArb,
+        teacherCode: nonEmptyAlphanumString,
+        subjectCode: nonEmptyAlphanumString,
+        className: nonEmptyAlphanumString,
+        periodNumber: periodNumberArb,
+        roomCode: nonEmptyAlphanumString,
+        dayOfWeek: dayOfWeekArb,
+      })
+      .filter((s) => s.targetSchoolId !== s.otherSchoolId);
 
     await fc.assert(
       fc.asyncProperty(mixedScenarioArb, async (scenario) => {
-        const { targetSchoolId, otherSchoolId, teacherCode, subjectCode, className, periodNumber, roomCode, dayOfWeek } = scenario;
+        const {
+          targetSchoolId,
+          otherSchoolId,
+          teacherCode,
+          subjectCode,
+          className,
+          periodNumber,
+          roomCode,
+          dayOfWeek,
+        } = scenario;
 
         // Entities exist in BOTH schools with the same codes but different IDs
         const targetTeacherId = `teacher-target-${targetSchoolId.slice(0, 8)}`;
@@ -213,24 +331,74 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
 
         // Both schools have entities with the same codes
         const teachers = [
-          { id: targetTeacherId, schoolId: targetSchoolId, employeeCode: teacherCode, deletedAt: null },
-          { id: otherTeacherId, schoolId: otherSchoolId, employeeCode: teacherCode, deletedAt: null },
+          {
+            id: targetTeacherId,
+            schoolId: targetSchoolId,
+            employeeCode: teacherCode,
+            deletedAt: null,
+          },
+          {
+            id: otherTeacherId,
+            schoolId: otherSchoolId,
+            employeeCode: teacherCode,
+            deletedAt: null,
+          },
         ];
         const subjects = [
-          { id: targetSubjectId, schoolId: targetSchoolId, code: subjectCode, deletedAt: null },
-          { id: otherSubjectId, schoolId: otherSchoolId, code: subjectCode, deletedAt: null },
+          {
+            id: targetSubjectId,
+            schoolId: targetSchoolId,
+            code: subjectCode,
+            deletedAt: null,
+          },
+          {
+            id: otherSubjectId,
+            schoolId: otherSchoolId,
+            code: subjectCode,
+            deletedAt: null,
+          },
         ];
         const classes = [
-          { id: targetClassId, schoolId: targetSchoolId, name: className, deletedAt: null },
-          { id: otherClassId, schoolId: otherSchoolId, name: className, deletedAt: null },
+          {
+            id: targetClassId,
+            schoolId: targetSchoolId,
+            name: className,
+            deletedAt: null,
+          },
+          {
+            id: otherClassId,
+            schoolId: otherSchoolId,
+            name: className,
+            deletedAt: null,
+          },
         ];
         const periods = [
-          { id: targetPeriodId, schoolId: targetSchoolId, periodNumber, deletedAt: null },
-          { id: otherPeriodId, schoolId: otherSchoolId, periodNumber, deletedAt: null },
+          {
+            id: targetPeriodId,
+            schoolId: targetSchoolId,
+            periodNumber,
+            deletedAt: null,
+          },
+          {
+            id: otherPeriodId,
+            schoolId: otherSchoolId,
+            periodNumber,
+            deletedAt: null,
+          },
         ];
         const rooms = [
-          { id: targetRoomId, schoolId: targetSchoolId, code: roomCode, deletedAt: null },
-          { id: otherRoomId, schoolId: otherSchoolId, code: roomCode, deletedAt: null },
+          {
+            id: targetRoomId,
+            schoolId: targetSchoolId,
+            code: roomCode,
+            deletedAt: null,
+          },
+          {
+            id: otherRoomId,
+            schoolId: otherSchoolId,
+            code: roomCode,
+            deletedAt: null,
+          },
         ];
 
         const mockTeacherRepo = createMockRepo(teachers);
@@ -249,14 +417,16 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
           mockRoomRepo as any,
         );
 
-        const rows: ParsedTimetableRow[] = [{
-          className,
-          dayOfWeek,
-          periodNumber,
-          subjectCode,
-          teacherCode,
-          roomCode,
-        }];
+        const rows: ParsedTimetableRow[] = [
+          {
+            className,
+            dayOfWeek,
+            periodNumber,
+            subjectCode,
+            teacherCode,
+            roomCode,
+          },
+        ];
 
         const result = await service.lookupEntities(rows, targetSchoolId);
 
@@ -298,17 +468,52 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
 
     await fc.assert(
       fc.asyncProperty(scenarioWithoutRoom, async (scenario) => {
-        const { targetSchoolId, teacherCode, subjectCode, className, periodNumber, dayOfWeek } = scenario;
+        const {
+          targetSchoolId,
+          teacherCode,
+          subjectCode,
+          className,
+          periodNumber,
+          dayOfWeek,
+        } = scenario;
 
         const teacherId = `teacher-${targetSchoolId.slice(0, 8)}`;
         const subjectId = `subject-${targetSchoolId.slice(0, 8)}`;
         const classId = `class-${targetSchoolId.slice(0, 8)}`;
         const periodId = `period-${targetSchoolId.slice(0, 8)}`;
 
-        const teachers = [{ id: teacherId, schoolId: targetSchoolId, employeeCode: teacherCode, deletedAt: null }];
-        const subjects = [{ id: subjectId, schoolId: targetSchoolId, code: subjectCode, deletedAt: null }];
-        const classes = [{ id: classId, schoolId: targetSchoolId, name: className, deletedAt: null }];
-        const periods = [{ id: periodId, schoolId: targetSchoolId, periodNumber, deletedAt: null }];
+        const teachers = [
+          {
+            id: teacherId,
+            schoolId: targetSchoolId,
+            employeeCode: teacherCode,
+            deletedAt: null,
+          },
+        ];
+        const subjects = [
+          {
+            id: subjectId,
+            schoolId: targetSchoolId,
+            code: subjectCode,
+            deletedAt: null,
+          },
+        ];
+        const classes = [
+          {
+            id: classId,
+            schoolId: targetSchoolId,
+            name: className,
+            deletedAt: null,
+          },
+        ];
+        const periods = [
+          {
+            id: periodId,
+            schoolId: targetSchoolId,
+            periodNumber,
+            deletedAt: null,
+          },
+        ];
         const rooms: any[] = []; // No rooms at all
 
         const mockTeacherRepo = createMockRepo(teachers);
@@ -328,14 +533,16 @@ describe('Feature: timetable-management-features, Property 2: Import lookup resp
         );
 
         // Row with empty roomCode (optional field)
-        const rows: ParsedTimetableRow[] = [{
-          className,
-          dayOfWeek,
-          periodNumber,
-          subjectCode,
-          teacherCode,
-          roomCode: '', // empty = no room lookup needed
-        }];
+        const rows: ParsedTimetableRow[] = [
+          {
+            className,
+            dayOfWeek,
+            periodNumber,
+            subjectCode,
+            teacherCode,
+            roomCode: '', // empty = no room lookup needed
+          },
+        ];
 
         const result = await service.lookupEntities(rows, targetSchoolId);
 

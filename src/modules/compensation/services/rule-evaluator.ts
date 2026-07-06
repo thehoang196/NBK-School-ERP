@@ -32,7 +32,10 @@ export class RuleEvaluator {
    * Evaluate all active rules for a school against a teacher context.
    * Returns matched rules sorted by priority (highest first).
    */
-  async evaluate(schoolId: string, context: TeacherContext): Promise<RuleMatchResult[]> {
+  async evaluate(
+    schoolId: string,
+    context: TeacherContext,
+  ): Promise<RuleMatchResult[]> {
     const activeRules = await this.ruleRepository.findActiveBySchool(schoolId);
     const results: RuleMatchResult[] = [];
 
@@ -60,7 +63,10 @@ export class RuleEvaluator {
   /**
    * Evaluate a single rule's conditions against context.
    */
-  evaluateConditions(conditions: RuleCondition[], context: TeacherContext): boolean {
+  evaluateConditions(
+    conditions: RuleCondition[],
+    context: TeacherContext,
+  ): boolean {
     if (conditions.length === 0) return true;
 
     // Process conditions with AND/OR logic
@@ -83,7 +89,10 @@ export class RuleEvaluator {
   /**
    * Evaluate a single condition against the context.
    */
-  private evaluateCondition(condition: RuleCondition, context: TeacherContext): boolean {
+  private evaluateCondition(
+    condition: RuleCondition,
+    context: TeacherContext,
+  ): boolean {
     const contextValue = this.getContextValue(condition.field, context);
 
     if (contextValue === undefined || contextValue === null) {
@@ -125,7 +134,10 @@ export class RuleEvaluator {
    * Map condition field names to context values.
    * Supports snake_case field names from conditions.
    */
-  private getContextValue(field: string, context: TeacherContext): string | undefined {
+  private getContextValue(
+    field: string,
+    context: TeacherContext,
+  ): string | undefined {
     // Map snake_case condition fields to context keys
     const fieldMap: Record<string, string> = {
       school_level: 'schoolLevel',

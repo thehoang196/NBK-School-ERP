@@ -1,15 +1,31 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { SessionRepository } from '../repositories/session.repository';
+import { CampusGradeLevelRepository } from '../repositories/campus-grade-level.repository';
 import { SessionEntity } from '../entities/session.entity';
-import { CreateSessionDto, UpdateSessionDto, SessionQueryDto } from '../dto/session';
+import {
+  CreateSessionDto,
+  UpdateSessionDto,
+  SessionQueryDto,
+} from '../dto/session';
 import { PaginatedResponse } from '../../../common/interfaces/api-response.interface';
+import { CampusGradeLevelNotFoundException } from '../exceptions';
 
 @Injectable()
 export class SessionService {
-  constructor(private readonly sessionRepository: SessionRepository) {}
+  constructor(
+    private readonly sessionRepository: SessionRepository,
+    private readonly campusGradeLevelRepository: CampusGradeLevelRepository,
+  ) {}
 
-  async findAll(query: SessionQueryDto): Promise<PaginatedResponse<SessionEntity>> {
-    const [data, total] = await this.sessionRepository.findAll(query);
+  async findAll(
+    query: SessionQueryDto,
+    schoolId: string,
+  ): Promise<PaginatedResponse<SessionEntity>> {
+    const [data, total] = await this.sessionRepository.findAll(query, schoolId);
     const totalPages = Math.ceil(total / query.limit);
 
     return {
@@ -25,8 +41,8 @@ export class SessionService {
     };
   }
 
-  async findById(id: string): Promise<SessionEntity> {
-    const session = await this.sessionRepository.findById(id);
+  async findById(id: string, schoolId?: string): Promise<SessionEntity> {
+    const session = await this.sessionRepository.findById(id, schoolId);
     if (!session) {
       throw new NotFoundException('Không tìm thấy ca học');
     }
@@ -37,13 +53,30 @@ export class SessionService {
     return this.sessionRepository.findBySchool(schoolId);
   }
 
-  async create(dto: CreateSessionDto): Promise<SessionEntity> {
+  async create(
+    dto: CreateSessionDto,
+    schoolId: string,
+  ): Promise<SessionEntity> {
     if (dto.startTime >= dto.endTime) {
       throw new BadRequestException('Giờ bắt đầu phải trước giờ kết thúc');
     }
 
+    const campusGradeLevel =
+      await this.campusGradeLevelRepository.findByCampusAndGrade(
+        dto.campusId,
+        dto.gradeLevel,
+        schoolId,
+      );
+    if (!campusGradeLevel) {
+      throw new CampusGradeLevelNotFoundException(
+        'Cơ sở - cấp học chưa được thiết lập',
+      );
+    }
+
     return this.sessionRepository.create({
-      schoolId: dto.schoolId,
+      schoolId,
+      campusId: dto.campusId,
+      gradeLevel: dto.gradeLevel,
       name: dto.name,
       startTime: dto.startTime,
       endTime: dto.endTime,
@@ -51,8 +84,12 @@ export class SessionService {
     });
   }
 
-  async update(id: string, dto: UpdateSessionDto): Promise<SessionEntity> {
-    const session = await this.findById(id);
+  async update(
+    id: string,
+    dto: UpdateSessionDto,
+    schoolId?: string,
+  ): Promise<SessionEntity> {
+    const session = await this.findById(id, schoolId);
 
     if (dto.startTime && dto.endTime && dto.startTime >= dto.endTime) {
       throw new BadRequestException('Giờ bắt đầu phải trước giờ kết thúc');
@@ -73,8 +110,8 @@ export class SessionService {
     return updated;
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findById(id);
+  async remove(id: string, schoolId?: string): Promise<void> {
+    await this.findById(id, schoolId);
     await this.sessionRepository.softDelete(id);
   }
 }

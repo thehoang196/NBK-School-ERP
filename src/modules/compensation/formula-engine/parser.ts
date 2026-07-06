@@ -55,7 +55,7 @@ export class ParseError extends Error {
 
 /**
  * Recursive descent parser for compensation formula expressions.
- * 
+ *
  * Operator precedence (low to high):
  * 1. Comparison: ==, !=, >, <, >=, <=
  * 2. Addition/Subtraction: +, -
@@ -150,7 +150,9 @@ export class Parser {
 
     while (
       this.current().type === TokenType.OPERATOR &&
-      (this.current().value === '*' || this.current().value === '/' || this.current().value === '%')
+      (this.current().value === '*' ||
+        this.current().value === '/' ||
+        this.current().value === '%')
     ) {
       const operator = this.advance().value;
       const right = this.parseUnary();

@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { EventService } from '../../../src/modules/event/event.service';
 import { EventRepository } from '../../../src/modules/event/event.repository';
-import { EventEntity, EventType, EventStatus } from '../../../src/modules/event/entities/event.entity';
+import {
+  EventEntity,
+  EventType,
+  EventStatus,
+} from '../../../src/modules/event/entities/event.entity';
 
 describe('EventService', () => {
   let service: EventService;
@@ -110,8 +114,12 @@ describe('EventService', () => {
     it('should throw NotFoundException when event not found', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-uuid')).rejects.toThrow(NotFoundException);
-      await expect(service.findById('non-existent-uuid')).rejects.toThrow('Không tìm thấy sự kiện');
+      await expect(service.findById('non-existent-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findById('non-existent-uuid')).rejects.toThrow(
+        'Không tìm thấy sự kiện',
+      );
     });
   });
 
@@ -222,7 +230,10 @@ describe('EventService', () => {
     });
 
     it('should handle EventType.OTHER', async () => {
-      repository.create.mockResolvedValue({ ...mockEvent, eventType: EventType.OTHER } as EventEntity);
+      repository.create.mockResolvedValue({
+        ...mockEvent,
+        eventType: EventType.OTHER,
+      } as EventEntity);
 
       const dto = {
         schoolId: 'school-uuid-1',
@@ -258,7 +269,9 @@ describe('EventService', () => {
 
       const dto = { title: 'Updated Title' };
 
-      await expect(service.update('non-existent-uuid', dto)).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent-uuid', dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should validate date range on update', async () => {
@@ -269,7 +282,9 @@ describe('EventService', () => {
         endDate: '2024-09-05T00:00:00.000Z',
       };
 
-      await expect(service.update('event-uuid-1', dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update('event-uuid-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should validate new startDate against existing endDate', async () => {
@@ -281,7 +296,9 @@ describe('EventService', () => {
 
       const dto = { startDate: '2024-09-05T00:00:00.000Z' };
 
-      await expect(service.update('event-uuid-1', dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update('event-uuid-1', dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should update affectsSchedule flag', async () => {
@@ -301,7 +318,9 @@ describe('EventService', () => {
 
       const dto = { title: 'New title' };
 
-      await expect(service.update('event-uuid-1', dto)).rejects.toThrow(NotFoundException);
+      await expect(service.update('event-uuid-1', dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -319,7 +338,9 @@ describe('EventService', () => {
     it('should throw NotFoundException when event does not exist', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.remove('non-existent-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('non-existent-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 

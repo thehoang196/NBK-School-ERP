@@ -13,10 +13,20 @@ export class RuleRepository {
   ) {}
 
   async findAll(query: RuleQueryDto): Promise<[RuleEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, actionType, status, search } = query;
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      schoolId,
+      actionType,
+      status,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('r')
+    const queryBuilder = this.repo
+      .createQueryBuilder('r')
       .where('r.deletedAt IS NULL');
 
     if (schoolId) {
@@ -59,9 +69,17 @@ export class RuleRepository {
     });
   }
 
-  async findByPriorityAndSchool(priority: number, schoolId: string): Promise<RuleEntity[]> {
+  async findByPriorityAndSchool(
+    priority: number,
+    schoolId: string,
+  ): Promise<RuleEntity[]> {
     return this.repo.find({
-      where: { priority, schoolId, status: EntityStatus.ACTIVE, deletedAt: IsNull() },
+      where: {
+        priority,
+        schoolId,
+        status: EntityStatus.ACTIVE,
+        deletedAt: IsNull(),
+      },
     });
   }
 
@@ -70,7 +88,10 @@ export class RuleRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<RuleEntity>): Promise<RuleEntity | null> {
+  async update(
+    id: string,
+    data: Partial<RuleEntity>,
+  ): Promise<RuleEntity | null> {
     await this.repo.update(id, data);
     return this.findById(id);
   }

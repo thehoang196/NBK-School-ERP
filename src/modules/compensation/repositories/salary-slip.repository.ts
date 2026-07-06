@@ -22,11 +22,23 @@ export class SalarySlipRepository {
     private readonly repo: Repository<SalarySlipEntity>,
   ) {}
 
-  async findAll(query: SalarySlipQueryDto): Promise<[SalarySlipEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, payPeriodId, teacherId, status } = query;
+  async findAll(
+    query: SalarySlipQueryDto,
+  ): Promise<[SalarySlipEntity[], number]> {
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      schoolId,
+      payPeriodId,
+      teacherId,
+      status,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('ss')
+    const queryBuilder = this.repo
+      .createQueryBuilder('ss')
       .where('ss.deletedAt IS NULL');
 
     if (schoolId) {
@@ -62,20 +74,34 @@ export class SalarySlipRepository {
     });
   }
 
-  async findByTeacherAndPeriod(teacherId: string, payPeriodId: string): Promise<SalarySlipEntity | null> {
+  async findByTeacherAndPeriod(
+    teacherId: string,
+    payPeriodId: string,
+  ): Promise<SalarySlipEntity | null> {
     return this.repo.findOne({
       where: { teacherId, payPeriodId, deletedAt: IsNull() },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findConfirmedByTeacherAndPeriod(teacherId: string, payPeriodId: string): Promise<SalarySlipEntity | null> {
+  async findConfirmedByTeacherAndPeriod(
+    teacherId: string,
+    payPeriodId: string,
+  ): Promise<SalarySlipEntity | null> {
     return this.repo.findOne({
-      where: { teacherId, payPeriodId, status: SalarySlipStatus.CONFIRMED, deletedAt: IsNull() },
+      where: {
+        teacherId,
+        payPeriodId,
+        status: SalarySlipStatus.CONFIRMED,
+        deletedAt: IsNull(),
+      },
     });
   }
 
-  async deleteDraftByTeacherAndPeriod(teacherId: string, payPeriodId: string): Promise<void> {
+  async deleteDraftByTeacherAndPeriod(
+    teacherId: string,
+    payPeriodId: string,
+  ): Promise<void> {
     await this.repo.softDelete({
       teacherId,
       payPeriodId,
@@ -88,7 +114,10 @@ export class SalarySlipRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<SalarySlipEntity>): Promise<SalarySlipEntity | null> {
+  async update(
+    id: string,
+    data: Partial<SalarySlipEntity>,
+  ): Promise<SalarySlipEntity | null> {
     await this.repo.update(id, data as Record<string, unknown>);
     return this.findById(id);
   }

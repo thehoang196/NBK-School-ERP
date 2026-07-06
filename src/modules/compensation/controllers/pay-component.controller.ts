@@ -10,7 +10,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PayComponentService } from '../services/pay-component.service';
 import { CreatePayComponentDto } from '../dto/pay-component/create-pay-component.dto';
 import { UpdatePayComponentDto } from '../dto/pay-component/update-pay-component.dto';
@@ -58,7 +63,10 @@ export class PayComponentController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Cập nhật thành phần lương' })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc đang được tham chiếu' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dữ liệu không hợp lệ hoặc đang được tham chiếu',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -71,10 +79,16 @@ export class PayComponentController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Vô hiệu hóa thành phần lương (soft delete)' })
   @ApiResponse({ status: 200, description: 'Vô hiệu hóa thành công' })
-  @ApiResponse({ status: 400, description: 'Đang được tham chiếu bởi công thức' })
+  @ApiResponse({
+    status: 400,
+    description: 'Đang được tham chiếu bởi công thức',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async deactivate(@Param('id', ParseUUIDPipe) id: string) {
     await this.payComponentService.deactivate(id);
-    return { success: true, message: 'Vô hiệu hóa thành phần lương thành công' };
+    return {
+      success: true,
+      message: 'Vô hiệu hóa thành phần lương thành công',
+    };
   }
 }

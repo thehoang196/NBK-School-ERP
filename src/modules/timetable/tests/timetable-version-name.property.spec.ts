@@ -63,12 +63,12 @@ describe('Feature: timetable-management-features, Property 9: Version name valid
         fc.constant(''),
         async (name: string) => {
           const dto = buildDto(name);
-          await expect(
-            service.saveAsNewVersion(dto, schoolId),
-          ).rejects.toThrow(BadRequestException);
-          await expect(
-            service.saveAsNewVersion(dto, schoolId),
-          ).rejects.toThrow('Tên phiên bản không được để trống');
+          await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+            BadRequestException,
+          );
+          await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+            'Tên phiên bản không được để trống',
+          );
         },
       ),
       { numRuns: 100 },
@@ -78,18 +78,21 @@ describe('Feature: timetable-management-features, Property 9: Version name valid
   it('should reject whitespace-only strings as version name', async () => {
     // Generate whitespace-only strings using array of whitespace chars joined together
     const whitespaceArb = fc
-      .array(fc.constantFrom(' ', '\t', '\n', '\r'), { minLength: 1, maxLength: 50 })
+      .array(fc.constantFrom(' ', '\t', '\n', '\r'), {
+        minLength: 1,
+        maxLength: 50,
+      })
       .map((chars) => chars.join(''));
 
     await fc.assert(
       fc.asyncProperty(whitespaceArb, async (name: string) => {
         const dto = buildDto(name);
-        await expect(
-          service.saveAsNewVersion(dto, schoolId),
-        ).rejects.toThrow(BadRequestException);
-        await expect(
-          service.saveAsNewVersion(dto, schoolId),
-        ).rejects.toThrow('Tên phiên bản không được để trống');
+        await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+          BadRequestException,
+        );
+        await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+          'Tên phiên bản không được để trống',
+        );
       }),
       { numRuns: 100 },
     );
@@ -100,19 +103,19 @@ describe('Feature: timetable-management-features, Property 9: Version name valid
       fc.asyncProperty(
         // Generate strings with length > 100 (101 to 500 characters)
         // Use non-whitespace characters to ensure they don't get caught by whitespace check
-        fc.string({ minLength: 101, maxLength: 500 }).filter(
-          (s) => s.trim().length > 0,
-        ),
+        fc
+          .string({ minLength: 101, maxLength: 500 })
+          .filter((s) => s.trim().length > 0),
         async (name: string) => {
           // Ensure the generated name is actually > 100 chars
           fc.pre(name.length > 100);
           const dto = buildDto(name);
-          await expect(
-            service.saveAsNewVersion(dto, schoolId),
-          ).rejects.toThrow(BadRequestException);
-          await expect(
-            service.saveAsNewVersion(dto, schoolId),
-          ).rejects.toThrow('Tên phiên bản tối đa 100 ký tự');
+          await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+            BadRequestException,
+          );
+          await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+            'Tên phiên bản tối đa 100 ký tự',
+          );
         },
       ),
       { numRuns: 100 },
@@ -125,20 +128,24 @@ describe('Feature: timetable-management-features, Property 9: Version name valid
       // Category 1: Empty string
       fc.constant(''),
       // Category 2: Whitespace-only strings
-      fc.array(fc.constantFrom(' ', '\t', '\n', '\r'), { minLength: 1, maxLength: 30 })
+      fc
+        .array(fc.constantFrom(' ', '\t', '\n', '\r'), {
+          minLength: 1,
+          maxLength: 30,
+        })
         .map((chars) => chars.join('')),
       // Category 3: Strings > 100 characters (non-whitespace content)
-      fc.string({ minLength: 101, maxLength: 300 }).filter(
-        (s) => s.trim().length > 0,
-      ),
+      fc
+        .string({ minLength: 101, maxLength: 300 })
+        .filter((s) => s.trim().length > 0),
     );
 
     await fc.assert(
       fc.asyncProperty(invalidNameArb, async (name: string) => {
         const dto = buildDto(name);
-        await expect(
-          service.saveAsNewVersion(dto, schoolId),
-        ).rejects.toThrow(BadRequestException);
+        await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+          BadRequestException,
+        );
       }),
       { numRuns: 100 },
     );

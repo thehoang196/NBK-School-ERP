@@ -15,7 +15,10 @@ export class PayComponentQueryDto extends PaginationDto {
   @IsEnum(PayComponentType)
   type?: PayComponentType;
 
-  @ApiPropertyOptional({ description: 'Lọc theo trạng thái', enum: EntityStatus })
+  @ApiPropertyOptional({
+    description: 'Lọc theo trạng thái',
+    enum: EntityStatus,
+  })
   @IsOptional()
   @IsEnum(EntityStatus)
   status?: EntityStatus;

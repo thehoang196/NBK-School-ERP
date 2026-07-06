@@ -1,18 +1,51 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  Optional,
+  Logger,
+} from '@nestjs/common';
 import { UserRole } from '../enums/role.enum';
+import { TokenInvalidationService } from '../../modules/auth/services/token-invalidation.service';
+import { TenantContextService } from '../tenant/tenant-context.service';
+import { CrossCampusErrors } from '../../modules/teacher-school-assignment/errors/cross-campus.errors';
 
 /**
- * Guard xử lý Data Scope theo school_id:
- * - SUPER_ADMIN: Không filter, truy cập tất cả trường
- * - SCHOOL_ADMIN, SCHEDULER, TEACHER, VIEWER: Tự động gắn schoolId từ JWT
- *   vào request để controller/service dùng filter dữ liệu theo trường
+ * @deprecated Sử dụng TenantMiddleware thay thế. Guard này được giữ lại để
+ * đảm bảo backward compatibility với các controller đã sử dụng trực tiếp.
+ *
+ * Khi TenantMiddleware đã được áp dụng (mặc định cho tất cả routes),
+ * guard này sẽ đọc tenant context từ TenantContextService thay vì
+ * tự tính toán lại từ JWT. Nếu TenantContextService không khả dụng
+ * (ví dụ TenantModule chưa được đăng ký), guard sẽ fallback về logic cũ.
+ *
+ * Guard xử lý Data Scope theo school_id (v2 — Multi-School):
+ * - SUPER_ADMIN: schoolScope = null (full access)
+ * - Các role khác:
+ *   1. Nếu JWT có `accessibleSchoolIds` → schoolScope = accessibleSchoolIds array
+ *   2. Nếu JWT không có `accessibleSchoolIds` → fallback schoolScope = [user.schoolId] (backward compat)
+ *
+ * Token staleness check:
+ * - Nếu user.tokenVersion tồn tại, kiểm tra qua TokenInvalidationService
+ * - Nếu token bị invalidate → throw UnauthorizedException (TOKEN_STALE)
  *
  * Sau khi guard chạy, controller có thể lấy:
- *   request.schoolScope — schoolId để filter (null nếu super_admin)
+ *   request.schoolScope — string[] (array of school IDs) hoặc null (SUPER_ADMIN)
+ *
+ * Validates: Requirements 2.2, 2.4, 2.5, 6.2, 6.4, 8.4
  */
 @Injectable()
 export class SchoolScopeGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  private readonly logger = new Logger(SchoolScopeGuard.name);
+
+  constructor(
+    @Optional()
+    private readonly tokenInvalidationService?: TokenInvalidationService,
+    @Optional()
+    private readonly tenantContextService?: TenantContextService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
@@ -20,12 +53,43 @@ export class SchoolScopeGuard implements CanActivate {
       return true; // Let JwtAuthGuard handle unauthorized
     }
 
+    // Token staleness check (Requirement 2.4)
+    if (this.tokenInvalidationService && user.tokenVersion) {
+      // tokenVersion is JWT `iat` in seconds; invalidatedAt is in milliseconds
+      const tokenIssuedAtMs = user.tokenVersion * 1000;
+      const isValid = await this.tokenInvalidationService.isTokenValid(
+        user.id || user.userId,
+        tokenIssuedAtMs,
+      );
+      if (!isValid) {
+        throw CrossCampusErrors.tokenStale();
+      }
+    }
+
+    // Delegate to TenantContextService if available and active (Requirement 6.2, 6.4)
+    // TenantMiddleware runs before guards and sets context + request.schoolScope
+    if (this.tenantContextService && this.tenantContextService.isActive()) {
+      // TenantMiddleware already set request.schoolScope — just ensure it's present
+      if (request.schoolScope === undefined) {
+        const schoolId = this.tenantContextService.getSchoolId();
+        request.schoolScope = schoolId;
+      }
+      return true;
+    }
+
+    // Fallback: original logic when TenantContextService is not available
+    // SUPER_ADMIN: full access, no school filter
     if (user.role === UserRole.SUPER_ADMIN) {
-      // Super admin không bị filter theo school
       request.schoolScope = null;
+      return true;
+    }
+
+    // Multi-school access (Requirement 2.2)
+    if (user.accessibleSchoolIds && user.accessibleSchoolIds.length > 0) {
+      request.schoolScope = user.accessibleSchoolIds;
     } else {
-      // Các role khác chỉ được xem dữ liệu của trường mình
-      request.schoolScope = user.schoolId;
+      // Backward compatibility (Requirement 8.4): fallback to single schoolId
+      request.schoolScope = user.schoolId ? [user.schoolId] : null;
     }
 
     return true;

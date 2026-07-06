@@ -3,7 +3,11 @@ import { FormulaRepository } from '../repositories/formula.repository';
 import { PayComponentRepository } from '../repositories/pay-component.repository';
 import { SalarySlipRepository } from '../repositories/salary-slip.repository';
 import { VariableService } from './variable.service';
-import { RuleEvaluator, TeacherContext, RuleMatchResult } from './rule-evaluator';
+import {
+  RuleEvaluator,
+  TeacherContext,
+  RuleMatchResult,
+} from './rule-evaluator';
 import { DependencyGraphService } from './dependency-graph.service';
 import { PayPeriodService } from './pay-period.service';
 import { PolicyService } from './policy.service';
@@ -64,7 +68,10 @@ export class CalculationService {
    * Main calculation orchestrator.
    * Idempotent: same input → same output. Overwrites DRAFT slips for same period.
    */
-  async calculate(request: CalculationRequest, teacherDataList: TeacherData[]): Promise<CalculationSummary> {
+  async calculate(
+    request: CalculationRequest,
+    teacherDataList: TeacherData[],
+  ): Promise<CalculationSummary> {
     const { schoolId, payPeriodId } = request;
 
     // 1. Validate pay period
@@ -74,12 +81,18 @@ export class CalculationService {
     }
 
     // Update status to PROCESSING
-    await this.payPeriodService.updateStatus(payPeriodId, PayPeriodStatus.PROCESSING);
+    await this.payPeriodService.updateStatus(
+      payPeriodId,
+      PayPeriodStatus.PROCESSING,
+    );
 
     // 2. Get all published formulas for the school
-    const formulas = await this.formulaRepository.findPublishedBySchool(schoolId);
+    const formulas =
+      await this.formulaRepository.findPublishedBySchool(schoolId);
     if (formulas.length === 0) {
-      throw new BadRequestException('Không có công thức nào đã publish cho trường này');
+      throw new BadRequestException(
+        'Không có công thức nào đã publish cho trường này',
+      );
     }
 
     // 3. Build dependency graph and topological sort
@@ -146,13 +159,18 @@ export class CalculationService {
           teacherId: teacher.id,
           message: (error as Error).message,
         });
-        this.logger.warn(`Lỗi tính lương cho GV ${teacher.id}: ${(error as Error).message}`);
+        this.logger.warn(
+          `Lỗi tính lương cho GV ${teacher.id}: ${(error as Error).message}`,
+        );
       }
     }
 
     // 5. Revert pay period status if all errored; otherwise keep PROCESSING for review
     if (summary.successCount === 0 && summary.errorCount > 0) {
-      await this.payPeriodService.updateStatus(payPeriodId, PayPeriodStatus.OPEN);
+      await this.payPeriodService.updateStatus(
+        payPeriodId,
+        PayPeriodStatus.OPEN,
+      );
     }
 
     return summary;
@@ -237,7 +255,10 @@ export class CalculationService {
 
         const parser = new Parser(formula.expression);
         const ast = parser.parse();
-        const evaluator = new Evaluator({ variables: evalVariables, functions });
+        const evaluator = new Evaluator({
+          variables: evalVariables,
+          functions,
+        });
         const result = evaluator.evaluate(ast);
 
         calculatedValues[code] = result;
@@ -291,7 +312,8 @@ export class CalculationService {
       totalDeductions,
       netAmount,
       snapshot,
-      status: calcErrors.length > 0 ? SalarySlipStatus.DRAFT : SalarySlipStatus.DRAFT,
+      status:
+        calcErrors.length > 0 ? SalarySlipStatus.DRAFT : SalarySlipStatus.DRAFT,
       errors: calcErrors.length > 0 ? calcErrors : null,
     });
 

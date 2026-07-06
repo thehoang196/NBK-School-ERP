@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { AcademicStatus } from '../../../common/enums/status.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
+import { SemesterEntity } from './semester.entity';
 
 @Entity('academic_years')
 export class AcademicYearEntity extends BaseEntity {
@@ -13,7 +14,7 @@ export class AcademicYearEntity extends BaseEntity {
   school: SchoolEntity;
 
   @Column({ type: 'varchar', length: 50 })
-  name: string;
+  name: string; // "2025-2026"
 
   @Column({ name: 'start_date', type: 'date' })
   startDate: string;
@@ -24,6 +25,13 @@ export class AcademicYearEntity extends BaseEntity {
   @Column({ name: 'is_current', type: 'boolean', default: false })
   isCurrent: boolean;
 
-  @Column({ type: 'enum', enum: AcademicStatus, default: AcademicStatus.PLANNING })
+  @Column({
+    type: 'enum',
+    enum: AcademicStatus,
+    default: AcademicStatus.PLANNING,
+  })
   status: AcademicStatus;
+
+  @OneToMany(() => SemesterEntity, (semester) => semester.academicYear)
+  semesters: SemesterEntity[];
 }

@@ -1,6 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 import { SemesterEntity } from '../../academic/entities/semester.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { TimetableSlotEntity } from './timetable-slot.entity';
@@ -27,8 +27,12 @@ export class TimetableVersionEntity extends BaseEntity {
   @Column({ name: 'version_number', type: 'int' })
   versionNumber: number;
 
-  @Column({ type: 'enum', enum: TimetableStatus, default: TimetableStatus.DRAFT })
-  status: TimetableStatus;
+  @Column({
+    type: 'enum',
+    enum: TimetableVersionStatus,
+    default: TimetableVersionStatus.DRAFT,
+  })
+  status: TimetableVersionStatus;
 
   @Column({ name: 'effective_date', type: 'date', nullable: true })
   effectiveDate: string | null;
@@ -42,6 +46,42 @@ export class TimetableVersionEntity extends BaseEntity {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
-  @OneToMany(() => TimetableSlotEntity, (slot) => slot.version)
+  // Pipeline columns
+  @Column({ name: 'job_id', type: 'varchar', length: 100, nullable: true })
+  jobId: string | null;
+
+  @Column({ name: 'generation_started_at', type: 'timestamp', nullable: true })
+  generationStartedAt: Date | null;
+
+  @Column({
+    name: 'generation_completed_at',
+    type: 'timestamp',
+    nullable: true,
+  })
+  generationCompletedAt: Date | null;
+
+  @Column({ name: 'generation_duration_ms', type: 'int', nullable: true })
+  generationDurationMs: number | null;
+
+  @Column({ name: 'error_message', type: 'text', nullable: true })
+  errorMessage: string | null;
+
+  @Column({ name: 'error_stack', type: 'text', nullable: true })
+  errorStack: string | null;
+
+  @Column({ name: 'has_conflicts', type: 'boolean', default: false })
+  hasConflicts: boolean;
+
+  @Column({ name: 'conflict_count', type: 'int', default: 0 })
+  conflictCount: number;
+
+  @Column({ name: 'conflict_details', type: 'jsonb', nullable: true })
+  conflictDetails: object[] | null;
+
+  @Column({ name: 'total_slots', type: 'int', default: 0 })
+  totalSlots: number;
+
+  // Relations
+  @OneToMany(() => TimetableSlotEntity, (slot) => slot.timetableVersion)
   slots: TimetableSlotEntity[];
 }

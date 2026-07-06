@@ -1,19 +1,32 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, Matches } from 'class-validator';
+import { IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../../../common/dto/pagination.dto';
 import { AcademicStatus } from '../../../../common/enums/status.enum';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export class AcademicYearQueryDto extends PaginationDto {
-  @ApiPropertyOptional({ description: 'Lọc theo trường' })
+  @ApiPropertyOptional({
+    description: 'Lọc theo trạng thái năm học',
+    enum: AcademicStatus,
+    example: AcademicStatus.ACTIVE,
+  })
   @IsOptional()
-  @IsString()
-  @Matches(UUID_REGEX, { message: 'schoolId phải là UUID hợp lệ' })
-  schoolId?: string;
-
-  @ApiPropertyOptional({ enum: AcademicStatus, description: 'Lọc theo trạng thái' })
-  @IsOptional()
-  @IsEnum(AcademicStatus)
+  @IsEnum(AcademicStatus, {
+    message:
+      'Trạng thái phải là một trong các giá trị: planning, active, completed',
+  })
   status?: AcademicStatus;
+
+  @ApiPropertyOptional({
+    description: 'Lọc năm học hiện tại (true/false)',
+    example: true,
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean({ message: 'isCurrent phải là giá trị boolean (true/false)' })
+  isCurrent?: boolean;
 }

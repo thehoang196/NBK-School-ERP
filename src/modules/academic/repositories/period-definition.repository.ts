@@ -11,19 +11,28 @@ export class PeriodDefinitionRepository {
     private readonly repo: Repository<PeriodDefinitionEntity>,
   ) {}
 
-  async findAll(query: PeriodDefinitionQueryDto): Promise<[PeriodDefinitionEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, sessionId } = query;
+  async findAll(
+    query: PeriodDefinitionQueryDto,
+    schoolId: string,
+  ): Promise<[PeriodDefinitionEntity[], number]> {
+    const { page, limit, sortBy, sortOrder, sessionId, gradeLevel } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('periodDefinition')
-      .where('periodDefinition.deletedAt IS NULL');
-
-    if (schoolId) {
-      queryBuilder.andWhere('periodDefinition.schoolId = :schoolId', { schoolId });
-    }
+    const queryBuilder = this.repo
+      .createQueryBuilder('periodDefinition')
+      .where('periodDefinition.deletedAt IS NULL')
+      .andWhere('periodDefinition.schoolId = :schoolId', { schoolId });
 
     if (sessionId) {
-      queryBuilder.andWhere('periodDefinition.sessionId = :sessionId', { sessionId });
+      queryBuilder.andWhere('periodDefinition.sessionId = :sessionId', {
+        sessionId,
+      });
+    }
+
+    if (gradeLevel) {
+      queryBuilder.andWhere('periodDefinition.gradeLevel = :gradeLevel', {
+        gradeLevel,
+      });
     }
 
     if (sortBy) {
@@ -37,16 +46,44 @@ export class PeriodDefinitionRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findById(id: string): Promise<PeriodDefinitionEntity | null> {
+  async findById(
+    id: string,
+    schoolId?: string,
+  ): Promise<PeriodDefinitionEntity | null> {
+    const where: Record<string, unknown> = { id, deletedAt: IsNull() };
+    if (schoolId) {
+      where.schoolId = schoolId;
+    }
     return this.repo.findOne({
-      where: { id, deletedAt: IsNull() },
+      where: where as never,
       relations: { school: true, session: true },
     });
   }
 
-  async findBySession(sessionId: string): Promise<PeriodDefinitionEntity[]> {
+  async findBySession(
+    sessionId: string,
+    schoolId?: string,
+  ): Promise<PeriodDefinitionEntity[]> {
+    const where: Record<string, unknown> = { sessionId, deletedAt: IsNull() };
+    if (schoolId) {
+      where.schoolId = schoolId;
+    }
     return this.repo.find({
-      where: { sessionId, deletedAt: IsNull() },
+      where: where as never,
+      order: { periodNumber: 'ASC' },
+    });
+  }
+
+  async findBySessionAndGradeLevel(
+    sessionId: string,
+    gradeLevel: string,
+  ): Promise<PeriodDefinitionEntity[]> {
+    return this.repo.find({
+      where: {
+        sessionId,
+        gradeLevel: gradeLevel as never,
+        deletedAt: IsNull(),
+      },
       order: { periodNumber: 'ASC' },
     });
   }
@@ -59,12 +96,17 @@ export class PeriodDefinitionRepository {
     });
   }
 
-  async create(data: Partial<PeriodDefinitionEntity>): Promise<PeriodDefinitionEntity> {
+  async create(
+    data: Partial<PeriodDefinitionEntity>,
+  ): Promise<PeriodDefinitionEntity> {
     const entity = this.repo.create(data);
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<PeriodDefinitionEntity>): Promise<PeriodDefinitionEntity | null> {
+  async update(
+    id: string,
+    data: Partial<PeriodDefinitionEntity>,
+  ): Promise<PeriodDefinitionEntity | null> {
     await this.repo.update(id, data);
     return this.findById(id);
   }

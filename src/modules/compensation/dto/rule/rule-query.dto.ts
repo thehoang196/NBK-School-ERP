@@ -10,12 +10,18 @@ export class RuleQueryDto extends PaginationDto {
   @IsUUID()
   schoolId?: string;
 
-  @ApiPropertyOptional({ description: 'Lọc theo loại hành động', enum: RuleActionType })
+  @ApiPropertyOptional({
+    description: 'Lọc theo loại hành động',
+    enum: RuleActionType,
+  })
   @IsOptional()
   @IsEnum(RuleActionType)
   actionType?: RuleActionType;
 
-  @ApiPropertyOptional({ description: 'Lọc theo trạng thái', enum: EntityStatus })
+  @ApiPropertyOptional({
+    description: 'Lọc theo trạng thái',
+    enum: EntityStatus,
+  })
   @IsOptional()
   @IsEnum(EntityStatus)
   status?: EntityStatus;

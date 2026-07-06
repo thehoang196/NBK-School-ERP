@@ -56,16 +56,32 @@ export class Tokenizer {
       } else if (this.isComparisonStart(ch)) {
         this.readComparisonOrOperator();
       } else if (this.isOperator(ch)) {
-        this.tokens.push({ type: TokenType.OPERATOR, value: ch, position: this.pos });
+        this.tokens.push({
+          type: TokenType.OPERATOR,
+          value: ch,
+          position: this.pos,
+        });
         this.pos++;
       } else if (ch === '(') {
-        this.tokens.push({ type: TokenType.LPAREN, value: '(', position: this.pos });
+        this.tokens.push({
+          type: TokenType.LPAREN,
+          value: '(',
+          position: this.pos,
+        });
         this.pos++;
       } else if (ch === ')') {
-        this.tokens.push({ type: TokenType.RPAREN, value: ')', position: this.pos });
+        this.tokens.push({
+          type: TokenType.RPAREN,
+          value: ')',
+          position: this.pos,
+        });
         this.pos++;
       } else if (ch === ',') {
-        this.tokens.push({ type: TokenType.COMMA, value: ',', position: this.pos });
+        this.tokens.push({
+          type: TokenType.COMMA,
+          value: ',',
+          position: this.pos,
+        });
         this.pos++;
       } else {
         throw new TokenizerError(`Unexpected character: '${ch}'`, this.pos);
@@ -157,7 +173,10 @@ export class Tokenizer {
   private readIdentifier(): void {
     const start = this.pos;
 
-    while (this.pos < this.input.length && this.isIdentifierPart(this.input[this.pos])) {
+    while (
+      this.pos < this.input.length &&
+      this.isIdentifierPart(this.input[this.pos])
+    ) {
       this.pos++;
     }
 
@@ -173,7 +192,10 @@ export class Tokenizer {
     const ch = this.input[this.pos];
     const next = this.peek(1);
 
-    if ((ch === '=' || ch === '!' || ch === '>' || ch === '<') && next === '=') {
+    if (
+      (ch === '=' || ch === '!' || ch === '>' || ch === '<') &&
+      next === '='
+    ) {
       this.tokens.push({
         type: TokenType.COMPARISON_OP,
         value: ch + next,

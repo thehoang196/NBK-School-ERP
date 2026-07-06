@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PayPeriodRepository } from '../repositories/pay-period.repository';
 import { PayPeriodEntity } from '../entities/pay-period.entity';
 import { CreatePayPeriodDto } from '../dto/pay-period/create-pay-period.dto';
@@ -10,7 +14,9 @@ import { PayPeriodStatus } from '../enums';
 export class PayPeriodService {
   constructor(private readonly payPeriodRepository: PayPeriodRepository) {}
 
-  async findAll(query: PayPeriodQueryDto): Promise<PaginatedResponse<PayPeriodEntity>> {
+  async findAll(
+    query: PayPeriodQueryDto,
+  ): Promise<PaginatedResponse<PayPeriodEntity>> {
     const [data, total] = await this.payPeriodRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
@@ -62,13 +68,19 @@ export class PayPeriodService {
     });
   }
 
-  async updateStatus(id: string, status: PayPeriodStatus): Promise<PayPeriodEntity> {
+  async updateStatus(
+    id: string,
+    status: PayPeriodStatus,
+  ): Promise<PayPeriodEntity> {
     const entity = await this.findById(id);
 
     // Validate state transitions
     const validTransitions: Record<PayPeriodStatus, PayPeriodStatus[]> = {
       [PayPeriodStatus.OPEN]: [PayPeriodStatus.PROCESSING],
-      [PayPeriodStatus.PROCESSING]: [PayPeriodStatus.OPEN, PayPeriodStatus.CLOSED],
+      [PayPeriodStatus.PROCESSING]: [
+        PayPeriodStatus.OPEN,
+        PayPeriodStatus.CLOSED,
+      ],
       [PayPeriodStatus.CLOSED]: [],
     };
 

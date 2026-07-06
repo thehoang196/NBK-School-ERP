@@ -3,6 +3,7 @@ import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { ClassService } from './class.service';
 import { ClassRepository } from '../repositories/class.repository';
 import { ClassEntity } from '../entities/class.entity';
+import { DuplicateClassNameException } from '../exceptions/duplicate-class-name.exception';
 import { EntityStatus } from '../../../common/enums/status.enum';
 
 describe('ClassService', () => {
@@ -22,6 +23,9 @@ describe('ClassService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
     school: undefined as never,
     grade: undefined as never,
     academicYear: undefined as never,
@@ -31,7 +35,9 @@ describe('ClassService', () => {
     const mockRepository = {
       findAll: jest.fn(),
       findById: jest.fn(),
-      findByNameInGradeAndYear: jest.fn(),
+      findBySchool: jest.fn(),
+      findByGradeAndYear: jest.fn(),
+      findByNameGradeYear: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
@@ -57,7 +63,7 @@ describe('ClassService', () => {
       const query = { page: 1, limit: 10, sortOrder: 'ASC' as const };
       repository.findAll.mockResolvedValue([[mockClass], 1]);
 
-      const result = await service.findAll(query);
+      const result = await service.findAll(query, 'school-uuid');
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
@@ -70,7 +76,7 @@ describe('ClassService', () => {
     it('should return a class by id', async () => {
       repository.findById.mockResolvedValue(mockClass);
 
-      const result = await service.findById('class-uuid-1');
+      const result = await service.findById('class-uuid-1', 'school-uuid');
 
       expect(result).toEqual(mockClass);
     });
@@ -78,7 +84,9 @@ describe('ClassService', () => {
     it('should throw NotFoundException if not found', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findById('nonexistent', 'school-uuid'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -91,20 +99,22 @@ describe('ClassService', () => {
         name: '10A1',
       };
 
-      repository.findByNameInGradeAndYear.mockResolvedValue(null);
+      repository.findByNameGradeYear.mockResolvedValue(null);
       repository.create.mockResolvedValue(mockClass);
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, 'school-uuid');
 
       expect(result).toEqual(mockClass);
-      expect(repository.findByNameInGradeAndYear).toHaveBeenCalledWith(
+      expect(repository.findByNameGradeYear).toHaveBeenCalledWith(
+        '10A1',
         'grade-uuid',
         'year-uuid',
-        '10A1',
+        'school-uuid',
+        undefined,
       );
     });
 
-    it('should throw BadRequestException if name already exists in same grade+year', async () => {
+    it('should throw DuplicateClassNameException if name already exists in same grade+year', async () => {
       const dto = {
         schoolId: 'school-uuid',
         gradeId: 'grade-uuid',
@@ -112,9 +122,11 @@ describe('ClassService', () => {
         name: '10A1',
       };
 
-      repository.findByNameInGradeAndYear.mockResolvedValue(mockClass);
+      repository.findByNameGradeYear.mockResolvedValue(mockClass);
 
-      await expect(service.create(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(dto, 'school-uuid')).rejects.toThrow(
+        DuplicateClassNameException,
+      );
     });
 
     it('should allow same name in different grade', async () => {
@@ -125,10 +137,13 @@ describe('ClassService', () => {
         name: '10A1',
       };
 
-      repository.findByNameInGradeAndYear.mockResolvedValue(null);
-      repository.create.mockResolvedValue({ ...mockClass, gradeId: 'different-grade-uuid' });
+      repository.findByNameGradeYear.mockResolvedValue(null);
+      repository.create.mockResolvedValue({
+        ...mockClass,
+        gradeId: 'different-grade-uuid',
+      });
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, 'school-uuid');
 
       expect(result.gradeId).toBe('different-grade-uuid');
     });
@@ -141,12 +156,27 @@ describe('ClassService', () => {
         name: '10A1',
       };
 
-      repository.findByNameInGradeAndYear.mockResolvedValue(null);
-      repository.create.mockResolvedValue({ ...mockClass, academicYearId: 'different-year-uuid' });
+      repository.findByNameGradeYear.mockResolvedValue(null);
+      repository.create.mockResolvedValue({
+        ...mockClass,
+        academicYearId: 'different-year-uuid',
+      });
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, 'school-uuid');
 
       expect(result.academicYearId).toBe('different-year-uuid');
+    });
+
+    it('should throw BadRequestException if schoolId is not provided', async () => {
+      const dto = {
+        gradeId: 'grade-uuid',
+        academicYearId: 'year-uuid',
+        name: '10A1',
+      };
+
+      await expect(service.create(dto, null)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -156,57 +186,68 @@ describe('ClassService', () => {
       const updated = { ...mockClass, name: '10A2' };
 
       repository.findById.mockResolvedValue(mockClass);
-      repository.findByNameInGradeAndYear.mockResolvedValue(null);
+      repository.findByNameGradeYear.mockResolvedValue(null);
       repository.update.mockResolvedValue(updated);
 
-      const result = await service.update('class-uuid-1', dto);
+      const result = await service.update('class-uuid-1', dto, 'school-uuid');
 
       expect(result.name).toBe('10A2');
     });
 
-    it('should throw BadRequestException if updated name conflicts with existing class', async () => {
+    it('should throw DuplicateClassNameException if updated name conflicts with existing class', async () => {
       const dto = { name: '10A2' };
-      const existingOther: ClassEntity = { ...mockClass, id: 'class-uuid-2', name: '10A2' };
+      const existingOther: ClassEntity = {
+        ...mockClass,
+        id: 'class-uuid-2',
+        name: '10A2',
+      };
 
       repository.findById.mockResolvedValue(mockClass);
-      repository.findByNameInGradeAndYear.mockResolvedValue(existingOther);
+      repository.findByNameGradeYear.mockResolvedValue(existingOther);
 
-      await expect(service.update('class-uuid-1', dto)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update('class-uuid-1', dto, 'school-uuid'),
+      ).rejects.toThrow(DuplicateClassNameException);
     });
 
-    it('should allow updating to same name (same entity)', async () => {
-      const dto = { name: '10A1' };
+    it('should allow updating without name change', async () => {
+      const dto = { studentCount: 40 };
 
       repository.findById.mockResolvedValue(mockClass);
-      repository.findByNameInGradeAndYear.mockResolvedValue(mockClass); // same entity
-      repository.update.mockResolvedValue(mockClass);
+      repository.update.mockResolvedValue({ ...mockClass, studentCount: 40 });
 
-      const result = await service.update('class-uuid-1', dto);
+      const result = await service.update('class-uuid-1', dto, 'school-uuid');
 
-      expect(result.name).toBe('10A1');
+      expect(result.studentCount).toBe(40);
+      expect(repository.findByNameGradeYear).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if class not found during update', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.update('nonexistent', { name: 'Test' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('nonexistent', { name: 'Test' }, 'school-uuid'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should validate uniqueness with new gradeId when provided', async () => {
       const dto = { name: '10A1', gradeId: 'new-grade-uuid' };
 
       repository.findById.mockResolvedValue(mockClass);
-      repository.findByNameInGradeAndYear.mockResolvedValue(null);
-      repository.update.mockResolvedValue({ ...mockClass, gradeId: 'new-grade-uuid' });
+      repository.findByNameGradeYear.mockResolvedValue(null);
+      repository.update.mockResolvedValue({
+        ...mockClass,
+        gradeId: 'new-grade-uuid',
+      });
 
-      await service.update('class-uuid-1', dto);
+      await service.update('class-uuid-1', dto, 'school-uuid');
 
-      expect(repository.findByNameInGradeAndYear).toHaveBeenCalledWith(
+      expect(repository.findByNameGradeYear).toHaveBeenCalledWith(
+        '10A1',
         'new-grade-uuid',
         'year-uuid',
-        '10A1',
+        'school-uuid',
+        'class-uuid-1',
       );
     });
 
@@ -214,15 +255,20 @@ describe('ClassService', () => {
       const dto = { name: '10A1', academicYearId: 'new-year-uuid' };
 
       repository.findById.mockResolvedValue(mockClass);
-      repository.findByNameInGradeAndYear.mockResolvedValue(null);
-      repository.update.mockResolvedValue({ ...mockClass, academicYearId: 'new-year-uuid' });
+      repository.findByNameGradeYear.mockResolvedValue(null);
+      repository.update.mockResolvedValue({
+        ...mockClass,
+        academicYearId: 'new-year-uuid',
+      });
 
-      await service.update('class-uuid-1', dto);
+      await service.update('class-uuid-1', dto, 'school-uuid');
 
-      expect(repository.findByNameInGradeAndYear).toHaveBeenCalledWith(
+      expect(repository.findByNameGradeYear).toHaveBeenCalledWith(
+        '10A1',
         'grade-uuid',
         'new-year-uuid',
-        '10A1',
+        'school-uuid',
+        'class-uuid-1',
       );
     });
   });
@@ -232,7 +278,7 @@ describe('ClassService', () => {
       repository.findById.mockResolvedValue(mockClass);
       repository.softDelete.mockResolvedValue(undefined);
 
-      await service.remove('class-uuid-1');
+      await service.remove('class-uuid-1', 'school-uuid');
 
       expect(repository.softDelete).toHaveBeenCalledWith('class-uuid-1');
     });
@@ -240,7 +286,9 @@ describe('ClassService', () => {
     it('should throw NotFoundException if not found during delete', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.remove('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.remove('nonexistent', 'school-uuid'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

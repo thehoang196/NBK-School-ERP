@@ -87,7 +87,11 @@ export class DependencyExtractor {
     }
   }
 
-  private visitVariableRefs(node: ASTNode, variableCodes: Set<string>, vars: Set<string>): void {
+  private visitVariableRefs(
+    node: ASTNode,
+    variableCodes: Set<string>,
+    vars: Set<string>,
+  ): void {
     switch (node.type) {
       case 'Identifier':
         if (variableCodes.has(node.name)) {

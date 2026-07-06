@@ -72,7 +72,9 @@ export class CreateTeachers1748900007000 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "IDX_teachers_status"`);
     await queryRunner.query(`DROP INDEX "IDX_teachers_department_id"`);
     await queryRunner.query(`DROP INDEX "IDX_teachers_school_id"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP CONSTRAINT "FK_teachers_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP CONSTRAINT "FK_teachers_school"`,
+    );
     await queryRunner.query(`DROP TABLE "teachers"`);
     await queryRunner.query(`DROP TYPE "teacher_status_enum"`);
     await queryRunner.query(`DROP TYPE "teacher_type_enum"`);

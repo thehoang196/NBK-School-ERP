@@ -22,7 +22,7 @@ export class TeacherSubjectService {
     teacherId: string,
     subjectIds: string[],
   ): Promise<TeacherSubjectEntity[]> {
-    const teacher = await this.teacherRepository.findById(teacherId);
+    const teacher = await this.teacherRepository.findByIdInternal(teacherId);
     if (!teacher) {
       throw new NotFoundException('Không tìm thấy giáo viên');
     }
@@ -63,8 +63,12 @@ export class TeacherSubjectService {
     });
   }
 
-  async removeAssignment(teacherId: string, assignmentId: string): Promise<void> {
-    const assignment = await this.teacherSubjectRepository.findById(assignmentId);
+  async removeAssignment(
+    teacherId: string,
+    assignmentId: string,
+  ): Promise<void> {
+    const assignment =
+      await this.teacherSubjectRepository.findById(assignmentId);
     if (!assignment || assignment.teacherId !== teacherId) {
       throw new NotFoundException('Không tìm thấy liên kết môn học giảng dạy');
     }
@@ -72,7 +76,8 @@ export class TeacherSubjectService {
   }
 
   async getSubjectsForTeacher(teacherId: string): Promise<SubjectEntity[]> {
-    const links = await this.teacherSubjectRepository.findByTeacherId(teacherId);
+    const links =
+      await this.teacherSubjectRepository.findByTeacherId(teacherId);
     return links.map((link) => link.subject);
   }
 
@@ -81,14 +86,17 @@ export class TeacherSubjectService {
    * GET /teachers/:teacherId/subjects để frontend có đủ thông tin gỡ (DELETE
    * .../subjects/:assignmentId) từng môn học cụ thể.
    */
-  async getAssignmentsForTeacher(teacherId: string): Promise<TeacherSubjectEntity[]> {
+  async getAssignmentsForTeacher(
+    teacherId: string,
+  ): Promise<TeacherSubjectEntity[]> {
     return this.teacherSubjectRepository.findByTeacherId(teacherId);
   }
 
   async getSubjectsMapForTeachers(
     teacherIds: string[],
   ): Promise<Map<string, SubjectEntity[]>> {
-    const links = await this.teacherSubjectRepository.findByTeacherIds(teacherIds);
+    const links =
+      await this.teacherSubjectRepository.findByTeacherIds(teacherIds);
     const map = new Map<string, SubjectEntity[]>();
 
     for (const teacherId of teacherIds) {
@@ -105,7 +113,10 @@ export class TeacherSubjectService {
   }
 
   async hasAssignment(teacherId: string, subjectId: string): Promise<boolean> {
-    const link = await this.teacherSubjectRepository.findOne(teacherId, subjectId);
+    const link = await this.teacherSubjectRepository.findOne(
+      teacherId,
+      subjectId,
+    );
     return link !== null;
   }
 }

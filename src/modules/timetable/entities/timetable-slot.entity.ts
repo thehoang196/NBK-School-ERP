@@ -9,12 +9,15 @@ import { RoomEntity } from '../../room/entities/room.entity';
 
 @Entity('timetable_slots')
 export class TimetableSlotEntity extends BaseEntity {
+  @Column({ name: 'school_id', type: 'uuid' })
+  schoolId: string;
+
   @Column({ name: 'version_id', type: 'uuid' })
   versionId: string;
 
-  @ManyToOne(() => TimetableVersionEntity, (version) => version.slots)
+  @ManyToOne(() => TimetableVersionEntity, (v) => v.slots)
   @JoinColumn({ name: 'version_id' })
-  version: TimetableVersionEntity;
+  timetableVersion: TimetableVersionEntity;
 
   @Column({ name: 'day_of_week', type: 'smallint' })
   dayOfWeek: number; // 2-7 (Thứ 2 - Thứ 7)

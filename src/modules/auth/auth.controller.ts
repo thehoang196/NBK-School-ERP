@@ -1,5 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService, LoginResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -10,15 +11,18 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
+  @Throttle({ strict: { ttl: 60000, limit: 10 } })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Đăng nhập' })
   @ApiResponse({ status: 200, description: 'Đăng nhập thành công' })
   @ApiResponse({ status: 401, description: 'Sai thông tin đăng nhập' })
+  @ApiResponse({ status: 429, description: 'Quá nhiều yêu cầu' })
   async login(@Body() dto: LoginDto): Promise<LoginResponse> {
     return this.authService.login(dto);
   }
 
   @Post('register')
+  @Throttle({ strict: { ttl: 60000, limit: 10 } })
   @ApiOperation({ summary: 'Đăng ký tài khoản (chỉ dành cho admin)' })
   @ApiResponse({ status: 201, description: 'Tạo tài khoản thành công' })
   @ApiResponse({ status: 409, description: 'Email đã tồn tại' })

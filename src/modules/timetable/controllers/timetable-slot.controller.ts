@@ -19,7 +19,10 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { TimetableService, SlotWithConflicts } from '../services/timetable.service';
+import {
+  TimetableService,
+  SlotWithConflicts,
+} from '../services/timetable.service';
 import { CreateTimetableSlotDto } from '../dto/create-timetable-slot.dto';
 import { UpdateTimetableSlotDto } from '../dto/update-timetable-slot.dto';
 import { CheckConflictsDto } from '../dto/check-conflicts.dto';
@@ -28,6 +31,11 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { SchoolScopeGuard } from '../../../common/guards/school-scope.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { SchoolScope } from '../../../common/decorators/school-scope.decorator';
+import {
+  CurrentUser,
+  CurrentUserPayload,
+} from '../../../common/decorators/current-user.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
 import { ApiResponse as ApiResponseType } from '../../../common/interfaces/api-response.interface';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
@@ -41,8 +49,15 @@ export class TimetableSlotController {
   constructor(private readonly timetableService: TimetableService) {}
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER, UserRole.TEACHER)
-  @ApiOperation({ summary: 'Lấy danh sách slot TKB (filter by version, class, teacher)' })
+  @Roles(
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.SCHEDULER,
+    UserRole.TEACHER,
+  )
+  @ApiOperation({
+    summary: 'Lấy danh sách slot TKB (filter by version, class, teacher)',
+  })
   @ApiResponse({ status: 200, description: 'Thành công' })
   async findAll(
     @Query() query: TimetableSlotQueryDto,
@@ -61,10 +76,16 @@ export class TimetableSlotController {
   @ApiOperation({ summary: 'Tạo slot TKB (kéo-thả)' })
   @ApiResponse({ status: 201, description: 'Tạo thành công' })
   @ApiResponse({ status: 400, description: 'Xung đột không thể bỏ qua' })
+  @ApiResponse({
+    status: 422,
+    description: 'Phát hiện xung đột cứng hoặc mềm cần ghi đè',
+  })
   async create(
     @Body() dto: CreateTimetableSlotDto,
+    @SchoolScope() schoolId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ): Promise<ApiResponseType<SlotWithConflicts>> {
-    const data = await this.timetableService.createSlot(dto);
+    const data = await this.timetableService.createSlot(dto, schoolId, user.id);
     return {
       success: true,
       data,
@@ -79,11 +100,22 @@ export class TimetableSlotController {
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
   @ApiResponse({ status: 400, description: 'Xung đột' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
+  @ApiResponse({
+    status: 422,
+    description: 'Phát hiện xung đột cứng hoặc mềm cần ghi đè',
+  })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTimetableSlotDto,
+    @SchoolScope() schoolId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ): Promise<ApiResponseType<SlotWithConflicts>> {
-    const data = await this.timetableService.updateSlot(id, dto);
+    const data = await this.timetableService.updateSlot(
+      id,
+      dto,
+      schoolId,
+      user.id,
+    );
     return {
       success: true,
       data,

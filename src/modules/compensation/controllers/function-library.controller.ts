@@ -1,9 +1,10 @@
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { FunctionLibraryService } from '../services/function-library.service';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -15,7 +16,9 @@ import { UserRole } from '../../../common/enums/role.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/compensation/functions')
 export class FunctionLibraryController {
-  constructor(private readonly functionLibraryService: FunctionLibraryService) {}
+  constructor(
+    private readonly functionLibraryService: FunctionLibraryService,
+  ) {}
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)

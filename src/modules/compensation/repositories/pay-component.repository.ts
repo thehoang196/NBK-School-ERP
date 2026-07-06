@@ -11,11 +11,15 @@ export class PayComponentRepository {
     private readonly repo: Repository<PayComponentEntity>,
   ) {}
 
-  async findAll(query: PayComponentQueryDto): Promise<[PayComponentEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, type, status, search } = query;
+  async findAll(
+    query: PayComponentQueryDto,
+  ): Promise<[PayComponentEntity[], number]> {
+    const { page, limit, sortBy, sortOrder, schoolId, type, status, search } =
+      query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('pc')
+    const queryBuilder = this.repo
+      .createQueryBuilder('pc')
       .where('pc.deletedAt IS NULL');
 
     if (schoolId) {
@@ -54,7 +58,10 @@ export class PayComponentRepository {
     });
   }
 
-  async findByCode(code: string, schoolId: string): Promise<PayComponentEntity | null> {
+  async findByCode(
+    code: string,
+    schoolId: string,
+  ): Promise<PayComponentEntity | null> {
     return this.repo.findOne({
       where: { code, schoolId, deletedAt: IsNull() },
     });
@@ -62,7 +69,8 @@ export class PayComponentRepository {
 
   async findByIds(ids: string[]): Promise<PayComponentEntity[]> {
     if (ids.length === 0) return [];
-    return this.repo.createQueryBuilder('pc')
+    return this.repo
+      .createQueryBuilder('pc')
       .where('pc.id IN (:...ids)', { ids })
       .andWhere('pc.deletedAt IS NULL')
       .getMany();
@@ -73,7 +81,10 @@ export class PayComponentRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<PayComponentEntity>): Promise<PayComponentEntity | null> {
+  async update(
+    id: string,
+    data: Partial<PayComponentEntity>,
+  ): Promise<PayComponentEntity | null> {
     await this.repo.update(id, data);
     return this.findById(id);
   }

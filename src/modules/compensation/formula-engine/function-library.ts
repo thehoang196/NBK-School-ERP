@@ -19,7 +19,8 @@ export const FUNCTION_LIBRARY: Record<string, FunctionDefinition> = {
     params: [{ name: 'values', type: 'number[]', required: true }],
     returnType: 'number',
     example: 'SUM(100, 200, 300)',
-    implementation: (...args: number[]) => args.reduce((sum, val) => sum + val, 0),
+    implementation: (...args: number[]) =>
+      args.reduce((sum, val) => sum + val, 0),
   },
 
   ROUND: {
@@ -91,7 +92,8 @@ export const FUNCTION_LIBRARY: Record<string, FunctionDefinition> = {
   // Logic functions
   IF: {
     name: 'IF',
-    description: 'Điều kiện: nếu condition != 0 thì trả true_value, ngược lại trả false_value',
+    description:
+      'Điều kiện: nếu condition != 0 thì trả true_value, ngược lại trả false_value',
     params: [
       { name: 'condition', type: 'number', required: true },
       { name: 'true_value', type: 'number', required: true },
@@ -152,7 +154,10 @@ export function getAvailableFunctionNames(): Set<string> {
 /**
  * Get function implementations as a Record for the Evaluator
  */
-export function getFunctionImplementations(): Record<string, (...args: number[]) => number> {
+export function getFunctionImplementations(): Record<
+  string,
+  (...args: number[]) => number
+> {
   const fns: Record<string, (...args: number[]) => number> = {};
   for (const [name, def] of Object.entries(FUNCTION_LIBRARY)) {
     fns[name] = def.implementation;

@@ -12,11 +12,23 @@ export class PolicyRepository {
     private readonly repo: Repository<CompensationPolicyEntity>,
   ) {}
 
-  async findAll(query: PolicyQueryDto): Promise<[CompensationPolicyEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, campusId, schoolLevel, status } = query;
+  async findAll(
+    query: PolicyQueryDto,
+  ): Promise<[CompensationPolicyEntity[], number]> {
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      schoolId,
+      campusId,
+      schoolLevel,
+      status,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('p')
+    const queryBuilder = this.repo
+      .createQueryBuilder('p')
       .where('p.deletedAt IS NULL');
 
     if (schoolId) {
@@ -58,19 +70,27 @@ export class PolicyRepository {
     schoolLevel: string | null,
     asOfDate: string,
   ): Promise<CompensationPolicyEntity[]> {
-    const queryBuilder = this.repo.createQueryBuilder('p')
+    const queryBuilder = this.repo
+      .createQueryBuilder('p')
       .where('p.schoolId = :schoolId', { schoolId })
       .andWhere('p.status = :status', { status: EntityStatus.ACTIVE })
       .andWhere('p.deletedAt IS NULL')
       .andWhere('p.effectiveFrom <= :asOfDate', { asOfDate })
-      .andWhere('(p.effectiveTo IS NULL OR p.effectiveTo >= :asOfDate)', { asOfDate });
+      .andWhere('(p.effectiveTo IS NULL OR p.effectiveTo >= :asOfDate)', {
+        asOfDate,
+      });
 
     if (campusId) {
-      queryBuilder.andWhere('(p.campusId = :campusId OR p.campusId IS NULL)', { campusId });
+      queryBuilder.andWhere('(p.campusId = :campusId OR p.campusId IS NULL)', {
+        campusId,
+      });
     }
 
     if (schoolLevel) {
-      queryBuilder.andWhere('(p.schoolLevel = :schoolLevel OR p.schoolLevel IS NULL)', { schoolLevel });
+      queryBuilder.andWhere(
+        '(p.schoolLevel = :schoolLevel OR p.schoolLevel IS NULL)',
+        { schoolLevel },
+      );
     }
 
     return queryBuilder.getMany();
@@ -84,7 +104,8 @@ export class PolicyRepository {
     effectiveTo: string | null,
     excludeId?: string,
   ): Promise<CompensationPolicyEntity[]> {
-    const queryBuilder = this.repo.createQueryBuilder('p')
+    const queryBuilder = this.repo
+      .createQueryBuilder('p')
       .where('p.schoolId = :schoolId', { schoolId })
       .andWhere('p.status = :status', { status: EntityStatus.ACTIVE })
       .andWhere('p.deletedAt IS NULL')
@@ -115,12 +136,17 @@ export class PolicyRepository {
     return queryBuilder.getMany();
   }
 
-  async create(data: Partial<CompensationPolicyEntity>): Promise<CompensationPolicyEntity> {
+  async create(
+    data: Partial<CompensationPolicyEntity>,
+  ): Promise<CompensationPolicyEntity> {
     const entity = this.repo.create(data);
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<CompensationPolicyEntity>): Promise<CompensationPolicyEntity | null> {
+  async update(
+    id: string,
+    data: Partial<CompensationPolicyEntity>,
+  ): Promise<CompensationPolicyEntity | null> {
     await this.repo.update(id, data as Record<string, unknown>);
     return this.findById(id);
   }

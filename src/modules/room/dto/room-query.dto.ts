@@ -1,29 +1,26 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, Matches } from 'class-validator';
+import { IsOptional, IsString, IsEnum } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { RoomType, RoomStatus } from '../../../common/enums/status.enum';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export class RoomQueryDto extends PaginationDto {
-  @ApiPropertyOptional({ description: 'Lọc theo trường' })
-  @IsOptional()
-  @IsString()
-  @Matches(UUID_REGEX, { message: 'schoolId phải là UUID hợp lệ' })
-  schoolId?: string;
-
   @ApiPropertyOptional({ enum: RoomType, description: 'Lọc theo loại phòng' })
   @IsOptional()
-  @IsEnum(RoomType)
+  @IsEnum(RoomType, { message: 'Loại phòng không hợp lệ' })
   roomType?: RoomType;
 
   @ApiPropertyOptional({ enum: RoomStatus, description: 'Lọc theo trạng thái' })
   @IsOptional()
-  @IsEnum(RoomStatus)
+  @IsEnum(RoomStatus, { message: 'Trạng thái phòng không hợp lệ' })
   status?: RoomStatus;
 
-  @ApiPropertyOptional({ description: 'Tìm kiếm theo tên hoặc mã' })
+  @ApiPropertyOptional({ description: 'Lọc theo tòa nhà', example: 'A' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Tòa nhà phải là chuỗi' })
+  building?: string;
+
+  @ApiPropertyOptional({ description: 'Tìm kiếm theo tên hoặc mã phòng' })
+  @IsOptional()
+  @IsString({ message: 'Từ khóa tìm kiếm phải là chuỗi' })
   search?: string;
 }

@@ -52,11 +52,17 @@ export class CreatePeriodDefinitions1748900004000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "IDX_period_definitions_session_number"`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_period_definitions_session_number"`,
+    );
     await queryRunner.query(`DROP INDEX "IDX_period_definitions_session_id"`);
     await queryRunner.query(`DROP INDEX "IDX_period_definitions_school_id"`);
-    await queryRunner.query(`ALTER TABLE "period_definitions" DROP CONSTRAINT "FK_period_definitions_session"`);
-    await queryRunner.query(`ALTER TABLE "period_definitions" DROP CONSTRAINT "FK_period_definitions_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "period_definitions" DROP CONSTRAINT "FK_period_definitions_session"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "period_definitions" DROP CONSTRAINT "FK_period_definitions_school"`,
+    );
     await queryRunner.query(`DROP TABLE "period_definitions"`);
   }
 }

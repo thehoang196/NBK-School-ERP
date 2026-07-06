@@ -8,7 +8,9 @@ export enum ExportViewType {
 }
 
 export class ExportQueryDto {
-  @ApiPropertyOptional({ description: 'ID phiên bản TKB (nếu không truyền sẽ lấy bản đang công bố)' })
+  @ApiPropertyOptional({
+    description: 'ID phiên bản TKB (nếu không truyền sẽ lấy bản đang công bố)',
+  })
   @IsOptional()
   @IsUUID()
   versionId?: string;

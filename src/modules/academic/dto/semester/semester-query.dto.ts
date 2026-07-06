@@ -1,19 +1,25 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, Matches } from 'class-validator';
+import { IsOptional, IsEnum, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../../../common/dto/pagination.dto';
 import { AcademicStatus } from '../../../../common/enums/status.enum';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export class SemesterQueryDto extends PaginationDto {
-  @ApiPropertyOptional({ description: 'Lọc theo năm học' })
+  @ApiPropertyOptional({
+    description: 'Lọc theo ID năm học',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    format: 'uuid',
+  })
   @IsOptional()
-  @IsString()
-  @Matches(UUID_REGEX, { message: 'academicYearId phải là UUID hợp lệ' })
+  @IsUUID('4', { message: 'academicYearId phải là UUID hợp lệ' })
   academicYearId?: string;
 
-  @ApiPropertyOptional({ enum: AcademicStatus, description: 'Lọc theo trạng thái' })
+  @ApiPropertyOptional({
+    description: 'Lọc theo trạng thái',
+    enum: AcademicStatus,
+  })
   @IsOptional()
-  @IsEnum(AcademicStatus)
+  @IsEnum(AcademicStatus, {
+    message: 'Trạng thái phải là một trong: planning, active, completed',
+  })
   status?: AcademicStatus;
 }

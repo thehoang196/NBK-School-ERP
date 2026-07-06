@@ -17,7 +17,9 @@ export class TeacherSubjectRepository {
     });
   }
 
-  async findByTeacherIds(teacherIds: string[]): Promise<TeacherSubjectEntity[]> {
+  async findByTeacherIds(
+    teacherIds: string[],
+  ): Promise<TeacherSubjectEntity[]> {
     if (teacherIds.length === 0) {
       return [];
     }
@@ -27,7 +29,10 @@ export class TeacherSubjectRepository {
     });
   }
 
-  async findOne(teacherId: string, subjectId: string): Promise<TeacherSubjectEntity | null> {
+  async findOne(
+    teacherId: string,
+    subjectId: string,
+  ): Promise<TeacherSubjectEntity | null> {
     return this.repo.findOne({
       where: { teacherId, subjectId, deletedAt: IsNull() },
     });
@@ -39,12 +44,14 @@ export class TeacherSubjectRepository {
     });
   }
 
-  async create(data: Partial<TeacherSubjectEntity>): Promise<TeacherSubjectEntity> {
+  async create(
+    data: Partial<TeacherSubjectEntity>,
+  ): Promise<TeacherSubjectEntity> {
     const entity = this.repo.create(data);
     return this.repo.save(entity);
   }
 
   async softDelete(id: string): Promise<void> {
-    await this.repo.softDelete(id);
+    await this.repo.update(id, { deletedAt: new Date() });
   }
 }

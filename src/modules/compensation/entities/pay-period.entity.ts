@@ -21,6 +21,10 @@ export class PayPeriodEntity extends BaseEntity {
   @Column({ name: 'end_date', type: 'date' })
   endDate: string;
 
-  @Column({ type: 'enum', enum: PayPeriodStatus, default: PayPeriodStatus.OPEN })
+  @Column({
+    type: 'enum',
+    enum: PayPeriodStatus,
+    default: PayPeriodStatus.OPEN,
+  })
   status: PayPeriodStatus;
 }

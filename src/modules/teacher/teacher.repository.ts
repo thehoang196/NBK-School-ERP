@@ -11,29 +11,51 @@ export class TeacherRepository {
     private readonly repo: Repository<TeacherEntity>,
   ) {}
 
-  async findAll(query: TeacherQueryDto): Promise<[TeacherEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, gradeId, departmentId, status, search } = query;
+  async findBySchool(schoolId: string): Promise<TeacherEntity[]> {
+    return this.repo.find({
+      where: { schoolId, deletedAt: IsNull() },
+      relations: { grade: true, department: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAll(
+    query: TeacherQueryDto,
+    schoolId: string,
+  ): Promise<[TeacherEntity[], number]> {
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      departmentId,
+      status,
+      teacherType,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('teacher')
+    const queryBuilder = this.repo
+      .createQueryBuilder('teacher')
       .leftJoinAndSelect('teacher.grade', 'grade')
       .leftJoinAndSelect('teacher.department', 'department')
-      .where('teacher.deletedAt IS NULL');
-
-    if (schoolId) {
-      queryBuilder.andWhere('teacher.schoolId = :schoolId', { schoolId });
-    }
-
-    if (gradeId) {
-      queryBuilder.andWhere('teacher.gradeId = :gradeId', { gradeId });
-    }
+      .where('teacher.deletedAt IS NULL')
+      .andWhere('teacher.schoolId = :schoolId', { schoolId });
 
     if (departmentId) {
-      queryBuilder.andWhere('teacher.departmentId = :departmentId', { departmentId });
+      queryBuilder.andWhere('teacher.departmentId = :departmentId', {
+        departmentId,
+      });
     }
 
     if (status) {
       queryBuilder.andWhere('teacher.status = :status', { status });
+    }
+
+    if (teacherType) {
+      queryBuilder.andWhere('teacher.teacherType = :teacherType', {
+        teacherType,
+      });
     }
 
     if (search) {
@@ -54,10 +76,30 @@ export class TeacherRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findById(id: string): Promise<TeacherEntity | null> {
+  async findById(id: string, schoolId: string): Promise<TeacherEntity | null> {
+    return this.repo.findOne({
+      where: { id, schoolId, deletedAt: IsNull() },
+      relations: { school: true, grade: true, department: true },
+    });
+  }
+
+  /**
+   * Internal lookup without schoolId scope — used by cross-module services
+   * that need to validate teacher existence before knowing the school context.
+   */
+  async findByIdInternal(id: string): Promise<TeacherEntity | null> {
     return this.repo.findOne({
       where: { id, deletedAt: IsNull() },
       relations: { school: true, grade: true, department: true },
+    });
+  }
+
+  async findByEmployeeCode(
+    employeeCode: string,
+    schoolId: string,
+  ): Promise<TeacherEntity | null> {
+    return this.repo.findOne({
+      where: { employeeCode, schoolId, deletedAt: IsNull() },
     });
   }
 
@@ -66,12 +108,16 @@ export class TeacherRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<TeacherEntity>): Promise<TeacherEntity | null> {
-    await this.repo.update(id, data);
-    return this.findById(id);
+  async update(
+    id: string,
+    schoolId: string,
+    data: Partial<TeacherEntity>,
+  ): Promise<TeacherEntity | null> {
+    await this.repo.update({ id, schoolId, deletedAt: IsNull() }, data);
+    return this.findById(id, schoolId);
   }
 
-  async softDelete(id: string): Promise<void> {
-    await this.repo.softDelete(id);
+  async softDelete(id: string, schoolId: string): Promise<void> {
+    await this.repo.softDelete({ id, schoolId });
   }
 }

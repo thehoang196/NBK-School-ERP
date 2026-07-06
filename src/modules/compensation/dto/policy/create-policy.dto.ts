@@ -14,7 +14,10 @@ export class CreatePolicyDto {
   @IsUUID()
   schoolId: string;
 
-  @ApiProperty({ description: 'Tên chính sách', example: 'Chính sách lương GV THPT' })
+  @ApiProperty({
+    description: 'Tên chính sách',
+    example: 'Chính sách lương GV THPT',
+  })
   @IsString()
   @MaxLength(100)
   name: string;
@@ -30,7 +33,10 @@ export class CreatePolicyDto {
   @MaxLength(50)
   schoolLevel?: string;
 
-  @ApiProperty({ description: 'Danh sách ID thành phần lương áp dụng', type: [String] })
+  @ApiProperty({
+    description: 'Danh sách ID thành phần lương áp dụng',
+    type: [String],
+  })
   @IsArray()
   @ArrayMinSize(1)
   @IsUUID('4', { each: true })

@@ -1,9 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { SemesterRepository } from '../repositories/semester.repository';
 import { AcademicYearRepository } from '../repositories/academic-year.repository';
 import { SemesterEntity } from '../entities/semester.entity';
-import { CreateSemesterDto, UpdateSemesterDto, SemesterQueryDto } from '../dto/semester';
+import {
+  CreateSemesterDto,
+  UpdateSemesterDto,
+  SemesterQueryDto,
+} from '../dto/semester';
 import { PaginatedResponse } from '../../../common/interfaces/api-response.interface';
+import { SemesterOutOfRangeException } from '../exceptions/semester-out-of-range.exception';
 
 @Injectable()
 export class SemesterService {
@@ -12,8 +21,14 @@ export class SemesterService {
     private readonly academicYearRepository: AcademicYearRepository,
   ) {}
 
-  async findAll(query: SemesterQueryDto): Promise<PaginatedResponse<SemesterEntity>> {
-    const [data, total] = await this.semesterRepository.findAll(query);
+  async findAll(
+    schoolId: string,
+    query: SemesterQueryDto,
+  ): Promise<PaginatedResponse<SemesterEntity>> {
+    const [data, total] = await this.semesterRepository.findAll(
+      schoolId,
+      query,
+    );
     const totalPages = Math.ceil(total / query.limit);
 
     return {
@@ -29,20 +44,29 @@ export class SemesterService {
     };
   }
 
-  async findById(id: string): Promise<SemesterEntity> {
-    const semester = await this.semesterRepository.findById(id);
+  async findById(id: string, schoolId?: string): Promise<SemesterEntity> {
+    const semester = await this.semesterRepository.findById(id, schoolId);
     if (!semester) {
       throw new NotFoundException('Không tìm thấy học kỳ');
     }
     return semester;
   }
 
-  async findByAcademicYear(academicYearId: string): Promise<SemesterEntity[]> {
-    return this.semesterRepository.findByAcademicYear(academicYearId);
+  async findByAcademicYear(
+    academicYearId: string,
+    schoolId?: string,
+  ): Promise<SemesterEntity[]> {
+    return this.semesterRepository.findByAcademicYear(academicYearId, schoolId);
   }
 
-  async create(dto: CreateSemesterDto): Promise<SemesterEntity> {
-    const academicYear = await this.academicYearRepository.findById(dto.academicYearId);
+  async create(
+    schoolId: string,
+    dto: CreateSemesterDto,
+  ): Promise<SemesterEntity> {
+    const academicYear = await this.academicYearRepository.findById(
+      dto.academicYearId,
+      schoolId,
+    );
     if (!academicYear) {
       throw new NotFoundException('Không tìm thấy năm học');
     }
@@ -64,11 +88,18 @@ export class SemesterService {
     });
   }
 
-  async update(id: string, dto: UpdateSemesterDto): Promise<SemesterEntity> {
-    const semester = await this.findById(id);
+  async update(
+    id: string,
+    schoolId: string,
+    dto: UpdateSemesterDto,
+  ): Promise<SemesterEntity> {
+    const semester = await this.findById(id, schoolId);
 
     if (dto.startDate || dto.endDate) {
-      const academicYear = await this.academicYearRepository.findById(semester.academicYearId);
+      const academicYear = await this.academicYearRepository.findById(
+        semester.academicYearId,
+        schoolId,
+      );
       if (!academicYear) {
         throw new NotFoundException('Không tìm thấy năm học');
       }
@@ -91,8 +122,8 @@ export class SemesterService {
     return updated;
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findById(id);
+  async remove(id: string, schoolId: string): Promise<void> {
+    await this.findById(id, schoolId);
     await this.semesterRepository.softDelete(id);
   }
 
@@ -108,15 +139,15 @@ export class SemesterService {
     const yearEnd = new Date(yearEndDate);
 
     if (semStart >= semEnd) {
-      throw new BadRequestException('Ngày bắt đầu học kỳ phải trước ngày kết thúc');
+      throw new BadRequestException(
+        'Ngày bắt đầu học kỳ phải trước ngày kết thúc',
+      );
     }
 
-    if (semStart < yearStart || semStart > yearEnd) {
-      throw new BadRequestException('Ngày bắt đầu học kỳ phải nằm trong năm học');
-    }
-
-    if (semEnd < yearStart || semEnd > yearEnd) {
-      throw new BadRequestException('Ngày kết thúc học kỳ phải nằm trong năm học');
+    if (semStart < yearStart || semEnd > yearEnd) {
+      throw new SemesterOutOfRangeException(
+        'Ngày của học kỳ phải nằm trong phạm vi ngày của năm học',
+      );
     }
   }
 }

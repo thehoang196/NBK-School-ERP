@@ -12,7 +12,10 @@ export class CreateFormulaDto {
   @IsNotEmpty()
   schoolId: string;
 
-  @ApiProperty({ description: 'Biểu thức công thức', example: 'BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS' })
+  @ApiProperty({
+    description: 'Biểu thức công thức',
+    example: 'BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS',
+  })
   @IsString()
   @IsNotEmpty()
   expression: string;

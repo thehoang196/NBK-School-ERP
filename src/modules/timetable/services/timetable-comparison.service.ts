@@ -38,7 +38,10 @@ export class TimetableComparisonService {
     private readonly versionRepo: TimetableVersionRepository,
   ) {}
 
-  async compareVersions(versionAId: string, versionBId: string): Promise<CompareResult> {
+  async compareVersions(
+    versionAId: string,
+    versionBId: string,
+  ): Promise<CompareResult> {
     const versionA = await this.versionRepo.findById(versionAId);
     const versionB = await this.versionRepo.findById(versionBId);
 
@@ -109,23 +112,29 @@ export class TimetableComparisonService {
       versionBId,
       versionBName: versionB.name,
       totalDiffs: diffs.length,
-      added: diffs.filter(d => d.type === DiffType.ADDED).length,
-      removed: diffs.filter(d => d.type === DiffType.REMOVED).length,
-      modified: diffs.filter(d => d.type === DiffType.MODIFIED).length,
+      added: diffs.filter((d) => d.type === DiffType.ADDED).length,
+      removed: diffs.filter((d) => d.type === DiffType.REMOVED).length,
+      modified: diffs.filter((d) => d.type === DiffType.MODIFIED).length,
       diffs,
     };
   }
 
-  private findChanges(slotA: TimetableSlotEntity, slotB: TimetableSlotEntity): string[] {
+  private findChanges(
+    slotA: TimetableSlotEntity,
+    slotB: TimetableSlotEntity,
+  ): string[] {
     const changes: string[] = [];
     if (slotA.teacherId !== slotB.teacherId) changes.push('teacherId');
     if (slotA.subjectId !== slotB.subjectId) changes.push('subjectId');
     if (slotA.roomId !== slotB.roomId) changes.push('roomId');
-    if (slotA.isDoublePeriod !== slotB.isDoublePeriod) changes.push('isDoublePeriod');
+    if (slotA.isDoublePeriod !== slotB.isDoublePeriod)
+      changes.push('isDoublePeriod');
     return changes;
   }
 
-  private extractSlotInfo(slot: TimetableSlotEntity): Partial<TimetableSlotEntity> {
+  private extractSlotInfo(
+    slot: TimetableSlotEntity,
+  ): Partial<TimetableSlotEntity> {
     return {
       id: slot.id,
       teacherId: slot.teacherId,

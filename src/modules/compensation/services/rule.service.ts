@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { RuleRepository } from '../repositories/rule.repository';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { RuleEntity } from '../entities/rule.entity';
@@ -48,11 +52,18 @@ export class RuleService {
     return entity;
   }
 
-  async create(dto: CreateRuleDto, performedBy?: string): Promise<{ rule: RuleEntity; warnings: ConflictWarning[] }> {
+  async create(
+    dto: CreateRuleDto,
+    performedBy?: string,
+  ): Promise<{ rule: RuleEntity; warnings: ConflictWarning[] }> {
     const priority = dto.priority ?? 0;
 
     // Check for conflicts at same priority
-    const warnings = await this.detectConflicts(dto.schoolId, priority, dto.conditions as RuleCondition[]);
+    const warnings = await this.detectConflicts(
+      dto.schoolId,
+      priority,
+      dto.conditions as RuleCondition[],
+    );
 
     const entity = await this.ruleRepository.create({
       schoolId: dto.schoolId,
@@ -79,7 +90,11 @@ export class RuleService {
     return { rule: entity, warnings };
   }
 
-  async update(id: string, dto: UpdateRuleDto, performedBy?: string): Promise<{ rule: RuleEntity; warnings: ConflictWarning[] }> {
+  async update(
+    id: string,
+    dto: UpdateRuleDto,
+    performedBy?: string,
+  ): Promise<{ rule: RuleEntity; warnings: ConflictWarning[] }> {
     const entity = await this.findById(id);
     const oldValue = { ...entity } as unknown as Record<string, unknown>;
 
@@ -88,13 +103,21 @@ export class RuleService {
     // Check conflicts if priority or conditions changed
     if (dto.priority !== undefined || dto.conditions !== undefined) {
       const priority = dto.priority ?? entity.priority;
-      const conditions = (dto.conditions as RuleCondition[] | undefined) ?? entity.conditions;
-      warnings = await this.detectConflicts(entity.schoolId, priority, conditions, id);
+      const conditions =
+        (dto.conditions as RuleCondition[] | undefined) ?? entity.conditions;
+      warnings = await this.detectConflicts(
+        entity.schoolId,
+        priority,
+        conditions,
+        id,
+      );
     }
 
     const updated = await this.ruleRepository.update(id, {
       ...(dto.name !== undefined && { name: dto.name }),
-      ...(dto.conditions !== undefined && { conditions: dto.conditions as RuleCondition[] }),
+      ...(dto.conditions !== undefined && {
+        conditions: dto.conditions as RuleCondition[],
+      }),
       ...(dto.actionType !== undefined && { actionType: dto.actionType }),
       ...(dto.actionTarget !== undefined && { actionTarget: dto.actionTarget }),
       ...(dto.actionValue !== undefined && { actionValue: dto.actionValue }),
@@ -146,14 +169,20 @@ export class RuleService {
     conditions: RuleCondition[],
     excludeRuleId?: string,
   ): Promise<ConflictWarning[]> {
-    const samePriorityRules = await this.ruleRepository.findByPriorityAndSchool(priority, schoolId);
+    const samePriorityRules = await this.ruleRepository.findByPriorityAndSchool(
+      priority,
+      schoolId,
+    );
     const warnings: ConflictWarning[] = [];
 
     for (const existingRule of samePriorityRules) {
       if (excludeRuleId && existingRule.id === excludeRuleId) continue;
 
       // Check if conditions overlap (simplified: check if same fields are targeted)
-      const overlap = this.hasConditionOverlap(conditions, existingRule.conditions);
+      const overlap = this.hasConditionOverlap(
+        conditions,
+        existingRule.conditions,
+      );
       if (overlap) {
         warnings.push({
           conflictingRuleId: existingRule.id,
@@ -171,7 +200,10 @@ export class RuleService {
    * Check if two sets of conditions potentially overlap.
    * Simple heuristic: if they target the same fields with similar scope.
    */
-  private hasConditionOverlap(conditionsA: RuleCondition[], conditionsB: RuleCondition[]): boolean {
+  private hasConditionOverlap(
+    conditionsA: RuleCondition[],
+    conditionsB: RuleCondition[],
+  ): boolean {
     const fieldsA = new Set(conditionsA.map((c) => c.field));
     const fieldsB = new Set(conditionsB.map((c) => c.field));
 

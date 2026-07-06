@@ -59,16 +59,28 @@ export class UpdateEventDto {
   @IsObject()
   recurrenceRule?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'Danh sách ID khối bị ảnh hưởng', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Danh sách ID khối bị ảnh hưởng',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true, message: 'Mỗi phần tử affectedGrades phải là UUID hợp lệ' })
+  @IsUUID('4', {
+    each: true,
+    message: 'Mỗi phần tử affectedGrades phải là UUID hợp lệ',
+  })
   affectedGrades?: string[];
 
-  @ApiPropertyOptional({ description: 'Danh sách ID lớp bị ảnh hưởng', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Danh sách ID lớp bị ảnh hưởng',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true, message: 'Mỗi phần tử affectedClasses phải là UUID hợp lệ' })
+  @IsUUID('4', {
+    each: true,
+    message: 'Mỗi phần tử affectedClasses phải là UUID hợp lệ',
+  })
   affectedClasses?: string[];
 
   @ApiPropertyOptional({ enum: EventStatus })

@@ -128,8 +128,14 @@ export class CreatePayComponents1749200000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.dropIndex('pay_components', 'IDX_PAY_COMPONENTS_STATUS');
     await queryRunner.dropIndex('pay_components', 'IDX_PAY_COMPONENTS_TYPE');
-    await queryRunner.dropIndex('pay_components', 'IDX_PAY_COMPONENTS_SCHOOL_CODE_UNIQUE');
-    await queryRunner.dropIndex('pay_components', 'IDX_PAY_COMPONENTS_SCHOOL_ID');
+    await queryRunner.dropIndex(
+      'pay_components',
+      'IDX_PAY_COMPONENTS_SCHOOL_CODE_UNIQUE',
+    );
+    await queryRunner.dropIndex(
+      'pay_components',
+      'IDX_PAY_COMPONENTS_SCHOOL_ID',
+    );
     await queryRunner.dropTable('pay_components');
     await queryRunner.query('DROP TYPE "pay_component_type_enum"');
   }

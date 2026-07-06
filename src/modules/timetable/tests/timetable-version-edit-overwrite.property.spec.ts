@@ -14,7 +14,7 @@ import { TimetableSlotRepository } from '../repositories/timetable-slot.reposito
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
 import { CreateSlotDto } from '../dto/create-slot.dto';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 import { DataSource } from 'typeorm';
 
 describe('Feature: timetable-management-features, Property 12: Edit overwrites same version (no new version created)', () => {
@@ -51,7 +51,7 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
       id,
       name: 'Draft Version',
       versionNumber,
-      status: TimetableStatus.DRAFT,
+      status: TimetableVersionStatus.DRAFT,
       semesterId: '00000000-0000-0000-0000-000000000001',
       effectiveDate: null,
       note: null,
@@ -86,14 +86,21 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
         uuidArb,
         versionNumberArb,
         slotsArrayArb,
-        async (versionId: string, versionNumber: number, slots: CreateSlotDto[]) => {
+        async (
+          versionId: string,
+          versionNumber: number,
+          slots: CreateSlotDto[],
+        ) => {
           // Track all operations performed by the transaction
           const operations: string[] = [];
           let versionSaveCallCount = 0;
           let versionCreateCallCount = 0;
 
           // Mock: version exists with DRAFT status
-          const versionEntity = buildDraftVersionEntity(versionId, versionNumber);
+          const versionEntity = buildDraftVersionEntity(
+            versionId,
+            versionNumber,
+          );
           mockVersionRepo.findById.mockResolvedValue(versionEntity);
 
           // Mock transaction to execute the callback and track operations
@@ -109,8 +116,9 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
                     return Promise.resolve({});
                   }),
                 }),
-                create: jest.fn().mockImplementation(
-                  (entity: unknown, data: unknown) => {
+                create: jest
+                  .fn()
+                  .mockImplementation((entity: unknown, data: unknown) => {
                     if (entity === TimetableVersionEntity) {
                       versionCreateCallCount++;
                       operations.push('create-version');
@@ -118,10 +126,10 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
                       operations.push('create-slot');
                     }
                     return data;
-                  },
-                ),
-                save: jest.fn().mockImplementation(
-                  (entity: unknown, data: unknown) => {
+                  }),
+                save: jest
+                  .fn()
+                  .mockImplementation((entity: unknown, data: unknown) => {
                     if (entity === TimetableVersionEntity) {
                       versionSaveCallCount++;
                       operations.push('save-version');
@@ -129,8 +137,7 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
                       operations.push('save-slots');
                     }
                     return Promise.resolve(Array.isArray(data) ? data : data);
-                  },
-                ),
+                  }),
               };
               return cb(mockManager);
             },
@@ -162,9 +169,16 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
         uuidArb,
         versionNumberArb,
         slotsArrayArb,
-        async (versionId: string, versionNumber: number, slots: CreateSlotDto[]) => {
+        async (
+          versionId: string,
+          versionNumber: number,
+          slots: CreateSlotDto[],
+        ) => {
           // Mock: version exists with DRAFT status
-          const versionEntity = buildDraftVersionEntity(versionId, versionNumber);
+          const versionEntity = buildDraftVersionEntity(
+            versionId,
+            versionNumber,
+          );
           mockVersionRepo.findById.mockResolvedValue(versionEntity);
 
           // Mock transaction
@@ -177,7 +191,11 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
                   where: jest.fn().mockReturnThis(),
                   execute: jest.fn().mockResolvedValue({}),
                 }),
-                create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
+                create: jest
+                  .fn()
+                  .mockImplementation(
+                    (_entity: unknown, data: unknown) => data,
+                  ),
                 save: jest.fn().mockResolvedValue([]),
               };
               return cb(mockManager);
@@ -237,15 +255,19 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
                   where: jest.fn().mockReturnThis(),
                   execute: jest.fn().mockResolvedValue({}),
                 }),
-                create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
-                save: jest.fn().mockImplementation(
-                  (entity: unknown, data: unknown) => {
+                create: jest
+                  .fn()
+                  .mockImplementation(
+                    (_entity: unknown, data: unknown) => data,
+                  ),
+                save: jest
+                  .fn()
+                  .mockImplementation((entity: unknown, data: unknown) => {
                     if (entity === TimetableVersionEntity) {
                       versionEntityModified = true;
                     }
                     return Promise.resolve(Array.isArray(data) ? data : data);
-                  },
-                ),
+                  }),
               };
               return cb(mockManager);
             },
@@ -259,7 +281,9 @@ describe('Feature: timetable-management-features, Property 12: Edit overwrites s
 
           // Assert: version entity fields remain the same
           expect(versionEntity.id).toBe(originalVersion.id);
-          expect(versionEntity.versionNumber).toBe(originalVersion.versionNumber);
+          expect(versionEntity.versionNumber).toBe(
+            originalVersion.versionNumber,
+          );
           expect(versionEntity.name).toBe(originalVersion.name);
           expect(versionEntity.status).toBe(originalVersion.status);
           expect(versionEntity.semesterId).toBe(originalVersion.semesterId);

@@ -1,24 +1,30 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { ClassRepository } from '../repositories/class.repository';
 import { ClassEntity } from '../entities/class.entity';
 import { CreateClassDto } from '../dto/create-class.dto';
 import { UpdateClassDto } from '../dto/update-class.dto';
 import { ClassQueryDto } from '../dto/class-query.dto';
+import { DuplicateClassNameException } from '../exceptions/duplicate-class-name.exception';
 import { PaginatedResponse } from '../../../common/interfaces/api-response.interface';
-import { AcademicYearEntity } from '../../academic/entities/academic-year.entity';
 
 @Injectable()
 export class ClassService {
-  constructor(
-    private readonly classRepository: ClassRepository,
-    @InjectRepository(AcademicYearEntity)
-    private readonly academicYearRepo: Repository<AcademicYearEntity>,
-  ) {}
+  constructor(private readonly classRepository: ClassRepository) {}
 
-  async findAll(query: ClassQueryDto): Promise<PaginatedResponse<ClassEntity>> {
-    const [data, total] = await this.classRepository.findAll(query);
+  /**
+   * Lấy danh sách lớp với filter gradeId, academicYearId, status, search
+   * Hỗ trợ phân trang
+   */
+  async findAll(
+    query: ClassQueryDto,
+    schoolScope?: string | null,
+  ): Promise<PaginatedResponse<ClassEntity>> {
+    const schoolId = schoolScope || query.schoolId || '';
+    const [data, total] = await this.classRepository.findAll(query, schoolId);
     const totalPages = Math.ceil(total / query.limit);
 
     return {
@@ -34,63 +40,104 @@ export class ClassService {
     };
   }
 
-  async findById(id: string): Promise<ClassEntity> {
-    const classEntity = await this.classRepository.findById(id);
+  /**
+   * Tìm lớp theo ID, filter theo schoolId (multi-tenant)
+   * Throw NotFoundException nếu không tìm thấy
+   */
+  async findById(id: string, schoolId?: string): Promise<ClassEntity> {
+    const classEntity = await this.classRepository.findById(id, schoolId);
     if (!classEntity) {
       throw new NotFoundException('Không tìm thấy lớp');
     }
     return classEntity;
   }
 
-  async create(dto: CreateClassDto): Promise<ClassEntity> {
-    let academicYearId = dto.academicYearId;
-
-    if (!academicYearId) {
-      const currentYear = await this.academicYearRepo.findOne({
-        where: { schoolId: dto.schoolId, isCurrent: true, deletedAt: IsNull() },
-      });
-      if (!currentYear) {
-        throw new BadRequestException('Không tìm thấy năm học hiện tại. Vui lòng thiết lập năm học trước.');
-      }
-      academicYearId = currentYear.id;
+  /**
+   * Tạo lớp mới
+   * Business rule: validate không trùng tên lớp trong cùng khối và năm học (REQ-7.2)
+   * Throw DuplicateClassNameException nếu trùng
+   */
+  async create(
+    dto: CreateClassDto,
+    schoolScope?: string | null,
+  ): Promise<ClassEntity> {
+    const schoolId = schoolScope || dto.schoolId;
+    if (!schoolId) {
+      throw new BadRequestException('schoolId là bắt buộc');
     }
 
-    const existing = await this.classRepository.findByNameInGradeAndYear(
-      dto.gradeId,
-      academicYearId,
+    await this.validateUniqueClassName(
       dto.name,
+      dto.gradeId,
+      dto.academicYearId,
+      schoolId,
     );
-    if (existing) {
-      throw new BadRequestException('Tên lớp đã tồn tại trong khối và năm học này');
-    }
-    return this.classRepository.create({ ...dto, academicYearId });
+
+    return this.classRepository.create({ ...dto, schoolId });
   }
 
-  async update(id: string, dto: UpdateClassDto): Promise<ClassEntity> {
-    const classEntity = await this.findById(id);
+  /**
+   * Cập nhật thông tin lớp
+   * Business rule: validate không trùng tên lớp trong cùng khối và năm học khi thay đổi (REQ-7.2)
+   * Throw DuplicateClassNameException nếu trùng
+   */
+  async update(
+    id: string,
+    dto: UpdateClassDto,
+    schoolScope?: string | null,
+  ): Promise<ClassEntity> {
+    const classEntity = await this.findById(id, schoolScope || undefined);
+    const schoolId = schoolScope || classEntity.schoolId;
 
-    if (dto.name) {
+    if (dto.name || dto.gradeId || dto.academicYearId) {
+      const name = dto.name || classEntity.name;
       const gradeId = dto.gradeId || classEntity.gradeId;
       const academicYearId = dto.academicYearId || classEntity.academicYearId;
-      const existing = await this.classRepository.findByNameInGradeAndYear(
+
+      await this.validateUniqueClassName(
+        name,
         gradeId,
         academicYearId,
-        dto.name,
+        schoolId,
+        id,
       );
-      if (existing && existing.id !== id) {
-        throw new BadRequestException('Tên lớp đã tồn tại trong khối và năm học này');
-      }
     }
 
-    const updated = await this.classRepository.update(id, dto);
+    const updated = await this.classRepository.update(id, { ...dto, schoolId });
     if (!updated) {
       throw new NotFoundException('Không tìm thấy lớp');
     }
     return updated;
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findById(id);
+  /**
+   * Xóa mềm lớp
+   */
+  async remove(id: string, schoolScope?: string | null): Promise<void> {
+    await this.findById(id, schoolScope || undefined);
     await this.classRepository.softDelete(id);
+  }
+
+  /**
+   * Validate không trùng tên lớp trong cùng khối và năm học (REQ-7.2)
+   * @throws DuplicateClassNameException nếu đã tồn tại lớp cùng tên trong khối + năm học + trường
+   */
+  private async validateUniqueClassName(
+    name: string,
+    gradeId: string,
+    academicYearId: string,
+    schoolId: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const existing = await this.classRepository.findByNameGradeYear(
+      name,
+      gradeId,
+      academicYearId,
+      schoolId,
+      excludeId,
+    );
+    if (existing) {
+      throw new DuplicateClassNameException();
+    }
   }
 }

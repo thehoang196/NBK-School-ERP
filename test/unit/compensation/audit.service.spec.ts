@@ -86,7 +86,10 @@ describe('AuditService', () => {
 
   describe('findAll', () => {
     it('should return paginated audit logs', async () => {
-      repository.findAllWithFilters.mockResolvedValue([[mockAuditLog], 1] as never);
+      repository.findAllWithFilters.mockResolvedValue([
+        [mockAuditLog],
+        1,
+      ] as never);
 
       const result = await service.findAll({
         page: 1,

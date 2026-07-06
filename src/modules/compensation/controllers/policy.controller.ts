@@ -9,7 +9,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PolicyService } from '../services/policy.service';
 import { CreatePolicyDto } from '../dto/policy/create-policy.dto';
 import { UpdatePolicyDto } from '../dto/policy/update-policy.dto';
@@ -47,7 +52,10 @@ export class PolicyController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Tạo chính sách lương mới' })
   @ApiResponse({ status: 201, description: 'Tạo thành công' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc trùng phạm vi' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dữ liệu không hợp lệ hoặc trùng phạm vi',
+  })
   async create(@Body() dto: CreatePolicyDto) {
     return this.policyService.create(dto);
   }

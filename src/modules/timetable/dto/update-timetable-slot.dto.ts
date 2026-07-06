@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsUUID, IsInt, Min, Max, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsUUID,
+  IsInt,
+  Min,
+  Max,
+  IsBoolean,
+} from 'class-validator';
 
 export class UpdateTimetableSlotDto {
   @ApiPropertyOptional({ description: 'Ngày trong tuần (2=Thứ 2, 7=Thứ 7)' })

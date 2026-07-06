@@ -14,7 +14,10 @@ export class FormulaQueryDto extends PaginationDto {
   @IsUUID()
   payComponentId?: string;
 
-  @ApiPropertyOptional({ description: 'Lọc theo trạng thái', enum: FormulaStatus })
+  @ApiPropertyOptional({
+    description: 'Lọc theo trạng thái',
+    enum: FormulaStatus,
+  })
   @IsOptional()
   @IsEnum(FormulaStatus)
   status?: FormulaStatus;

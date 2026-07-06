@@ -99,12 +99,16 @@ describe('FormulaService', () => {
     it('should return formula by id', async () => {
       formulaRepository.findById.mockResolvedValue(mockFormula as any);
       const result = await service.findById(mockFormula.id);
-      expect(result.expression).toBe('BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS');
+      expect(result.expression).toBe(
+        'BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS',
+      );
     });
 
     it('should throw NotFoundException', async () => {
       formulaRepository.findById.mockResolvedValue(null);
-      await expect(service.findById('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -127,7 +131,9 @@ describe('FormulaService', () => {
         expression: 'BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS',
       });
 
-      expect(result.expression).toBe('BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS');
+      expect(result.expression).toBe(
+        'BASIC_SALARY * WORKING_DAYS / STANDARD_DAYS',
+      );
       expect(formulaRepository.create).toHaveBeenCalled();
     });
 
@@ -156,18 +162,29 @@ describe('FormulaService', () => {
       ]);
       formulaRepository.findPublishedBySchool.mockResolvedValue([]);
       formulaRepository.findPublishedByPayComponent.mockResolvedValue(null);
-      payComponentRepository.findById.mockResolvedValue({ id: 'pc-1', code: 'NET_SALARY' } as any);
-      formulaRepository.update.mockResolvedValue({ ...draftFormula, status: FormulaStatus.PUBLISHED } as any);
+      payComponentRepository.findById.mockResolvedValue({
+        id: 'pc-1',
+        code: 'NET_SALARY',
+      } as any);
+      formulaRepository.update.mockResolvedValue({
+        ...draftFormula,
+        status: FormulaStatus.PUBLISHED,
+      } as any);
 
       const result = await service.publish(mockFormula.id);
       expect(result.status).toBe(FormulaStatus.PUBLISHED);
     });
 
     it('should reject publishing already published formula', async () => {
-      const publishedFormula = { ...mockFormula, status: FormulaStatus.PUBLISHED };
+      const publishedFormula = {
+        ...mockFormula,
+        status: FormulaStatus.PUBLISHED,
+      };
       formulaRepository.findById.mockResolvedValue(publishedFormula as any);
 
-      await expect(service.publish(mockFormula.id)).rejects.toThrow(BadRequestException);
+      await expect(service.publish(mockFormula.id)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -204,10 +221,18 @@ describe('FormulaService', () => {
   describe('rollback', () => {
     it('should create new version with old content', async () => {
       const version1 = { ...mockFormula, version: 1, expression: 'A + B' };
-      const version2 = { ...mockFormula, id: 'formula-v2', version: 2, expression: 'A * B' };
+      const version2 = {
+        ...mockFormula,
+        id: 'formula-v2',
+        version: 2,
+        expression: 'A * B',
+      };
 
       formulaRepository.findById.mockResolvedValue(version2 as any);
-      formulaRepository.findByPayComponentId.mockResolvedValue([version2, version1] as any);
+      formulaRepository.findByPayComponentId.mockResolvedValue([
+        version2,
+        version1,
+      ] as any);
       formulaRepository.getMaxVersion.mockResolvedValue(2);
       formulaRepository.create.mockResolvedValue({
         ...version1,

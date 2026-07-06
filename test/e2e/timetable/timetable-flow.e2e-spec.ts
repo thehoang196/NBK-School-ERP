@@ -4,15 +4,22 @@ import { DataSource } from 'typeorm';
 import { BadRequestException } from '@nestjs/common';
 import { TimetableVersionService } from '../../../src/modules/timetable/services/timetable-version.service';
 import { TimetablePublishService } from '../../../src/modules/timetable/services/timetable-publish.service';
-import { ConflictDetectionService, ConflictType } from '../../../src/modules/timetable/services/conflict-detection.service';
+import {
+  ConflictDetectionService,
+  ConflictType,
+} from '../../../src/modules/timetable/services/conflict-detection.service';
 import { TimetableVersionRepository } from '../../../src/modules/timetable/repositories/timetable-version.repository';
 import { TimetableSlotRepository } from '../../../src/modules/timetable/repositories/timetable-slot.repository';
 import { TimetableVersionEntity } from '../../../src/modules/timetable/entities/timetable-version.entity';
 import { TimetableSlotEntity } from '../../../src/modules/timetable/entities/timetable-slot.entity';
 import { ActualTimetableSlotEntity } from '../../../src/modules/timetable/entities/actual-timetable-slot.entity';
 import { TimetablePublishedEvent } from '../../../src/modules/timetable/events/timetable-published.event';
-import { TimetableStatus, SlotStatus } from '../../../src/common/enums/status.enum';
+import {
+  TimetableVersionStatus,
+  SlotStatus,
+} from '../../../src/common/enums/status.enum';
 import { WeekEntity } from '../../../src/modules/academic/entities/week.entity';
+import { WeekType } from '../../../src/modules/academic/enums';
 
 /**
  * Integration test: Timetable Generate → Publish Flow
@@ -49,29 +56,47 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
   const roomId = 'room-001';
   const weekId = 'week-001';
 
-  const createMockVersion = (overrides: Partial<TimetableVersionEntity> = {}): TimetableVersionEntity => ({
+  const createMockVersion = (
+    overrides: Partial<TimetableVersionEntity> = {},
+  ): TimetableVersionEntity => ({
     id: versionId,
     schoolId: null,
     school: null,
     semesterId,
     name: 'TKB HK1 v1',
     versionNumber: 1,
-    status: TimetableStatus.DRAFT,
+    status: TimetableVersionStatus.DRAFT,
     effectiveDate: '2024-09-01',
     publishedAt: null,
     publishedBy: null,
     note: null,
+    jobId: null,
+    generationStartedAt: null,
+    generationCompletedAt: null,
+    generationDurationMs: null,
+    errorMessage: null,
+    errorStack: null,
+    hasConflicts: false,
+    conflictCount: 0,
+    conflictDetails: null,
+    totalSlots: 0,
+    version: 1,
     createdAt: new Date('2024-08-01'),
     updatedAt: new Date('2024-08-01'),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
     slots: [],
     semester: undefined as never,
     ...overrides,
   });
 
-  const createMockSlot = (overrides: Partial<TimetableSlotEntity> = {}): TimetableSlotEntity => ({
+  const createMockSlot = (
+    overrides: Partial<TimetableSlotEntity> = {},
+  ): TimetableSlotEntity => ({
     id: 'slot-001',
     versionId,
+    schoolId: 'school-001',
     dayOfWeek: 2,
     periodId,
     classId,
@@ -82,7 +107,10 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
     createdAt: new Date('2024-08-01'),
     updatedAt: new Date('2024-08-01'),
     deletedAt: null,
-    version: undefined as never,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
+    timetableVersion: undefined as never,
     period: undefined as never,
     class: undefined as never,
     teacher: undefined as never,
@@ -93,15 +121,21 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
 
   const createMockWeek = (overrides: Partial<WeekEntity> = {}): WeekEntity => ({
     id: weekId,
+    schoolId: 'school-001',
+    school: undefined as never,
     semesterId,
     weekNumber: 1,
     startDate: '2024-09-02',
     endDate: '2024-09-08',
     note: null,
+    weekType: WeekType.REGULAR,
     isHoliday: false,
     createdAt: new Date('2024-08-01'),
     updatedAt: new Date('2024-08-01'),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
     semester: undefined as never,
     ...overrides,
   });
@@ -142,20 +176,29 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
         return Promise.resolve(data);
       }),
       findOne: jest.fn().mockImplementation((_entity, options) => {
-        transactionOperations.findOnes.push({ entity: _entity, where: options });
-        return Promise.resolve(createMockVersion({
-          status: TimetableStatus.PUBLISHED,
-          publishedAt: new Date(),
-          publishedBy: userId,
-        }));
+        transactionOperations.findOnes.push({
+          entity: _entity,
+          where: options,
+        });
+        return Promise.resolve(
+          createMockVersion({
+            status: TimetableVersionStatus.PUBLISHED,
+            publishedAt: new Date(),
+            publishedBy: userId,
+          }),
+        );
       }),
     };
 
     // Mock DataSource with transaction support and getRepository for weeks
     mockDataSource = {
-      transaction: jest.fn().mockImplementation(async (cb: (manager: typeof mockManager) => Promise<unknown>) => {
-        return cb(mockManager);
-      }),
+      transaction: jest
+        .fn()
+        .mockImplementation(
+          async (cb: (manager: typeof mockManager) => Promise<unknown>) => {
+            return cb(mockManager);
+          },
+        ),
       getRepository: jest.fn().mockImplementation(() => ({
         createQueryBuilder: jest.fn().mockReturnValue({
           where: jest.fn().mockReturnThis(),
@@ -170,19 +213,25 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
     // Mock version repository
     mockVersionRepo = {
       getNextVersionNumber: jest.fn().mockResolvedValue(1),
-      create: jest.fn().mockImplementation((data) => Promise.resolve(createMockVersion(data))),
+      create: jest
+        .fn()
+        .mockImplementation((data) => Promise.resolve(createMockVersion(data))),
       findById: jest.fn().mockResolvedValue(createMockVersion()),
       findPublished: jest.fn().mockResolvedValue(null),
-      update: jest.fn().mockImplementation((id, data) =>
-        Promise.resolve(createMockVersion({ id, ...data })),
-      ),
+      update: jest
+        .fn()
+        .mockImplementation((id, data) =>
+          Promise.resolve(createMockVersion({ id, ...data })),
+        ),
       publish: jest.fn().mockImplementation((id) =>
-        Promise.resolve(createMockVersion({
-          id,
-          status: TimetableStatus.PUBLISHED,
-          publishedAt: new Date(),
-          publishedBy: userId,
-        })),
+        Promise.resolve(
+          createMockVersion({
+            id,
+            status: TimetableVersionStatus.PUBLISHED,
+            publishedAt: new Date(),
+            publishedBy: userId,
+          }),
+        ),
       ),
       findAll: jest.fn().mockResolvedValue([[], 0]),
       findBySemester: jest.fn().mockResolvedValue([]),
@@ -192,10 +241,18 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
 
     // Mock slot repository
     mockSlotRepo = {
-      create: jest.fn().mockImplementation((data) => Promise.resolve(createMockSlot(data))),
-      createMany: jest.fn().mockImplementation((data) =>
-        Promise.resolve(data.map((d: Partial<TimetableSlotEntity>, i: number) => createMockSlot({ id: `slot-${i}`, ...d }))),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation((data) => Promise.resolve(createMockSlot(data))),
+      createMany: jest
+        .fn()
+        .mockImplementation((data) =>
+          Promise.resolve(
+            data.map((d: Partial<TimetableSlotEntity>, i: number) =>
+              createMockSlot({ id: `slot-${i}`, ...d }),
+            ),
+          ),
+        ),
       findByVersion: jest.fn().mockResolvedValue([createMockSlot()]),
       findById: jest.fn().mockResolvedValue(createMockSlot()),
       findConflicts: jest.fn().mockResolvedValue([]),
@@ -242,9 +299,15 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       })
       .compile();
 
-    versionService = module.get<TimetableVersionService>(TimetableVersionService);
-    publishService = module.get<TimetablePublishService>(TimetablePublishService);
-    conflictDetection = module.get<ConflictDetectionService>(ConflictDetectionService);
+    versionService = module.get<TimetableVersionService>(
+      TimetableVersionService,
+    );
+    publishService = module.get<TimetablePublishService>(
+      TimetablePublishService,
+    );
+    conflictDetection = module.get<ConflictDetectionService>(
+      ConflictDetectionService,
+    );
     eventEmitter = module.get<EventEmitter2>(EventEmitter2);
   });
 
@@ -262,9 +325,11 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       });
 
       expect(version).toBeDefined();
-      expect(version.status).toBe(TimetableStatus.DRAFT);
+      expect(version.status).toBe(TimetableVersionStatus.DRAFT);
       expect(version.semesterId).toBe(semesterId);
-      expect(mockVersionRepo.getNextVersionNumber).toHaveBeenCalledWith(semesterId);
+      expect(mockVersionRepo.getNextVersionNumber).toHaveBeenCalledWith(
+        semesterId,
+      );
       expect(mockVersionRepo.create).toHaveBeenCalled();
 
       // Step 2: Add manual slots (simulate slots being created)
@@ -288,8 +353,12 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
 
       // Step 4: Publish the version
       // Configure mock to return slots for publish
-      mockSlotRepo.findByVersion.mockResolvedValue([createMockSlot({ versionId: version.id })]);
-      mockVersionRepo.findById.mockResolvedValue(createMockVersion({ id: version.id }));
+      mockSlotRepo.findByVersion.mockResolvedValue([
+        createMockSlot({ versionId: version.id }),
+      ]);
+      mockVersionRepo.findById.mockResolvedValue(
+        createMockVersion({ id: version.id }),
+      );
 
       // Track event emission
       const emitSpy = jest.spyOn(eventEmitter, 'emit');
@@ -298,13 +367,16 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
 
       // Verify publish result
       expect(result).toBeDefined();
-      expect(result.version.status).toBe(TimetableStatus.PUBLISHED);
+      expect(result.version.status).toBe(TimetableVersionStatus.PUBLISHED);
       expect(result.slotsPublished).toBeGreaterThan(0);
       expect(result.weeksAffected).toBe(1);
 
       // Verify old version was archived (in the transaction)
       const archiveUpdate = transactionOperations.updates.find(
-        (u) => u.data && (u.data as Record<string, unknown>).status === TimetableStatus.ARCHIVED,
+        (u) =>
+          u.data &&
+          (u.data as Record<string, unknown>).status ===
+            TimetableVersionStatus.ARCHIVED,
       );
       expect(archiveUpdate).toBeDefined();
 
@@ -327,7 +399,13 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       // Set up a version with conflicting slots
       const conflictingSlots = [
         createMockSlot({ id: 'slot-1', teacherId, dayOfWeek: 2, periodId }),
-        createMockSlot({ id: 'slot-2', teacherId, dayOfWeek: 2, periodId, classId: 'class-002' }),
+        createMockSlot({
+          id: 'slot-2',
+          teacherId,
+          dayOfWeek: 2,
+          periodId,
+          classId: 'class-002',
+        }),
       ];
 
       // Mock findByVersion to return conflicting slots (same teacher, same time, different class)
@@ -336,11 +414,15 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       // Check conflicts - should detect teacher conflict
       const conflicts = await conflictDetection.checkAllConflicts(versionId);
       expect(conflicts.length).toBeGreaterThan(0);
-      expect(conflicts.some(c => c.type === ConflictType.TEACHER_CONFLICT)).toBe(true);
-      expect(conflicts.some(c => c.severity === 'error')).toBe(true);
+      expect(
+        conflicts.some((c) => c.type === ConflictType.TEACHER_CONFLICT),
+      ).toBe(true);
+      expect(conflicts.some((c) => c.severity === 'error')).toBe(true);
 
       // Attempt to publish should fail because conflicts exist
-      await expect(publishService.publish(versionId, userId)).rejects.toThrow(BadRequestException);
+      await expect(publishService.publish(versionId, userId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should archive previous published version on new publish', async () => {
@@ -348,7 +430,7 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       const oldPublishedVersion = createMockVersion({
         id: oldVersionId,
         versionNumber: 1,
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         publishedAt: new Date('2024-08-15'),
         publishedBy: 'user-prev',
       });
@@ -357,7 +439,7 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       const newDraftVersion = createMockVersion({
         id: versionId,
         versionNumber: 2,
-        status: TimetableStatus.DRAFT,
+        status: TimetableVersionStatus.DRAFT,
       });
 
       mockVersionRepo.findById.mockResolvedValue(newDraftVersion);
@@ -369,11 +451,14 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       const result = await publishService.publish(versionId, userId);
 
       expect(result).toBeDefined();
-      expect(result.version.status).toBe(TimetableStatus.PUBLISHED);
+      expect(result.version.status).toBe(TimetableVersionStatus.PUBLISHED);
 
       // Verify the old version was archived inside the transaction
       const archiveUpdates = transactionOperations.updates.filter(
-        (u) => u.data && (u.data as Record<string, unknown>).status === TimetableStatus.ARCHIVED,
+        (u) =>
+          u.data &&
+          (u.data as Record<string, unknown>).status ===
+            TimetableVersionStatus.ARCHIVED,
       );
       expect(archiveUpdates.length).toBeGreaterThan(0);
 
@@ -381,27 +466,41 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       const archiveOp = archiveUpdates[0];
       expect(archiveOp.criteria).toEqual({
         semesterId,
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
       });
     });
 
     it('should copy slots to actual_timetable_slots for non-holiday weeks', async () => {
       const weeks = [
-        createMockWeek({ id: 'week-1', weekNumber: 1, isHoliday: false }),
-        createMockWeek({ id: 'week-2', weekNumber: 2, isHoliday: true }),
-        createMockWeek({ id: 'week-3', weekNumber: 3, isHoliday: false }),
+        createMockWeek({
+          id: 'week-1',
+          weekNumber: 1,
+          weekType: WeekType.REGULAR,
+        }),
+        createMockWeek({
+          id: 'week-2',
+          weekNumber: 2,
+          weekType: WeekType.HOLIDAY,
+        }),
+        createMockWeek({
+          id: 'week-3',
+          weekNumber: 3,
+          weekType: WeekType.REGULAR,
+        }),
       ];
 
       // Override getRepository to return these weeks
-      (mockDataSource as { getRepository: jest.Mock }).getRepository = jest.fn().mockImplementation(() => ({
-        createQueryBuilder: jest.fn().mockReturnValue({
-          where: jest.fn().mockReturnThis(),
-          andWhere: jest.fn().mockReturnThis(),
-          orderBy: jest.fn().mockReturnThis(),
-          getMany: jest.fn().mockResolvedValue(weeks),
-        }),
-        findOne: jest.fn().mockResolvedValue(null),
-      }));
+      (mockDataSource as { getRepository: jest.Mock }).getRepository = jest
+        .fn()
+        .mockImplementation(() => ({
+          createQueryBuilder: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnThis(),
+            andWhere: jest.fn().mockReturnThis(),
+            orderBy: jest.fn().mockReturnThis(),
+            getMany: jest.fn().mockResolvedValue(weeks),
+          }),
+          findOne: jest.fn().mockResolvedValue(null),
+        }));
 
       const slots = [createMockSlot()];
       mockSlotRepo.findByVersion.mockResolvedValue(slots);
@@ -417,8 +516,18 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
     it('should emit TimetablePublishedEvent with correct teacher list', async () => {
       const slotsWithMultipleTeachers = [
         createMockSlot({ id: 'slot-1', teacherId: 'teacher-001' }),
-        createMockSlot({ id: 'slot-2', teacherId: 'teacher-002', classId: 'class-002', dayOfWeek: 3 }),
-        createMockSlot({ id: 'slot-3', teacherId: 'teacher-001', classId: 'class-003', dayOfWeek: 4 }),
+        createMockSlot({
+          id: 'slot-2',
+          teacherId: 'teacher-002',
+          classId: 'class-002',
+          dayOfWeek: 3,
+        }),
+        createMockSlot({
+          id: 'slot-3',
+          teacherId: 'teacher-001',
+          classId: 'class-003',
+          dayOfWeek: 4,
+        }),
       ];
 
       mockSlotRepo.findByVersion.mockResolvedValue(slotsWithMultipleTeachers);
@@ -447,15 +556,19 @@ describe('Timetable Generate → Publish Flow (Integration)', () => {
       mockSlotRepo.findByVersion.mockResolvedValue([]);
       mockVersionRepo.findById.mockResolvedValue(createMockVersion());
 
-      await expect(publishService.publish(versionId, userId)).rejects.toThrow(BadRequestException);
+      await expect(publishService.publish(versionId, userId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should fail to publish already published version', async () => {
       mockVersionRepo.findById.mockResolvedValue(
-        createMockVersion({ status: TimetableStatus.PUBLISHED }),
+        createMockVersion({ status: TimetableVersionStatus.PUBLISHED }),
       );
 
-      await expect(publishService.publish(versionId, userId)).rejects.toThrow(BadRequestException);
+      await expect(publishService.publish(versionId, userId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

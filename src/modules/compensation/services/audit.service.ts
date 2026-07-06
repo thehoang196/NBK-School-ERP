@@ -35,8 +35,11 @@ export class AuditService {
   /**
    * Find audit logs with filters.
    */
-  async findAll(query: AuditLogQueryDto): Promise<PaginatedResponse<AuditLogEntity>> {
-    const [data, total] = await this.auditLogRepository.findAllWithFilters(query);
+  async findAll(
+    query: AuditLogQueryDto,
+  ): Promise<PaginatedResponse<AuditLogEntity>> {
+    const [data, total] =
+      await this.auditLogRepository.findAllWithFilters(query);
     const totalPages = Math.ceil(total / query.limit);
 
     return {

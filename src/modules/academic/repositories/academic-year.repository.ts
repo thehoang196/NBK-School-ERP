@@ -12,19 +12,26 @@ export class AcademicYearRepository {
     private readonly dataSource: DataSource,
   ) {}
 
-  async findAll(query: AcademicYearQueryDto): Promise<[AcademicYearEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, status } = query;
+  async findAll(
+    schoolId: string,
+    query: AcademicYearQueryDto,
+  ): Promise<[AcademicYearEntity[], number]> {
+    const { page, limit, sortBy, sortOrder, status, isCurrent } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('academicYear')
-      .where('academicYear.deletedAt IS NULL');
-
-    if (schoolId) {
-      queryBuilder.andWhere('academicYear.schoolId = :schoolId', { schoolId });
-    }
+    const queryBuilder = this.repo
+      .createQueryBuilder('academicYear')
+      .where('academicYear.schoolId = :schoolId', { schoolId })
+      .andWhere('academicYear.deletedAt IS NULL');
 
     if (status) {
       queryBuilder.andWhere('academicYear.status = :status', { status });
+    }
+
+    if (isCurrent !== undefined) {
+      queryBuilder.andWhere('academicYear.isCurrent = :isCurrent', {
+        isCurrent,
+      });
     }
 
     if (sortBy) {
@@ -38,9 +45,16 @@ export class AcademicYearRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findById(id: string): Promise<AcademicYearEntity | null> {
+  async findById(
+    id: string,
+    schoolId?: string,
+  ): Promise<AcademicYearEntity | null> {
+    const where: Record<string, unknown> = { id, deletedAt: IsNull() };
+    if (schoolId) {
+      where.schoolId = schoolId;
+    }
     return this.repo.findOne({
-      where: { id, deletedAt: IsNull() },
+      where,
       relations: { school: true },
     });
   }
@@ -52,12 +66,20 @@ export class AcademicYearRepository {
     });
   }
 
+  async findCurrent(schoolId: string): Promise<AcademicYearEntity | null> {
+    return this.repo.findOne({
+      where: { schoolId, isCurrent: true, deletedAt: IsNull() },
+    });
+  }
+
   async create(data: Partial<AcademicYearEntity>): Promise<AcademicYearEntity> {
     const entity = this.repo.create(data);
     return this.repo.save(entity);
   }
 
-  async createWithTransaction(data: Partial<AcademicYearEntity>): Promise<AcademicYearEntity> {
+  async createWithTransaction(
+    data: Partial<AcademicYearEntity>,
+  ): Promise<AcademicYearEntity> {
     return this.dataSource.transaction(async (manager) => {
       if (data.isCurrent) {
         await manager.update(
@@ -71,7 +93,10 @@ export class AcademicYearRepository {
     });
   }
 
-  async update(id: string, data: Partial<AcademicYearEntity>): Promise<AcademicYearEntity | null> {
+  async update(
+    id: string,
+    data: Partial<AcademicYearEntity>,
+  ): Promise<AcademicYearEntity | null> {
     const existing = await this.findById(id);
     if (!existing) return null;
 

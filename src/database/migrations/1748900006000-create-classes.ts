@@ -73,9 +73,15 @@ export class CreateClasses1748900006000 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "IDX_classes_academic_year_id"`);
     await queryRunner.query(`DROP INDEX "IDX_classes_grade_id"`);
     await queryRunner.query(`DROP INDEX "IDX_classes_school_id"`);
-    await queryRunner.query(`ALTER TABLE "classes" DROP CONSTRAINT "FK_classes_academic_year"`);
-    await queryRunner.query(`ALTER TABLE "classes" DROP CONSTRAINT "FK_classes_grade"`);
-    await queryRunner.query(`ALTER TABLE "classes" DROP CONSTRAINT "FK_classes_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "classes" DROP CONSTRAINT "FK_classes_academic_year"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "classes" DROP CONSTRAINT "FK_classes_grade"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "classes" DROP CONSTRAINT "FK_classes_school"`,
+    );
     await queryRunner.query(`DROP TABLE "classes"`);
     await queryRunner.query(`DROP TYPE "entity_status_enum"`);
   }

@@ -1,18 +1,21 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, Matches } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export class DepartmentQueryDto extends PaginationDto {
-  @ApiPropertyOptional({ description: 'Lọc theo trường' })
+  @ApiPropertyOptional({
+    description: 'Lọc theo trường (dùng cho SUPER_ADMIN)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @IsOptional()
-  @IsString()
-  @Matches(UUID_REGEX, { message: 'schoolId phải là UUID hợp lệ' })
+  @IsUUID('4', { message: 'schoolId phải là UUID hợp lệ' })
   schoolId?: string;
 
-  @ApiPropertyOptional({ description: 'Tìm kiếm theo tên' })
+  @ApiPropertyOptional({
+    description: 'Tìm kiếm theo tên tổ bộ môn',
+    example: 'Toán',
+  })
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Từ khóa tìm kiếm phải là chuỗi ký tự' })
   search?: string;
 }

@@ -18,7 +18,9 @@ export class CampusService {
     private readonly schoolRepository: SchoolRepository,
   ) {}
 
-  async findAll(query: CampusQueryDto): Promise<PaginatedResponse<CampusEntity>> {
+  async findAll(
+    query: CampusQueryDto,
+  ): Promise<PaginatedResponse<CampusEntity>> {
     const [campuses, total] = await this.campusRepository.findAll(
       query,
       query.schoolId,

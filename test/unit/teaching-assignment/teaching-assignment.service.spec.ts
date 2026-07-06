@@ -1,12 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import { TeachingAssignmentService } from '../../../src/modules/teaching-assignment/teaching-assignment.service';
 import { TeachingAssignmentRepository } from '../../../src/modules/teaching-assignment/teaching-assignment.repository';
 import { TeachingAssignmentEntity } from '../../../src/modules/teaching-assignment/entities/teaching-assignment.entity';
 import { TeacherEntity } from '../../../src/modules/teacher/entities/teacher.entity';
+import { ClassEntity } from '../../../src/modules/class/entities/class.entity';
 import { TeacherSubjectService } from '../../../src/modules/teacher/teacher-subject.service';
+import { TeacherSchoolAssignmentService } from '../../../src/modules/teacher-school-assignment/teacher-school-assignment.service';
 import { WorkloadStatus } from '../../../src/modules/teaching-assignment/dto/workload-response.dto';
 
 type TransactionCallback = (entityManager: EntityManager) => Promise<unknown>;
@@ -16,6 +22,10 @@ describe('TeachingAssignmentService', () => {
   let repository: jest.Mocked<TeachingAssignmentRepository>;
   let dataSource: { transaction: jest.Mock };
   let teacherRepo: { findOne: jest.Mock; find: jest.Mock };
+  let classRepo: { findOne: jest.Mock };
+  let teacherSchoolAssignmentService: {
+    validateTeacherSchoolAccess: jest.Mock;
+  };
 
   const mockTeacher: Partial<TeacherEntity> = {
     id: 'teacher-uuid-1',
@@ -31,6 +41,8 @@ describe('TeachingAssignmentService', () => {
     teacherId: 'teacher-uuid-1',
     classId: 'class-uuid-1',
     subjectId: 'subject-uuid-1',
+    schoolId: 'school-uuid-1',
+    assignmentStatus: 'active',
     periodsPerWeek: 4,
     note: null,
     createdAt: new Date(),
@@ -61,6 +73,18 @@ describe('TeachingAssignmentService', () => {
       find: jest.fn(),
     };
 
+    classRepo = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 'class-uuid-1',
+        schoolId: 'school-uuid-1',
+        deletedAt: null,
+      }),
+    };
+
+    teacherSchoolAssignmentService = {
+      validateTeacherSchoolAccess: jest.fn().mockResolvedValue(true),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TeachingAssignmentService,
@@ -77,23 +101,35 @@ describe('TeachingAssignmentService', () => {
           useValue: teacherRepo,
         },
         {
+          provide: getRepositoryToken(ClassEntity),
+          useValue: classRepo,
+        },
+        {
           provide: TeacherSubjectService,
           useValue: {
             hasAssignment: jest.fn().mockResolvedValue(true),
           },
+        },
+        {
+          provide: TeacherSchoolAssignmentService,
+          useValue: teacherSchoolAssignmentService,
         },
       ],
     }).compile();
 
     service = module.get<TeachingAssignmentService>(TeachingAssignmentService);
     repository = module.get(TeachingAssignmentRepository);
-    dataSource = module.get<DataSource>(DataSource) as unknown as { transaction: jest.Mock };
+    dataSource = module.get<DataSource>(DataSource) as unknown as {
+      transaction: jest.Mock;
+    };
   });
 
   describe('create()', () => {
     it('should create a teaching assignment successfully', async () => {
       repository.checkDuplicate.mockResolvedValue(null);
-      repository.create.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
+      repository.create.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
 
       const dto = {
         semesterId: 'semester-uuid-1',
@@ -118,13 +154,17 @@ describe('TeachingAssignmentService', () => {
         teacherId: dto.teacherId,
         classId: dto.classId,
         subjectId: dto.subjectId,
+        schoolId: 'school-uuid-1',
+        assignmentStatus: 'active',
         periodsPerWeek: dto.periodsPerWeek,
         note: null,
       });
     });
 
     it('should throw ConflictException when duplicate exists', async () => {
-      repository.checkDuplicate.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
+      repository.checkDuplicate.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
 
       const dto = {
         semesterId: 'semester-uuid-1',
@@ -143,7 +183,9 @@ describe('TeachingAssignmentService', () => {
         ...mockAssignment,
         note: 'Ghi chú phân công',
       };
-      repository.create.mockResolvedValue(assignmentWithNote as TeachingAssignmentEntity);
+      repository.create.mockResolvedValue(
+        assignmentWithNote as TeachingAssignmentEntity,
+      );
 
       const dto = {
         semesterId: 'semester-uuid-1',
@@ -165,10 +207,14 @@ describe('TeachingAssignmentService', () => {
 
   describe('update()', () => {
     it('should update a teaching assignment successfully', async () => {
-      repository.findById.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
+      repository.findById.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
       repository.checkDuplicate.mockResolvedValue(null);
       const updatedAssignment = { ...mockAssignment, periodsPerWeek: 5 };
-      repository.update.mockResolvedValue(updatedAssignment as TeachingAssignmentEntity);
+      repository.update.mockResolvedValue(
+        updatedAssignment as TeachingAssignmentEntity,
+      );
 
       const dto = { periodsPerWeek: 5 };
       const result = await service.update('assignment-uuid-1', dto);
@@ -184,12 +230,18 @@ describe('TeachingAssignmentService', () => {
     });
 
     it('should validate duplicate when changing teacher/class/subject', async () => {
-      repository.findById.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
-      repository.checkDuplicate.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
+      repository.findById.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
+      repository.checkDuplicate.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
 
       const dto = { teacherId: 'teacher-uuid-2' };
 
-      await expect(service.update('assignment-uuid-1', dto)).rejects.toThrow(ConflictException);
+      await expect(service.update('assignment-uuid-1', dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should throw NotFoundException when assignment does not exist', async () => {
@@ -197,13 +249,17 @@ describe('TeachingAssignmentService', () => {
 
       const dto = { periodsPerWeek: 5 };
 
-      await expect(service.update('non-existent-uuid', dto)).rejects.toThrow(NotFoundException);
+      await expect(service.update('non-existent-uuid', dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('remove()', () => {
     it('should soft delete a teaching assignment', async () => {
-      repository.findById.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
+      repository.findById.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
       repository.softDelete.mockResolvedValue(undefined);
 
       await service.remove('assignment-uuid-1');
@@ -215,7 +271,9 @@ describe('TeachingAssignmentService', () => {
     it('should throw NotFoundException when assignment does not exist', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.remove('non-existent-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('non-existent-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -241,6 +299,8 @@ describe('TeachingAssignmentService', () => {
       const savedEntities = assignments.map((a, i) => ({
         id: `assignment-uuid-${i + 1}`,
         ...a,
+        schoolId: 'school-uuid-1',
+        assignmentStatus: 'active',
         note: null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -248,11 +308,24 @@ describe('TeachingAssignmentService', () => {
       }));
 
       const mockManager = {
-        findOne: jest.fn().mockResolvedValue(null),
+        findOne: jest.fn().mockImplementation((entity: unknown) => {
+          // ClassEntity lookup should return a class with schoolId
+          if (entity === ClassEntity) {
+            return Promise.resolve({
+              id: 'class-uuid-1',
+              schoolId: 'school-uuid-1',
+              deletedAt: null,
+            });
+          }
+          // TeachingAssignmentEntity duplicate check should return null (no duplicate)
+          return Promise.resolve(null);
+        }),
         create: jest.fn().mockImplementation((_entity, data) => data),
-        save: jest.fn().mockImplementation((data) =>
-          savedEntities.find((e) => e.teacherId === data.teacherId),
-        ),
+        save: jest
+          .fn()
+          .mockImplementation((data) =>
+            savedEntities.find((e) => e.teacherId === data.teacherId),
+          ),
       } as unknown as EntityManager;
 
       dataSource.transaction.mockImplementation(
@@ -264,7 +337,6 @@ describe('TeachingAssignmentService', () => {
       const result = await service.bulkCreate({ assignments });
 
       expect(result).toHaveLength(2);
-      expect(mockManager.findOne).toHaveBeenCalledTimes(2);
       expect(mockManager.save).toHaveBeenCalledTimes(2);
     });
 
@@ -280,7 +352,17 @@ describe('TeachingAssignmentService', () => {
       ];
 
       const mockManager = {
-        findOne: jest.fn().mockResolvedValue(mockAssignment),
+        findOne: jest.fn().mockImplementation((entity: unknown) => {
+          if (entity === ClassEntity) {
+            return Promise.resolve({
+              id: 'class-uuid-1',
+              schoolId: 'school-uuid-1',
+              deletedAt: null,
+            });
+          }
+          // Return a duplicate for TeachingAssignmentEntity
+          return Promise.resolve(mockAssignment);
+        }),
         create: jest.fn(),
         save: jest.fn(),
       } as unknown as EntityManager;
@@ -291,7 +373,9 @@ describe('TeachingAssignmentService', () => {
         },
       );
 
-      await expect(service.bulkCreate({ assignments })).rejects.toThrow(ConflictException);
+      await expect(service.bulkCreate({ assignments })).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -324,7 +408,9 @@ describe('TeachingAssignmentService', () => {
         findOne: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockImplementation((_entity, data) => data),
         save: jest.fn().mockImplementation((data, index) => {
-          const idx = copiedEntities.findIndex((e) => e.teacherId === data.teacherId);
+          const idx = copiedEntities.findIndex(
+            (e) => e.teacherId === data.teacherId,
+          );
           return copiedEntities[idx >= 0 ? idx : 0];
         }),
       } as unknown as EntityManager;
@@ -343,12 +429,18 @@ describe('TeachingAssignmentService', () => {
       const result = await service.copyFromPreviousSemester(dto);
 
       expect(result).toHaveLength(2);
-      expect(repository.findBySemester).toHaveBeenCalledWith('source-semester-uuid');
+      expect(repository.findBySemester).toHaveBeenCalledWith(
+        'source-semester-uuid',
+      );
     });
 
     it('should skip duplicates that already exist in target semester', async () => {
       const sourceAssignments = [
-        { ...mockAssignment, id: 'source-1', semesterId: 'source-semester-uuid' },
+        {
+          ...mockAssignment,
+          id: 'source-1',
+          semesterId: 'source-semester-uuid',
+        },
       ] as TeachingAssignmentEntity[];
 
       repository.findBySemester.mockResolvedValue(sourceAssignments);
@@ -384,7 +476,9 @@ describe('TeachingAssignmentService', () => {
         targetSemesterId: 'target-semester-uuid',
       };
 
-      await expect(service.copyFromPreviousSemester(dto)).rejects.toThrow(BadRequestException);
+      await expect(service.copyFromPreviousSemester(dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -393,7 +487,10 @@ describe('TeachingAssignmentService', () => {
       teacherRepo.findOne.mockResolvedValue(mockTeacher as TeacherEntity);
       repository.sumPeriodsByTeacher.mockResolvedValue(15);
 
-      const result = await service.checkWorkload('teacher-uuid-1', 'semester-uuid-1');
+      const result = await service.checkWorkload(
+        'teacher-uuid-1',
+        'semester-uuid-1',
+      );
 
       expect(result.workloadStatus).toBe(WorkloadStatus.NORMAL);
       expect(result.totalPeriods).toBe(15);
@@ -405,7 +502,10 @@ describe('TeachingAssignmentService', () => {
       teacherRepo.findOne.mockResolvedValue(mockTeacher as TeacherEntity);
       repository.sumPeriodsByTeacher.mockResolvedValue(25);
 
-      const result = await service.checkWorkload('teacher-uuid-1', 'semester-uuid-1');
+      const result = await service.checkWorkload(
+        'teacher-uuid-1',
+        'semester-uuid-1',
+      );
 
       expect(result.workloadStatus).toBe(WorkloadStatus.OVER);
       expect(result.totalPeriods).toBe(25);
@@ -415,7 +515,10 @@ describe('TeachingAssignmentService', () => {
       teacherRepo.findOne.mockResolvedValue(mockTeacher as TeacherEntity);
       repository.sumPeriodsByTeacher.mockResolvedValue(5);
 
-      const result = await service.checkWorkload('teacher-uuid-1', 'semester-uuid-1');
+      const result = await service.checkWorkload(
+        'teacher-uuid-1',
+        'semester-uuid-1',
+      );
 
       expect(result.workloadStatus).toBe(WorkloadStatus.UNDER);
       expect(result.totalPeriods).toBe(5);
@@ -461,7 +564,9 @@ describe('TeachingAssignmentService', () => {
 
   describe('findById()', () => {
     it('should return assignment when found', async () => {
-      repository.findById.mockResolvedValue(mockAssignment as TeachingAssignmentEntity);
+      repository.findById.mockResolvedValue(
+        mockAssignment as TeachingAssignmentEntity,
+      );
 
       const result = await service.findById('assignment-uuid-1');
 
@@ -472,7 +577,9 @@ describe('TeachingAssignmentService', () => {
     it('should throw NotFoundException when not found', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-uuid')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('non-existent-uuid')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

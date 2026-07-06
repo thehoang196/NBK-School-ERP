@@ -7,7 +7,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { SalarySlipService } from '../services/salary-slip.service';
 import { SalarySlipQueryDto } from '../dto/calculation/salary-slip-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -43,7 +48,10 @@ export class SalarySlipController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Xác nhận phiếu lương (DRAFT → CONFIRMED)' })
   @ApiResponse({ status: 200, description: 'Xác nhận thành công' })
-  @ApiResponse({ status: 400, description: 'Phiếu lương không ở trạng thái DRAFT' })
+  @ApiResponse({
+    status: 400,
+    description: 'Phiếu lương không ở trạng thái DRAFT',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async confirm(@Param('id', ParseUUIDPipe) id: string) {
     const slip = await this.salarySlipService.confirm(id);

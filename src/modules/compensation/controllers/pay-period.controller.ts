@@ -8,7 +8,12 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { PayPeriodService } from '../services/pay-period.service';
 import { CreatePayPeriodDto } from '../dto/pay-period/create-pay-period.dto';
 import { PayPeriodQueryDto } from '../dto/pay-period/pay-period-query.dto';
@@ -45,7 +50,10 @@ export class PayPeriodController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
   @ApiOperation({ summary: 'Tạo kỳ lương mới' })
   @ApiResponse({ status: 201, description: 'Tạo thành công' })
-  @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ hoặc trùng thời gian' })
+  @ApiResponse({
+    status: 400,
+    description: 'Dữ liệu không hợp lệ hoặc trùng thời gian',
+  })
   async create(@Body() dto: CreatePayPeriodDto) {
     return this.payPeriodService.create(dto);
   }

@@ -25,13 +25,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let message = 'Internal server error';
     let errors: string[] | undefined;
 
+    // Log unhandled exceptions for debugging
+    if (!(exception instanceof HttpException)) {
+      console.error('[GlobalExceptionFilter] Unhandled exception:', exception);
+    }
+
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
+      } else if (
+        typeof exceptionResponse === 'object' &&
+        exceptionResponse !== null
+      ) {
         const res = exceptionResponse as Record<string, unknown>;
         const resMessage = res['message'];
 

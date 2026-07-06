@@ -19,7 +19,10 @@ export class PolicyQueryDto extends PaginationDto {
   @IsString()
   schoolLevel?: string;
 
-  @ApiPropertyOptional({ enum: EntityStatus, description: 'Lọc theo trạng thái' })
+  @ApiPropertyOptional({
+    enum: EntityStatus,
+    description: 'Lọc theo trạng thái',
+  })
   @IsOptional()
   @IsEnum(EntityStatus)
   status?: EntityStatus;

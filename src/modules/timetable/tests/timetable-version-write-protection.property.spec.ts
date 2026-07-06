@@ -14,7 +14,7 @@ import { TimetableVersionRepository } from '../repositories/timetable-version.re
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
 import { CreateSlotDto } from '../dto/create-slot.dto';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 import { DataSource } from 'typeorm';
 
 describe('Feature: timetable-management-features, Property 13: Status-based write protection', () => {
@@ -27,8 +27,8 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
 
   // Arbitrary: generate a non-DRAFT status (only PUBLISHED or ARCHIVED)
   const nonDraftStatusArb = fc.constantFrom(
-    TimetableStatus.PUBLISHED,
-    TimetableStatus.ARCHIVED,
+    TimetableVersionStatus.PUBLISHED,
+    TimetableVersionStatus.ARCHIVED,
   );
 
   // Arbitrary: generate a random CreateSlotDto
@@ -48,7 +48,7 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
   // Helper: build a mock TimetableVersionEntity with given status
   function buildVersionEntity(
     id: string,
-    status: TimetableStatus,
+    status: TimetableVersionStatus,
   ): Partial<TimetableVersionEntity> {
     return {
       id,
@@ -89,7 +89,11 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
         uuidArb,
         nonDraftStatusArb,
         slotsArrayArb,
-        async (versionId: string, status: TimetableStatus, slots: CreateSlotDto[]) => {
+        async (
+          versionId: string,
+          status: TimetableVersionStatus,
+          slots: CreateSlotDto[],
+        ) => {
           // Mock: version exists with non-DRAFT status
           const versionEntity = buildVersionEntity(versionId, status);
           mockVersionRepo.findById.mockResolvedValue(versionEntity);
@@ -113,7 +117,7 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
       fc.asyncProperty(
         uuidArb,
         nonDraftStatusArb,
-        async (versionId: string, status: TimetableStatus) => {
+        async (versionId: string, status: TimetableVersionStatus) => {
           // Mock: version exists with non-DRAFT status
           const versionEntity = buildVersionEntity(versionId, status);
           mockVersionRepo.findById.mockResolvedValue(versionEntity);
@@ -138,7 +142,11 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
         uuidArb,
         nonDraftStatusArb,
         fc.string({ minLength: 1, maxLength: 50 }),
-        async (versionId: string, status: TimetableStatus, newName: string) => {
+        async (
+          versionId: string,
+          status: TimetableVersionStatus,
+          newName: string,
+        ) => {
           // Mock: version exists with non-DRAFT status
           const versionEntity = buildVersionEntity(versionId, status);
           mockVersionRepo.findById.mockResolvedValue(versionEntity);
@@ -164,7 +172,10 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
         slotsArrayArb,
         async (versionId: string, slots: CreateSlotDto[]) => {
           // Mock: version exists with DRAFT status
-          const versionEntity = buildVersionEntity(versionId, TimetableStatus.DRAFT);
+          const versionEntity = buildVersionEntity(
+            versionId,
+            TimetableVersionStatus.DRAFT,
+          );
           mockVersionRepo.findById.mockResolvedValue(versionEntity);
 
           // Mock transaction to execute the callback
@@ -177,7 +188,11 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
                   where: jest.fn().mockReturnThis(),
                   execute: jest.fn().mockResolvedValue({}),
                 }),
-                create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => data),
+                create: jest
+                  .fn()
+                  .mockImplementation(
+                    (_entity: unknown, data: unknown) => data,
+                  ),
                 save: jest.fn().mockResolvedValue([]),
               };
               return cb(mockManager);
@@ -199,7 +214,7 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
       fc.asyncProperty(
         uuidArb,
         nonDraftStatusArb,
-        async (versionId: string, status: TimetableStatus) => {
+        async (versionId: string, status: TimetableVersionStatus) => {
           // Mock: version exists with PUBLISHED/ARCHIVED status and has slots
           const versionEntity = {
             ...buildVersionEntity(versionId, status),
@@ -222,23 +237,28 @@ describe('Feature: timetable-management-features, Property 13: Status-based writ
           mockDataSource.transaction.mockImplementation(
             async (cb: (manager: unknown) => Promise<unknown>) => {
               const mockManager = {
-                create: jest.fn().mockImplementation((_entity: unknown, data: unknown) => ({
-                  ...(data as object),
-                  id: '00000000-0000-0000-0000-000000000100',
-                })),
-                save: jest.fn().mockImplementation((_entity: unknown, data: unknown) => {
-                  if (Array.isArray(data)) return data;
-                  return { ...(data as object), id: '00000000-0000-0000-0000-000000000100' };
-                }),
+                create: jest
+                  .fn()
+                  .mockImplementation((_entity: unknown, data: unknown) => ({
+                    ...(data as object),
+                    id: '00000000-0000-0000-0000-000000000100',
+                  })),
+                save: jest
+                  .fn()
+                  .mockImplementation((_entity: unknown, data: unknown) => {
+                    if (Array.isArray(data)) return data;
+                    return {
+                      ...(data as object),
+                      id: '00000000-0000-0000-0000-000000000100',
+                    };
+                  }),
               };
               return cb(mockManager);
             },
           );
 
           // Act & Assert: clone should NOT throw for PUBLISHED/ARCHIVED
-          await expect(
-            service.cloneVersion(versionId),
-          ).resolves.not.toThrow();
+          await expect(service.cloneVersion(versionId)).resolves.not.toThrow();
         },
       ),
       { numRuns: 100 },

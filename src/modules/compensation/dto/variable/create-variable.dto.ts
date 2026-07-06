@@ -1,13 +1,24 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional, Matches, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  Matches,
+  IsUUID,
+} from 'class-validator';
 import { VariableDataType, VariableScope } from '../../enums';
 
 export class CreateVariableDto {
-  @ApiProperty({ description: 'Mã biến (chỉ chữ hoa, số, gạch dưới)', example: 'LESSON_RATE' })
+  @ApiProperty({
+    description: 'Mã biến (chỉ chữ hoa, số, gạch dưới)',
+    example: 'LESSON_RATE',
+  })
   @IsString()
   @IsNotEmpty()
   @Matches(/^[A-Z][A-Z0-9_]*$/, {
-    message: 'Code phải bắt đầu bằng chữ hoa và chỉ chứa chữ hoa, số, gạch dưới',
+    message:
+      'Code phải bắt đầu bằng chữ hoa và chỉ chứa chữ hoa, số, gạch dưới',
   })
   code: string;
 
@@ -29,12 +40,17 @@ export class CreateVariableDto {
   @IsEnum(VariableScope)
   scope: VariableScope;
 
-  @ApiPropertyOptional({ description: 'ID phạm vi (school_id cho SCHOOL scope)' })
+  @ApiPropertyOptional({
+    description: 'ID phạm vi (school_id cho SCHOOL scope)',
+  })
   @IsOptional()
   @IsUUID()
   scopeId?: string | null;
 
-  @ApiPropertyOptional({ description: 'Cấp học (cho SCHOOL_LEVEL scope)', example: 'THPT' })
+  @ApiPropertyOptional({
+    description: 'Cấp học (cho SCHOOL_LEVEL scope)',
+    example: 'THPT',
+  })
   @IsOptional()
   @IsString()
   scopeLevel?: string | null;

@@ -42,7 +42,9 @@ export class CreateWeeks1748900002000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_weeks_semester_number"`);
     await queryRunner.query(`DROP INDEX "IDX_weeks_semester_id"`);
-    await queryRunner.query(`ALTER TABLE "weeks" DROP CONSTRAINT "FK_weeks_semester"`);
+    await queryRunner.query(
+      `ALTER TABLE "weeks" DROP CONSTRAINT "FK_weeks_semester"`,
+    );
     await queryRunner.query(`DROP TABLE "weeks"`);
   }
 }

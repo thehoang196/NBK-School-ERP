@@ -42,9 +42,11 @@ export class CreateTeacherSubjects1749300000000 implements MigrationInterface {
     `);
 
     // Index for lookup by teacher (getSubjectsForTeacher / getSubjectsMapForTeachers)
+    // Partial index: chỉ bao gồm bản ghi chưa xóa, tối ưu truy vấn danh sách môn học hiện tại
     await queryRunner.query(`
       CREATE INDEX "IDX_teacher_subjects_teacher_id"
       ON "teacher_subjects" ("teacher_id")
+      WHERE "deleted_at" IS NULL
     `);
 
     // Index for reverse lookup by subject

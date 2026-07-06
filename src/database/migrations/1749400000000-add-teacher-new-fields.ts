@@ -62,11 +62,23 @@ export class AddTeacherNewFields1749400000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_teachers_grade_id"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP CONSTRAINT IF EXISTS "FK_teachers_department"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP CONSTRAINT IF EXISTS "FK_teachers_grade"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP COLUMN IF EXISTS "management_level"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP COLUMN IF EXISTS "job_title"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP COLUMN IF EXISTS "grade_id"`);
-    await queryRunner.query(`ALTER TABLE "teachers" DROP COLUMN IF EXISTS "citizen_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP CONSTRAINT IF EXISTS "FK_teachers_department"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP CONSTRAINT IF EXISTS "FK_teachers_grade"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP COLUMN IF EXISTS "management_level"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP COLUMN IF EXISTS "job_title"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP COLUMN IF EXISTS "grade_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "teachers" DROP COLUMN IF EXISTS "citizen_id"`,
+    );
   }
 }

@@ -60,10 +60,17 @@ export class SimulationService {
    * Returns detailed breakdown of each component.
    */
   async simulate(request: SimulationRequest): Promise<SimulationResult> {
-    const { teacherId, schoolId, payPeriodId, variableOverrides, teacherContext } = request;
+    const {
+      teacherId,
+      schoolId,
+      payPeriodId,
+      variableOverrides,
+      teacherContext,
+    } = request;
 
     // 1. Get published formulas
-    const formulas = await this.formulaRepository.findPublishedBySchool(schoolId);
+    const formulas =
+      await this.formulaRepository.findPublishedBySchool(schoolId);
 
     // 2. Build dependency graph
     const [payComponents] = await this.payComponentRepository.findAll({
@@ -178,7 +185,10 @@ export class SimulationService {
       try {
         const parser = new Parser(formula.expression);
         const ast = parser.parse();
-        const evaluator = new Evaluator({ variables: evalVariables, functions });
+        const evaluator = new Evaluator({
+          variables: evalVariables,
+          functions,
+        });
         result = Math.round(evaluator.evaluate(ast) * 100) / 100;
         calculatedValues[code] = result;
       } catch (e) {
@@ -204,12 +214,30 @@ export class SimulationService {
 
     // 6. Summarize
     const earnings = components
-      .filter((c) => c.result !== null && componentMap.get(c.payComponentCode)?.type === PayComponentType.EARNING)
-      .map((c) => ({ code: c.payComponentCode, name: c.payComponentName, amount: c.result! }));
+      .filter(
+        (c) =>
+          c.result !== null &&
+          componentMap.get(c.payComponentCode)?.type ===
+            PayComponentType.EARNING,
+      )
+      .map((c) => ({
+        code: c.payComponentCode,
+        name: c.payComponentName,
+        amount: c.result!,
+      }));
 
     const deductions = components
-      .filter((c) => c.result !== null && componentMap.get(c.payComponentCode)?.type === PayComponentType.DEDUCTION)
-      .map((c) => ({ code: c.payComponentCode, name: c.payComponentName, amount: c.result! }));
+      .filter(
+        (c) =>
+          c.result !== null &&
+          componentMap.get(c.payComponentCode)?.type ===
+            PayComponentType.DEDUCTION,
+      )
+      .map((c) => ({
+        code: c.payComponentCode,
+        name: c.payComponentName,
+        amount: c.result!,
+      }));
 
     const grossAmount = earnings.reduce((sum, e) => sum + e.amount, 0);
     const totalDeductions = deductions.reduce((sum, d) => sum + d.amount, 0);

@@ -15,7 +15,7 @@ import { TimetableSlotRepository } from '../repositories/timetable-slot.reposito
 import { TimetableVersionRepository } from '../repositories/timetable-version.repository';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 // --- Interfaces for generated data ---
 
@@ -47,16 +47,25 @@ const arbUuid = fc.uuid().map((u) => u as string);
 
 const alphanumChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const arbCode: fc.Arbitrary<string> = fc
-  .array(fc.constantFrom(...alphanumChars.split('')), { minLength: 2, maxLength: 8 })
+  .array(fc.constantFrom(...alphanumChars.split('')), {
+    minLength: 2,
+    maxLength: 8,
+  })
   .map((chars) => chars.join(''));
 
 const nameChars = 'abcdefghijklmnopqrstuvwxyz AEIOU';
 const arbName: fc.Arbitrary<string> = fc
-  .array(fc.constantFrom(...nameChars.split('')), { minLength: 3, maxLength: 25 })
+  .array(fc.constantFrom(...nameChars.split('')), {
+    minLength: 3,
+    maxLength: 25,
+  })
   .map((chars) => chars.join(''));
 
 const arbShortName: fc.Arbitrary<string> = fc
-  .array(fc.constantFrom(...nameChars.split('')), { minLength: 2, maxLength: 15 })
+  .array(fc.constantFrom(...nameChars.split('')), {
+    minLength: 2,
+    maxLength: 15,
+  })
   .map((chars) => chars.join(''));
 
 const arbSubject: fc.Arbitrary<GeneratedSubject> = fc.record({
@@ -106,16 +115,20 @@ const arbSlotData = fc
       periodNumber: arbPeriodNumber,
     });
 
-    return fc
-      .array(slotArb, { minLength: 1, maxLength: 30 })
-      .map((slots) => ({ subjects: uniqueSubjects, teachers: uniqueTeachers, slots }));
+    return fc.array(slotArb, { minLength: 1, maxLength: 30 }).map((slots) => ({
+      subjects: uniqueSubjects,
+      teachers: uniqueTeachers,
+      slots,
+    }));
   });
 
 // --- Helper: Build mock TimetableSlotEntity[] from generated data ---
 
-function buildMockSlots(
-  data: { subjects: GeneratedSubject[]; teachers: GeneratedTeacher[]; slots: GeneratedSlot[] },
-): TimetableSlotEntity[] {
+function buildMockSlots(data: {
+  subjects: GeneratedSubject[];
+  teachers: GeneratedTeacher[];
+  slots: GeneratedSlot[];
+}): TimetableSlotEntity[] {
   const subjectMap = new Map(data.subjects.map((s) => [s.id, s]));
   const teacherMap = new Map(data.teachers.map((t) => [t.id, t]));
 
@@ -136,7 +149,10 @@ function buildMockSlots(
       createdAt: new Date(),
       updatedAt: new Date(),
       deletedAt: null,
-      period: { id: `period-${slot.periodNumber}`, periodNumber: slot.periodNumber },
+      period: {
+        id: `period-${slot.periodNumber}`,
+        periodNumber: slot.periodNumber,
+      },
       class: { id: slot.classId, name: `Class-${idx}`, gradeId: 'grade-1' },
       teacher: {
         id: teacher.id,
@@ -160,7 +176,12 @@ function buildMockSlots(
 
 async function parseReferenceSheets(buffer: Buffer): Promise<{
   subjectRows: Array<{ stt: number; code: string; name: string }>;
-  teacherRows: Array<{ stt: number; code: string; fullName: string; shortName: string }>;
+  teacherRows: Array<{
+    stt: number;
+    code: string;
+    fullName: string;
+    shortName: string;
+  }>;
 }> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
@@ -182,7 +203,12 @@ async function parseReferenceSheets(buffer: Buffer): Promise<{
 
   // Parse "Mã giáo viên" sheet
   const teacherSheet = workbook.getWorksheet('Mã giáo viên');
-  const teacherRows: Array<{ stt: number; code: string; fullName: string; shortName: string }> = [];
+  const teacherRows: Array<{
+    stt: number;
+    code: string;
+    fullName: string;
+    shortName: string;
+  }> = [];
   if (teacherSheet) {
     teacherSheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // skip header
@@ -216,16 +242,20 @@ describe('Property 6: Export reference sheets contain all unique entities', () =
 
     // Mock DataSource.getRepository to return mock repositories for Grade, Class, Semester, School
     const mockGradeRepo = {
-      find: jest.fn().mockResolvedValue([
-        { id: 'grade-1', name: 'Khối 10', level: 10, schoolId: 'school-1' },
-      ]),
+      find: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'grade-1', name: 'Khối 10', level: 10, schoolId: 'school-1' },
+        ]),
       findOne: jest.fn().mockResolvedValue(null),
     };
 
     const mockClassRepo = {
-      find: jest.fn().mockResolvedValue([
-        { id: 'class-1', name: '10A1', gradeId: 'grade-1' },
-      ]),
+      find: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'class-1', name: '10A1', gradeId: 'grade-1' },
+        ]),
     };
 
     const mockSemesterRepo = {
@@ -268,71 +298,79 @@ describe('Property 6: Export reference sheets contain all unique entities', () =
    * the "Mã môn học" sheet must contain ALL unique subjects (no missing, no duplicates),
    * and the "Mã giáo viên" sheet must contain ALL unique teachers (no missing, no duplicates).
    */
-  it(
-    'should contain all unique subjects and teachers in reference sheets with no duplicates and no missing entries',
-    async () => {
-      await fc.assert(
-        fc.asyncProperty(arbSlotData, async (data) => {
-          const mockSlots = buildMockSlots(data);
+  it('should contain all unique subjects and teachers in reference sheets with no duplicates and no missing entries', async () => {
+    await fc.assert(
+      fc.asyncProperty(arbSlotData, async (data) => {
+        const mockSlots = buildMockSlots(data);
 
-          // Setup mocks
-          mockVersionRepo.findById.mockResolvedValue({
-            id: 'version-1',
-            name: 'Test Version',
-            versionNumber: 1,
-            status: TimetableStatus.DRAFT,
-            semesterId: 'semester-1',
-          } as Partial<TimetableVersionEntity>);
+        // Setup mocks
+        mockVersionRepo.findById.mockResolvedValue({
+          id: 'version-1',
+          name: 'Test Version',
+          versionNumber: 1,
+          status: TimetableVersionStatus.DRAFT,
+          semesterId: 'semester-1',
+        } as Partial<TimetableVersionEntity>);
 
-          mockSlotRepo.findByVersion.mockResolvedValue(mockSlots);
+        mockSlotRepo.findByVersion.mockResolvedValue(mockSlots);
 
-          // Execute export
-          const result = await service.exportToExcel({ versionId: 'version-1' });
+        // Execute export
+        const result = await service.exportToExcel({ versionId: 'version-1' });
 
-          // Parse reference sheets
-          const { subjectRows, teacherRows } = await parseReferenceSheets(result.buffer);
+        // Parse reference sheets
+        const { subjectRows, teacherRows } = await parseReferenceSheets(
+          result.buffer,
+        );
 
-          // Determine expected unique subjects from slots
-          const expectedSubjectIds = new Set(data.slots.map((s) => s.subjectId));
-          const expectedSubjects = data.subjects.filter((s) => expectedSubjectIds.has(s.id));
+        // Determine expected unique subjects from slots
+        const expectedSubjectIds = new Set(data.slots.map((s) => s.subjectId));
+        const expectedSubjects = data.subjects.filter((s) =>
+          expectedSubjectIds.has(s.id),
+        );
 
-          // Determine expected unique teachers from slots
-          const expectedTeacherIds = new Set(data.slots.map((s) => s.teacherId));
-          const expectedTeachers = data.teachers.filter((t) => expectedTeacherIds.has(t.id));
+        // Determine expected unique teachers from slots
+        const expectedTeacherIds = new Set(data.slots.map((s) => s.teacherId));
+        const expectedTeachers = data.teachers.filter((t) =>
+          expectedTeacherIds.has(t.id),
+        );
 
-          // PROPERTY 1: Count verification — unique subjects in slots = rows in "Mã môn học"
-          expect(subjectRows.length).toBe(expectedSubjects.length);
+        // PROPERTY 1: Count verification — unique subjects in slots = rows in "Mã môn học"
+        expect(subjectRows.length).toBe(expectedSubjects.length);
 
-          // PROPERTY 2: Count verification — unique teachers in slots = rows in "Mã giáo viên"
-          expect(teacherRows.length).toBe(expectedTeachers.length);
+        // PROPERTY 2: Count verification — unique teachers in slots = rows in "Mã giáo viên"
+        expect(teacherRows.length).toBe(expectedTeachers.length);
 
-          // PROPERTY 3: No missing subjects — every unique subject code appears in the sheet
-          const subjectCodesInSheet = new Set(subjectRows.map((r) => r.code));
-          for (const subject of expectedSubjects) {
-            expect(subjectCodesInSheet.has(subject.code)).toBe(true);
-          }
+        // PROPERTY 3: No missing subjects — every unique subject code appears in the sheet
+        const subjectCodesInSheet = new Set(subjectRows.map((r) => r.code));
+        for (const subject of expectedSubjects) {
+          expect(subjectCodesInSheet.has(subject.code)).toBe(true);
+        }
 
-          // PROPERTY 4: No missing teachers — every unique teacher code appears in the sheet
-          const teacherCodesInSheet = new Set(teacherRows.map((r) => r.code));
-          for (const teacher of expectedTeachers) {
-            expect(teacherCodesInSheet.has(teacher.employeeCode)).toBe(true);
-          }
+        // PROPERTY 4: No missing teachers — every unique teacher code appears in the sheet
+        const teacherCodesInSheet = new Set(teacherRows.map((r) => r.code));
+        for (const teacher of expectedTeachers) {
+          expect(teacherCodesInSheet.has(teacher.employeeCode)).toBe(true);
+        }
 
-          // PROPERTY 5: No duplicate subjects (STT should be sequential 1..N)
-          const subjectStts = subjectRows.map((r) => r.stt);
-          const expectedSubjectStts = Array.from({ length: expectedSubjects.length }, (_, i) => i + 1);
-          expect(subjectStts).toEqual(expectedSubjectStts);
+        // PROPERTY 5: No duplicate subjects (STT should be sequential 1..N)
+        const subjectStts = subjectRows.map((r) => r.stt);
+        const expectedSubjectStts = Array.from(
+          { length: expectedSubjects.length },
+          (_, i) => i + 1,
+        );
+        expect(subjectStts).toEqual(expectedSubjectStts);
 
-          // PROPERTY 6: No duplicate teachers (STT should be sequential 1..N)
-          const teacherStts = teacherRows.map((r) => r.stt);
-          const expectedTeacherStts = Array.from({ length: expectedTeachers.length }, (_, i) => i + 1);
-          expect(teacherStts).toEqual(expectedTeacherStts);
-        }),
-        { numRuns: 100 },
-      );
-    },
-    60000,
-  );
+        // PROPERTY 6: No duplicate teachers (STT should be sequential 1..N)
+        const teacherStts = teacherRows.map((r) => r.stt);
+        const expectedTeacherStts = Array.from(
+          { length: expectedTeachers.length },
+          (_, i) => i + 1,
+        );
+        expect(teacherStts).toEqual(expectedTeacherStts);
+      }),
+      { numRuns: 100 },
+    );
+  }, 60000);
 
   /**
    * **Validates: Requirements 2.3, 2.4**
@@ -340,81 +378,83 @@ describe('Property 6: Export reference sheets contain all unique entities', () =
    * When slots share the same subject or teacher (duplicates in slots),
    * the reference sheets should still contain only unique entries.
    */
-  it(
-    'should deduplicate subjects and teachers even when multiple slots reference the same entity',
-    async () => {
-      // Generator that guarantees duplicate references in slots
-      const arbDuplicateSlotData = fc
-        .tuple(
-          fc.array(arbSubject, { minLength: 1, maxLength: 5 }),
-          fc.array(arbTeacher, { minLength: 1, maxLength: 5 }),
-        )
-        .chain(([subjects, teachers]) => {
-          const uniqueSubjects = subjects.reduce<GeneratedSubject[]>((acc, s) => {
-            if (!acc.find((x) => x.id === s.id)) acc.push(s);
-            return acc;
-          }, []);
-          const uniqueTeachers = teachers.reduce<GeneratedTeacher[]>((acc, t) => {
-            if (!acc.find((x) => x.id === t.id)) acc.push(t);
-            return acc;
-          }, []);
+  it('should deduplicate subjects and teachers even when multiple slots reference the same entity', async () => {
+    // Generator that guarantees duplicate references in slots
+    const arbDuplicateSlotData = fc
+      .tuple(
+        fc.array(arbSubject, { minLength: 1, maxLength: 5 }),
+        fc.array(arbTeacher, { minLength: 1, maxLength: 5 }),
+      )
+      .chain(([subjects, teachers]) => {
+        const uniqueSubjects = subjects.reduce<GeneratedSubject[]>((acc, s) => {
+          if (!acc.find((x) => x.id === s.id)) acc.push(s);
+          return acc;
+        }, []);
+        const uniqueTeachers = teachers.reduce<GeneratedTeacher[]>((acc, t) => {
+          if (!acc.find((x) => x.id === t.id)) acc.push(t);
+          return acc;
+        }, []);
 
-          // Force more slots than entities to guarantee duplicates
-          const slotCount = Math.max(
-            (uniqueSubjects.length + uniqueTeachers.length) * 2,
-            5,
-          );
+        // Force more slots than entities to guarantee duplicates
+        const slotCount = Math.max(
+          (uniqueSubjects.length + uniqueTeachers.length) * 2,
+          5,
+        );
 
-          const slotArb: fc.Arbitrary<GeneratedSlot> = fc.record({
-            subjectId: fc.constantFrom(...uniqueSubjects.map((s) => s.id)),
-            teacherId: fc.constantFrom(...uniqueTeachers.map((t) => t.id)),
-            classId: arbUuid,
-            dayOfWeek: arbDayOfWeek,
-            periodNumber: arbPeriodNumber,
-          });
-
-          return fc
-            .array(slotArb, { minLength: slotCount, maxLength: slotCount + 10 })
-            .map((slots) => ({ subjects: uniqueSubjects, teachers: uniqueTeachers, slots }));
+        const slotArb: fc.Arbitrary<GeneratedSlot> = fc.record({
+          subjectId: fc.constantFrom(...uniqueSubjects.map((s) => s.id)),
+          teacherId: fc.constantFrom(...uniqueTeachers.map((t) => t.id)),
+          classId: arbUuid,
+          dayOfWeek: arbDayOfWeek,
+          periodNumber: arbPeriodNumber,
         });
 
-      await fc.assert(
-        fc.asyncProperty(arbDuplicateSlotData, async (data) => {
-          const mockSlots = buildMockSlots(data);
+        return fc
+          .array(slotArb, { minLength: slotCount, maxLength: slotCount + 10 })
+          .map((slots) => ({
+            subjects: uniqueSubjects,
+            teachers: uniqueTeachers,
+            slots,
+          }));
+      });
 
-          mockVersionRepo.findById.mockResolvedValue({
-            id: 'version-1',
-            name: 'Test Version',
-            versionNumber: 1,
-            status: TimetableStatus.DRAFT,
-            semesterId: 'semester-1',
-          } as Partial<TimetableVersionEntity>);
+    await fc.assert(
+      fc.asyncProperty(arbDuplicateSlotData, async (data) => {
+        const mockSlots = buildMockSlots(data);
 
-          mockSlotRepo.findByVersion.mockResolvedValue(mockSlots);
+        mockVersionRepo.findById.mockResolvedValue({
+          id: 'version-1',
+          name: 'Test Version',
+          versionNumber: 1,
+          status: TimetableVersionStatus.DRAFT,
+          semesterId: 'semester-1',
+        } as Partial<TimetableVersionEntity>);
 
-          const result = await service.exportToExcel({ versionId: 'version-1' });
-          const { subjectRows, teacherRows } = await parseReferenceSheets(result.buffer);
+        mockSlotRepo.findByVersion.mockResolvedValue(mockSlots);
 
-          // Unique subject IDs referenced in slots
-          const uniqueSubjectIds = new Set(data.slots.map((s) => s.subjectId));
-          const uniqueTeacherIds = new Set(data.slots.map((s) => s.teacherId));
+        const result = await service.exportToExcel({ versionId: 'version-1' });
+        const { subjectRows, teacherRows } = await parseReferenceSheets(
+          result.buffer,
+        );
 
-          // Even though slots have many duplicate references, reference sheets
-          // should only have unique entries
-          expect(subjectRows.length).toBe(uniqueSubjectIds.size);
-          expect(teacherRows.length).toBe(uniqueTeacherIds.size);
+        // Unique subject IDs referenced in slots
+        const uniqueSubjectIds = new Set(data.slots.map((s) => s.subjectId));
+        const uniqueTeacherIds = new Set(data.slots.map((s) => s.teacherId));
 
-          // Verify no duplicate codes in subject sheet
-          const subjectCodes = subjectRows.map((r) => r.code);
-          expect(new Set(subjectCodes).size).toBe(subjectCodes.length);
+        // Even though slots have many duplicate references, reference sheets
+        // should only have unique entries
+        expect(subjectRows.length).toBe(uniqueSubjectIds.size);
+        expect(teacherRows.length).toBe(uniqueTeacherIds.size);
 
-          // Verify no duplicate codes in teacher sheet
-          const teacherCodes = teacherRows.map((r) => r.code);
-          expect(new Set(teacherCodes).size).toBe(teacherCodes.length);
-        }),
-        { numRuns: 100 },
-      );
-    },
-    60000,
-  );
+        // Verify no duplicate codes in subject sheet
+        const subjectCodes = subjectRows.map((r) => r.code);
+        expect(new Set(subjectCodes).size).toBe(subjectCodes.length);
+
+        // Verify no duplicate codes in teacher sheet
+        const teacherCodes = teacherRows.map((r) => r.code);
+        expect(new Set(teacherCodes).size).toBe(teacherCodes.length);
+      }),
+      { numRuns: 100 },
+    );
+  }, 60000);
 });

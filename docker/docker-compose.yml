@@ -44,6 +44,21 @@ services:
       - minio_data:/data
     command: server /data --console-address ":9001"
 
+  # FET (Free Educational Timetabling) solver container
+  # Not a running service — image is used by FetEngineAdapter via 'docker run --rm'
+  fet:
+    build:
+      context: ./fet
+      dockerfile: Dockerfile.fet
+    image: nbk-ems/fet:6.2.7
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+    profiles:
+      - build-only
+
 volumes:
   postgres_data:
   redis_data:

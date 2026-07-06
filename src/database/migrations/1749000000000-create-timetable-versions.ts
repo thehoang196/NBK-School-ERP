@@ -51,8 +51,12 @@ export class CreateTimetableVersions1749000000000 implements MigrationInterface 
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(`DROP INDEX "IDX_timetable_versions_semester_version"`);
-    await queryRunner.query(`DROP INDEX "IDX_timetable_versions_semester_status"`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_timetable_versions_semester_version"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "IDX_timetable_versions_semester_status"`,
+    );
 
     // Drop foreign key constraint
     await queryRunner.query(`

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { SchoolRepository } from './school.repository';
 import { SchoolEntity } from './entities/school.entity';
 import { CreateSchoolDto } from './dto/create-school.dto';
@@ -10,7 +14,9 @@ import { PaginatedResponse } from '../../common/interfaces/api-response.interfac
 export class SchoolService {
   constructor(private readonly schoolRepository: SchoolRepository) {}
 
-  async findAll(query: SchoolQueryDto): Promise<PaginatedResponse<SchoolEntity>> {
+  async findAll(
+    query: SchoolQueryDto,
+  ): Promise<PaginatedResponse<SchoolEntity>> {
     const [schools, total] = await this.schoolRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 

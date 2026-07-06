@@ -19,13 +19,20 @@ export class SchoolEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   email: string | null;
 
-  @Column({ name: 'principal_name', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'principal_name',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+  })
   principalName: string | null;
 
   @Column({ name: 'parent_school_id', type: 'uuid', nullable: true })
   parentSchoolId: string | null;
 
-  @ManyToOne(() => SchoolEntity, (school) => school.childSchools, { nullable: true })
+  @ManyToOne(() => SchoolEntity, (school) => school.childSchools, {
+    nullable: true,
+  })
   @JoinColumn({ name: 'parent_school_id' })
   parentSchool: SchoolEntity | null;
 

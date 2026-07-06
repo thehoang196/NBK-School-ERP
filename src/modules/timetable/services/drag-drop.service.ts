@@ -1,12 +1,21 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, DataSource } from 'typeorm';
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
 import { TimetableVersionRepository } from '../repositories/timetable-version.repository';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
-import { ConflictDetectionService, ConflictResult } from './conflict-detection.service';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { ConflictOrchestrationService } from './conflict-orchestration.service';
+import {
+  ConflictCheckResult,
+  Conflict,
+} from '../interfaces/conflict.interface';
+import { ConflictSeverity } from '../enums/conflict.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 import {
   DropTeacherSubjectDto,
   MoveSlotDto,
@@ -20,7 +29,7 @@ export interface DragDropResult {
   success: boolean;
   slot?: TimetableSlotEntity;
   slots?: TimetableSlotEntity[];
-  warnings: ConflictResult[];
+  warnings: Conflict[];
   message: string;
 }
 
@@ -28,7 +37,7 @@ export interface BatchDropResult {
   success: boolean;
   created: TimetableSlotEntity[];
   skipped: Array<{ dayOfWeek: number; periodId: string; reason: string }>;
-  warnings: ConflictResult[];
+  warnings: Conflict[];
   message: string;
 }
 
@@ -49,7 +58,7 @@ export class DragDropService {
     private readonly dataSource: DataSource,
     private readonly slotRepo: TimetableSlotRepository,
     private readonly versionRepo: TimetableVersionRepository,
-    private readonly conflictDetection: ConflictDetectionService,
+    private readonly conflictOrchestration: ConflictOrchestrationService,
     @InjectRepository(TeacherEntity)
     private readonly teacherRepo: Repository<TeacherEntity>,
   ) {}
@@ -57,31 +66,44 @@ export class DragDropService {
   /**
    * Kéo GV + Môn vào ô trống
    */
-  async dropTeacherSubject(dto: DropTeacherSubjectDto): Promise<DragDropResult> {
+  async dropTeacherSubject(
+    dto: DropTeacherSubjectDto,
+    schoolId: string,
+    userId: string,
+  ): Promise<DragDropResult> {
     await this.validateVersionDraft(dto.versionId);
 
     // Kiểm tra ô đã có slot chưa
     const existing = await this.slotRepo.findConflicts({
-      versionId: dto.versionId, dayOfWeek: dto.dayOfWeek, periodId: dto.periodId,
+      versionId: dto.versionId,
+      dayOfWeek: dto.dayOfWeek,
+      periodId: dto.periodId,
     });
-    const classConflict = existing.find(s => s.classId === dto.classId);
+    const classConflict = existing.find((s) => s.classId === dto.classId);
     if (classConflict) {
       throw new BadRequestException(
         'Ô này đã có tiết học. Hãy xóa tiết cũ hoặc dùng chức năng hoán đổi.',
       );
     }
 
-    // Check conflicts
-    const conflicts = await this.conflictDetection.checkSlotConflicts(
-      dto.versionId,
-      dto.dayOfWeek,
-      dto.periodId,
-      dto.teacherId,
-      dto.classId,
-      dto.roomId || null,
+    // Check conflicts via orchestration service
+    const conflictResult = await this.conflictOrchestration.checkSingleSlot(
+      {
+        versionId: dto.versionId,
+        dayOfWeek: dto.dayOfWeek,
+        periodId: dto.periodId,
+        teacherId: dto.teacherId,
+        classId: dto.classId,
+        roomId: dto.roomId || undefined,
+        subjectId: dto.subjectId,
+      },
+      schoolId,
+      userId,
     );
 
-    const errors = conflicts.filter(c => c.severity === 'error');
+    const errors = conflictResult.conflicts.filter(
+      (c) => c.severity === ConflictSeverity.ERROR,
+    );
     if (errors.length > 0) {
       throw new BadRequestException({
         message: 'Không thể thả vào ô này do xung đột',
@@ -104,7 +126,9 @@ export class DragDropService {
     return {
       success: true,
       slot,
-      warnings: conflicts.filter(c => c.severity === 'warning'),
+      warnings: conflictResult.conflicts.filter(
+        (c) => c.severity === ConflictSeverity.WARNING,
+      ),
       message: 'Đã thả GV + Môn vào TKB thành công',
     };
   }
@@ -112,7 +136,11 @@ export class DragDropService {
   /**
    * Di chuyển slot sang vị trí khác
    */
-  async moveSlot(dto: MoveSlotDto): Promise<DragDropResult> {
+  async moveSlot(
+    dto: MoveSlotDto,
+    schoolId: string,
+    userId: string,
+  ): Promise<DragDropResult> {
     const slot = await this.slotRepo.findById(dto.slotId);
     if (!slot) {
       throw new NotFoundException('Không tìm thấy slot');
@@ -122,28 +150,40 @@ export class DragDropService {
 
     // Kiểm tra ô đích đã có slot cho cùng lớp chưa
     const existingAtTarget = await this.slotRepo.findConflicts({
-      versionId: slot.versionId, dayOfWeek: dto.targetDayOfWeek, periodId: dto.targetPeriodId,
+      versionId: slot.versionId,
+      dayOfWeek: dto.targetDayOfWeek,
+      periodId: dto.targetPeriodId,
     });
-    const classConflict = existingAtTarget.find(s => s.classId === slot.classId);
+    const classConflict = existingAtTarget.find(
+      (s) => s.classId === slot.classId,
+    );
     if (classConflict) {
       throw new BadRequestException(
         'Ô đích đã có tiết học cho lớp này. Hãy dùng chức năng hoán đổi.',
       );
     }
 
-    // Check conflicts at new position
-    const roomId = dto.targetRoomId !== undefined ? dto.targetRoomId : slot.roomId;
-    const conflicts = await this.conflictDetection.checkSlotConflicts(
-      slot.versionId,
-      dto.targetDayOfWeek,
-      dto.targetPeriodId,
-      slot.teacherId,
-      slot.classId,
-      roomId || null,
-      dto.slotId, // exclude self
+    // Check conflicts at new position via orchestration service
+    const roomId =
+      dto.targetRoomId !== undefined ? dto.targetRoomId : slot.roomId;
+    const conflictResult = await this.conflictOrchestration.checkSingleSlot(
+      {
+        versionId: slot.versionId,
+        dayOfWeek: dto.targetDayOfWeek,
+        periodId: dto.targetPeriodId,
+        teacherId: slot.teacherId,
+        classId: slot.classId,
+        roomId: roomId || undefined,
+        subjectId: slot.subjectId,
+        excludeSlotId: dto.slotId, // exclude self
+      },
+      schoolId,
+      userId,
     );
 
-    const errors = conflicts.filter(c => c.severity === 'error');
+    const errors = conflictResult.conflicts.filter(
+      (c) => c.severity === ConflictSeverity.ERROR,
+    );
     if (errors.length > 0) {
       throw new BadRequestException({
         message: 'Không thể di chuyển đến vị trí này',
@@ -161,7 +201,9 @@ export class DragDropService {
     return {
       success: true,
       slot: updated!,
-      warnings: conflicts.filter(c => c.severity === 'warning'),
+      warnings: conflictResult.conflicts.filter(
+        (c) => c.severity === ConflictSeverity.WARNING,
+      ),
       message: 'Di chuyển slot thành công',
     };
   }
@@ -169,7 +211,11 @@ export class DragDropService {
   /**
    * Hoán đổi 2 slots
    */
-  async swapSlots(dto: SwapSlotsDto): Promise<DragDropResult> {
+  async swapSlots(
+    dto: SwapSlotsDto,
+    schoolId: string,
+    userId: string,
+  ): Promise<DragDropResult> {
     const slotA = await this.slotRepo.findById(dto.slotAId);
     const slotB = await this.slotRepo.findById(dto.slotBId);
 
@@ -183,29 +229,44 @@ export class DragDropService {
 
     await this.validateVersionDraft(slotA.versionId);
 
-    // Validate: check conflicts after swap
-    const conflictsA = await this.conflictDetection.checkSlotConflicts(
-      slotA.versionId,
-      slotB.dayOfWeek,
-      slotB.periodId,
-      slotA.teacherId,
-      slotA.classId,
-      slotA.roomId,
-      dto.slotAId,
+    // Validate: check conflicts after swap via orchestration service
+    const conflictsAResult = await this.conflictOrchestration.checkSingleSlot(
+      {
+        versionId: slotA.versionId,
+        dayOfWeek: slotB.dayOfWeek,
+        periodId: slotB.periodId,
+        teacherId: slotA.teacherId,
+        classId: slotA.classId,
+        roomId: slotA.roomId || undefined,
+        subjectId: slotA.subjectId,
+        excludeSlotId: dto.slotAId,
+      },
+      schoolId,
+      userId,
     );
 
-    const conflictsB = await this.conflictDetection.checkSlotConflicts(
-      slotB.versionId,
-      slotA.dayOfWeek,
-      slotA.periodId,
-      slotB.teacherId,
-      slotB.classId,
-      slotB.roomId,
-      dto.slotBId,
+    const conflictsBResult = await this.conflictOrchestration.checkSingleSlot(
+      {
+        versionId: slotB.versionId,
+        dayOfWeek: slotA.dayOfWeek,
+        periodId: slotA.periodId,
+        teacherId: slotB.teacherId,
+        classId: slotB.classId,
+        roomId: slotB.roomId || undefined,
+        subjectId: slotB.subjectId,
+        excludeSlotId: dto.slotBId,
+      },
+      schoolId,
+      userId,
     );
 
-    const allConflicts = [...conflictsA, ...conflictsB];
-    const errors = allConflicts.filter(c => c.severity === 'error');
+    const allConflicts = [
+      ...conflictsAResult.conflicts,
+      ...conflictsBResult.conflicts,
+    ];
+    const errors = allConflicts.filter(
+      (c) => c.severity === ConflictSeverity.ERROR,
+    );
     if (errors.length > 0) {
       throw new BadRequestException({
         message: 'Không thể hoán đổi do xung đột',
@@ -232,7 +293,9 @@ export class DragDropService {
     return {
       success: true,
       slots: [updatedA!, updatedB!],
-      warnings: allConflicts.filter(c => c.severity === 'warning'),
+      warnings: allConflicts.filter(
+        (c) => c.severity === ConflictSeverity.WARNING,
+      ),
       message: 'Hoán đổi 2 slot thành công',
     };
   }
@@ -240,7 +303,11 @@ export class DragDropService {
   /**
    * Kéo GV mới vào slot đã có (thay GV)
    */
-  async dropTeacherToSlot(dto: DropTeacherToSlotDto): Promise<DragDropResult> {
+  async dropTeacherToSlot(
+    dto: DropTeacherToSlotDto,
+    schoolId: string,
+    userId: string,
+  ): Promise<DragDropResult> {
     const slot = await this.slotRepo.findById(dto.slotId);
     if (!slot) {
       throw new NotFoundException('Không tìm thấy slot');
@@ -252,18 +319,25 @@ export class DragDropService {
       throw new BadRequestException('GV mới trùng với GV hiện tại');
     }
 
-    // Check conflicts for new teacher
-    const conflicts = await this.conflictDetection.checkSlotConflicts(
-      slot.versionId,
-      slot.dayOfWeek,
-      slot.periodId,
-      dto.teacherId,
-      slot.classId,
-      slot.roomId,
-      dto.slotId,
+    // Check conflicts for new teacher via orchestration service
+    const conflictResult = await this.conflictOrchestration.checkSingleSlot(
+      {
+        versionId: slot.versionId,
+        dayOfWeek: slot.dayOfWeek,
+        periodId: slot.periodId,
+        teacherId: dto.teacherId,
+        classId: slot.classId,
+        roomId: slot.roomId || undefined,
+        subjectId: slot.subjectId,
+        excludeSlotId: dto.slotId,
+      },
+      schoolId,
+      userId,
     );
 
-    const errors = conflicts.filter(c => c.severity === 'error');
+    const errors = conflictResult.conflicts.filter(
+      (c) => c.severity === ConflictSeverity.ERROR,
+    );
     if (errors.length > 0) {
       throw new BadRequestException({
         message: 'GV mới bị xung đột tại thời điểm này',
@@ -279,7 +353,9 @@ export class DragDropService {
     return {
       success: true,
       slot: updated!,
-      warnings: conflicts.filter(c => c.severity === 'warning'),
+      warnings: conflictResult.conflicts.filter(
+        (c) => c.severity === ConflictSeverity.WARNING,
+      ),
       message: 'Thay đổi GV thành công',
     };
   }
@@ -287,53 +363,75 @@ export class DragDropService {
   /**
    * Preview - Xem trước xung đột không lưu
    */
-  async previewDrop(dto: PreviewDropDto): Promise<{ canDrop: boolean; conflicts: ConflictResult[] }> {
-    const conflicts = await this.conflictDetection.checkSlotConflicts(
-      dto.versionId,
-      dto.dayOfWeek,
-      dto.periodId,
-      dto.teacherId,
-      dto.classId,
-      dto.roomId || null,
+  async previewDrop(
+    dto: PreviewDropDto,
+    schoolId: string,
+    userId: string,
+  ): Promise<{ canDrop: boolean; conflicts: Conflict[] }> {
+    const conflictResult = await this.conflictOrchestration.checkSingleSlot(
+      {
+        versionId: dto.versionId,
+        dayOfWeek: dto.dayOfWeek,
+        periodId: dto.periodId,
+        teacherId: dto.teacherId,
+        classId: dto.classId,
+        roomId: dto.roomId || undefined,
+        subjectId: dto.subjectId,
+      },
+      schoolId,
+      userId,
     );
 
-    const hasErrors = conflicts.some(c => c.severity === 'error');
-
     return {
-      canDrop: !hasErrors,
-      conflicts,
+      canDrop: !conflictResult.hasHardConflicts,
+      conflicts: conflictResult.conflicts,
     };
   }
 
   /**
    * Kéo thả hàng loạt - GV+Môn vào nhiều ô
    */
-  async batchDrop(dto: BatchDropDto): Promise<BatchDropResult> {
+  async batchDrop(
+    dto: BatchDropDto,
+    schoolId: string,
+    userId: string,
+  ): Promise<BatchDropResult> {
     await this.validateVersionDraft(dto.versionId);
 
     const created: TimetableSlotEntity[] = [];
-    const skipped: Array<{ dayOfWeek: number; periodId: string; reason: string }> = [];
-    const allWarnings: ConflictResult[] = [];
+    const skipped: Array<{
+      dayOfWeek: number;
+      periodId: string;
+      reason: string;
+    }> = [];
+    const allWarnings: Conflict[] = [];
 
     for (const target of dto.targets) {
-      // Check xung đột cho từng ô
-      const conflicts = await this.conflictDetection.checkSlotConflicts(
-        dto.versionId,
-        target.dayOfWeek,
-        target.periodId,
-        dto.teacherId,
-        dto.classId,
-        target.roomId || null,
+      // Check xung đột cho từng ô via orchestration service
+      const conflictResult = await this.conflictOrchestration.checkSingleSlot(
+        {
+          versionId: dto.versionId,
+          dayOfWeek: target.dayOfWeek,
+          periodId: target.periodId,
+          teacherId: dto.teacherId,
+          classId: dto.classId,
+          roomId: target.roomId || undefined,
+          subjectId: dto.subjectId,
+        },
+        schoolId,
+        userId,
       );
 
-      const errors = conflicts.filter(c => c.severity === 'error');
+      const errors = conflictResult.conflicts.filter(
+        (c) => c.severity === ConflictSeverity.ERROR,
+      );
 
       if (errors.length > 0) {
         if (dto.skipConflicts) {
           skipped.push({
             dayOfWeek: target.dayOfWeek,
             periodId: target.periodId,
-            reason: errors.map(e => e.message).join('; '),
+            reason: errors.map((e) => e.message).join('; '),
           });
           continue;
         } else {
@@ -346,9 +444,11 @@ export class DragDropService {
 
       // Kiểm tra ô đã có chưa
       const existing = await this.slotRepo.findConflicts({
-        versionId: dto.versionId, dayOfWeek: target.dayOfWeek, periodId: target.periodId,
+        versionId: dto.versionId,
+        dayOfWeek: target.dayOfWeek,
+        periodId: target.periodId,
       });
-      if (existing.find(s => s.classId === dto.classId)) {
+      if (existing.find((s) => s.classId === dto.classId)) {
         if (dto.skipConflicts) {
           skipped.push({
             dayOfWeek: target.dayOfWeek,
@@ -376,7 +476,11 @@ export class DragDropService {
       });
 
       created.push(slot);
-      allWarnings.push(...conflicts.filter(c => c.severity === 'warning'));
+      allWarnings.push(
+        ...conflictResult.conflicts.filter(
+          (c) => c.severity === ConflictSeverity.WARNING,
+        ),
+      );
     }
 
     return {
@@ -403,7 +507,11 @@ export class DragDropService {
     });
 
     // Lấy slots tại thời điểm đó
-    const existingSlots = await this.slotRepo.findConflicts({ versionId, dayOfWeek, periodId });
+    const existingSlots = await this.slotRepo.findConflicts({
+      versionId,
+      dayOfWeek,
+      periodId,
+    });
 
     // Lấy tất cả slots trong ngày cho mỗi GV (để check max periods/day)
     const allSlotsInVersion = await this.slotRepo.findByQuery({ versionId });
@@ -415,7 +523,7 @@ export class DragDropService {
       let conflictReason: string | null = null;
 
       // Check: GV đã có tiết tại thời điểm này
-      const teacherBusy = existingSlots.find(s => s.teacherId === teacher.id);
+      const teacherBusy = existingSlots.find((s) => s.teacherId === teacher.id);
       if (teacherBusy) {
         isAvailable = false;
         conflictReason = 'GV đã có tiết dạy vào thời điểm này';
@@ -424,7 +532,7 @@ export class DragDropService {
       // Check: GV unavailable
       if (isAvailable && teacher.unavailableSlots) {
         const unavailable = teacher.unavailableSlots.some(
-          s => s.dayOfWeek === dayOfWeek && s.periodId === periodId,
+          (s) => s.dayOfWeek === dayOfWeek && s.periodId === periodId,
         );
         if (unavailable) {
           isAvailable = false;
@@ -434,7 +542,7 @@ export class DragDropService {
 
       // Count periods in day
       const periodsInDay = allSlotsInVersion.filter(
-        s => s.teacherId === teacher.id && s.dayOfWeek === dayOfWeek,
+        (s) => s.teacherId === teacher.id && s.dayOfWeek === dayOfWeek,
       ).length;
 
       // Check max periods per day
@@ -470,7 +578,7 @@ export class DragDropService {
     if (!version) {
       throw new NotFoundException('Không tìm thấy phiên bản TKB');
     }
-    if (version.status !== TimetableStatus.DRAFT) {
+    if (version.status !== TimetableVersionStatus.DRAFT) {
       throw new BadRequestException('Chỉ có thể chỉnh sửa phiên bản nháp');
     }
   }

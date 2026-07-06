@@ -18,7 +18,8 @@ export class VariableRepository {
     const { page, limit, sortBy, sortOrder, scope, dataType, search } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('v')
+    const queryBuilder = this.repo
+      .createQueryBuilder('v')
       .where('v.deletedAt IS NULL');
 
     if (scope) {
@@ -30,10 +31,9 @@ export class VariableRepository {
     }
 
     if (search) {
-      queryBuilder.andWhere(
-        '(v.name ILIKE :search OR v.code ILIKE :search)',
-        { search: `%${search}%` },
-      );
+      queryBuilder.andWhere('(v.name ILIKE :search OR v.code ILIKE :search)', {
+        search: `%${search}%`,
+      });
     }
 
     if (sortBy) {
@@ -61,7 +61,8 @@ export class VariableRepository {
 
   async findByCodes(codes: string[]): Promise<VariableEntity[]> {
     if (codes.length === 0) return [];
-    return this.repo.createQueryBuilder('v')
+    return this.repo
+      .createQueryBuilder('v')
       .where('v.code IN (:...codes)', { codes })
       .andWhere('v.deletedAt IS NULL')
       .getMany();
@@ -72,7 +73,10 @@ export class VariableRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<VariableEntity>): Promise<VariableEntity | null> {
+  async update(
+    id: string,
+    data: Partial<VariableEntity>,
+  ): Promise<VariableEntity | null> {
     await this.repo.update(id, data);
     return this.findById(id);
   }
@@ -94,15 +98,15 @@ export class VariableRepository {
     schoolId?: string,
     schoolLevel?: string,
   ): Promise<VariableOverrideEntity[]> {
-    const queryBuilder = this.overrideRepo.createQueryBuilder('o')
+    const queryBuilder = this.overrideRepo
+      .createQueryBuilder('o')
       .where('o.variableId = :variableId', { variableId })
       .andWhere('o.deletedAt IS NULL');
 
     if (schoolId) {
-      queryBuilder.andWhere(
-        '(o.scopeId = :schoolId OR o.scopeId IS NULL)',
-        { schoolId },
-      );
+      queryBuilder.andWhere('(o.scopeId = :schoolId OR o.scopeId IS NULL)', {
+        schoolId,
+      });
     }
 
     if (schoolLevel) {
@@ -115,12 +119,17 @@ export class VariableRepository {
     return queryBuilder.getMany();
   }
 
-  async createOverride(data: Partial<VariableOverrideEntity>): Promise<VariableOverrideEntity> {
+  async createOverride(
+    data: Partial<VariableOverrideEntity>,
+  ): Promise<VariableOverrideEntity> {
     const entity = this.overrideRepo.create(data);
     return this.overrideRepo.save(entity);
   }
 
-  async updateOverride(id: string, data: Partial<VariableOverrideEntity>): Promise<VariableOverrideEntity | null> {
+  async updateOverride(
+    id: string,
+    data: Partial<VariableOverrideEntity>,
+  ): Promise<VariableOverrideEntity | null> {
     await this.overrideRepo.update(id, data);
     return this.overrideRepo.findOne({ where: { id, deletedAt: IsNull() } });
   }

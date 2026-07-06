@@ -5,7 +5,7 @@ import * as ExcelJS from 'exceljs';
 import { TimetableVersionRepository } from '../repositories/timetable-version.repository';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { SubjectEntity } from '../../subject/entities/subject.entity';
 import { ClassEntity } from '../../class/entities/class.entity';
@@ -43,7 +43,9 @@ export class TimetableImportService {
    * @param options - File Excel, schoolId, semesterId
    * @returns TimetableImportResult với thống kê import và danh sách lỗi
    */
-  async importFromExcel(options: ImportTimetableOptions): Promise<TimetableImportResult> {
+  async importFromExcel(
+    options: ImportTimetableOptions,
+  ): Promise<TimetableImportResult> {
     const { file, schoolId, semesterId } = options;
 
     // 1. Validate file type
@@ -52,7 +54,9 @@ export class TimetableImportService {
       'application/vnd.ms-excel', // .xls
     ];
     if (!allowedMimes.includes(file.mimetype)) {
-      throw new BadRequestException('File phải có định dạng Excel (.xlsx hoặc .xls)');
+      throw new BadRequestException(
+        'File phải có định dạng Excel (.xlsx hoặc .xls)',
+      );
     }
 
     // 2. Validate file size (≤ 10MB)
@@ -70,7 +74,11 @@ export class TimetableImportService {
     }
 
     // 5. Validate rows (basic validation + duplicate detection)
-    const { validRows, validRowIndices, errors: validationErrors } = this.validateRows(parsedRows);
+    const {
+      validRows,
+      validRowIndices,
+      errors: validationErrors,
+    } = this.validateRows(parsedRows);
 
     // 6. Lookup entities for valid rows (pass original indices for correct error row numbers)
     const { validSlots, errors: lookupErrors } = await this.lookupEntities(
@@ -90,7 +98,8 @@ export class TimetableImportService {
     let versionName: string | null = null;
 
     if (validSlots.length > 0) {
-      const versionNumber = await this.versionRepo.getNextVersionNumber(semesterId);
+      const versionNumber =
+        await this.versionRepo.getNextVersionNumber(semesterId);
       const name = `Import TKB - v${versionNumber}`;
 
       const version = await this.dataSource.transaction(async (manager) => {
@@ -99,9 +108,12 @@ export class TimetableImportService {
           semesterId,
           name,
           versionNumber,
-          status: TimetableStatus.DRAFT,
+          status: TimetableVersionStatus.DRAFT,
         });
-        const savedVersion = await manager.save(TimetableVersionEntity, versionEntity);
+        const savedVersion = await manager.save(
+          TimetableVersionEntity,
+          versionEntity,
+        );
 
         // Bulk insert slots
         const slotEntities = validSlots.map((slot) =>
@@ -290,7 +302,10 @@ export class TimetableImportService {
     rows: ParsedTimetableRow[],
     schoolId: string,
     originalIndices?: number[],
-  ): Promise<{ validSlots: ValidatedSlotData[]; errors: TimetableImportError[] }> {
+  ): Promise<{
+    validSlots: ValidatedSlotData[];
+    errors: TimetableImportError[];
+  }> {
     const validSlots: ValidatedSlotData[] = [];
     const errors: TimetableImportError[] = [];
 

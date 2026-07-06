@@ -6,6 +6,7 @@ import { AuthService } from '../../../src/modules/auth/auth.service';
 import { UserRepository } from '../../../src/modules/auth/user.repository';
 import { UserEntity } from '../../../src/modules/auth/entities/user.entity';
 import { UserRole } from '../../../src/common/enums/role.enum';
+import { TeacherSchoolAssignmentService } from '../../../src/modules/teacher-school-assignment/teacher-school-assignment.service';
 
 jest.mock('bcrypt');
 
@@ -13,6 +14,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let userRepository: jest.Mocked<UserRepository>;
   let jwtService: jest.Mocked<JwtService>;
+  let teacherSchoolAssignmentService: jest.Mocked<TeacherSchoolAssignmentService>;
 
   const mockUser: UserEntity = {
     id: '123e4567-e89b-12d3-a456-426614174000',
@@ -45,17 +47,28 @@ describe('AuthService', () => {
       sign: jest.fn(),
     };
 
+    const mockTeacherSchoolAssignmentService = {
+      getAccessibleSchoolIds: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UserRepository, useValue: mockUserRepository },
         { provide: JwtService, useValue: mockJwtService },
+        {
+          provide: 'TEACHER_SCHOOL_ASSIGNMENT_SERVICE',
+          useValue: mockTeacherSchoolAssignmentService,
+        },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     userRepository = module.get(UserRepository) as jest.Mocked<UserRepository>;
     jwtService = module.get(JwtService) as jest.Mocked<JwtService>;
+    teacherSchoolAssignmentService = module.get(
+      'TEACHER_SCHOOL_ASSIGNMENT_SERVICE',
+    ) as jest.Mocked<TeacherSchoolAssignmentService>;
   });
 
   afterEach(() => {
@@ -84,13 +97,19 @@ describe('AuthService', () => {
         },
       });
       expect(userRepository.findByEmail).toHaveBeenCalledWith('test@stms.vn');
-      expect(bcrypt.compare).toHaveBeenCalledWith('password123', mockUser.password);
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        sub: mockUser.id,
-        email: mockUser.email,
-        role: mockUser.role,
-        schoolId: mockUser.schoolId,
-      });
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'password123',
+        mockUser.password,
+      );
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: mockUser.id,
+          email: mockUser.email,
+          role: mockUser.role,
+          schoolId: mockUser.schoolId,
+          tokenVersion: expect.any(Number),
+        }),
+      );
       expect(userRepository.update).toHaveBeenCalledWith(
         mockUser.id,
         expect.objectContaining({ lastLoginAt: expect.any(Date) }),
@@ -100,16 +119,24 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException when user not found', async () => {
       userRepository.findByEmail.mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.login(loginDto)).rejects.toThrow('Email hoặc mật khẩu không đúng');
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Email hoặc mật khẩu không đúng',
+      );
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.login(loginDto)).rejects.toThrow('Email hoặc mật khẩu không đúng');
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Email hoặc mật khẩu không đúng',
+      );
     });
 
     it('should throw UnauthorizedException when user is inactive', async () => {
@@ -117,8 +144,12 @@ describe('AuthService', () => {
       userRepository.findByEmail.mockResolvedValue(inactiveUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
-      await expect(service.login(loginDto)).rejects.toThrow('Tài khoản đã bị khóa');
+      await expect(service.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      await expect(service.login(loginDto)).rejects.toThrow(
+        'Tài khoản đã bị khóa',
+      );
     });
   });
 
@@ -159,8 +190,12 @@ describe('AuthService', () => {
     it('should throw ConflictException when email already exists', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
 
-      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
-      await expect(service.register(registerDto)).rejects.toThrow('Email đã tồn tại');
+      await expect(service.register(registerDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.register(registerDto)).rejects.toThrow(
+        'Email đã tồn tại',
+      );
     });
 
     it('should handle registration without schoolId', async () => {
@@ -186,24 +221,27 @@ describe('AuthService', () => {
 
       expect(result).toEqual(mockUser);
       expect(userRepository.findByEmail).toHaveBeenCalledWith('test@stms.vn');
-      expect(bcrypt.compare).toHaveBeenCalledWith('password123', mockUser.password);
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'password123',
+        mockUser.password,
+      );
     });
 
     it('should throw UnauthorizedException when user not found', async () => {
       userRepository.findByEmail.mockResolvedValue(null);
 
-      await expect(service.validateUser('unknown@stms.vn', 'password123')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.validateUser('unknown@stms.vn', 'password123'),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.validateUser('test@stms.vn', 'wrongpassword')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.validateUser('test@stms.vn', 'wrongpassword'),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException when user is inactive', async () => {
@@ -211,25 +249,125 @@ describe('AuthService', () => {
       userRepository.findByEmail.mockResolvedValue(inactiveUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      await expect(service.validateUser('test@stms.vn', 'password123')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.validateUser('test@stms.vn', 'password123'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('generateToken', () => {
-    it('should generate a JWT token with correct payload', () => {
+    it('should generate a JWT token with correct payload including tokenVersion', async () => {
       jwtService.sign.mockReturnValue('jwt-token');
 
-      const result = service.generateToken(mockUser);
+      const result = await service.generateToken(mockUser);
 
       expect(result).toBe('jwt-token');
-      expect(jwtService.sign).toHaveBeenCalledWith({
-        sub: mockUser.id,
-        email: mockUser.email,
-        role: mockUser.role,
-        schoolId: mockUser.schoolId,
-      });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: mockUser.id,
+          email: mockUser.email,
+          role: mockUser.role,
+          schoolId: mockUser.schoolId,
+          tokenVersion: expect.any(Number),
+        }),
+      );
+    });
+
+    it('should include accessibleSchoolIds for teacher users', async () => {
+      const teacherUser: UserEntity = {
+        ...mockUser,
+        role: UserRole.TEACHER,
+        teacherId: '123e4567-e89b-12d3-a456-426614174099',
+      };
+      const accessibleSchools = [
+        '123e4567-e89b-12d3-a456-426614174001',
+        '123e4567-e89b-12d3-a456-426614174002',
+      ];
+      teacherSchoolAssignmentService.getAccessibleSchoolIds.mockResolvedValue(
+        accessibleSchools,
+      );
+      jwtService.sign.mockReturnValue('jwt-token-teacher');
+
+      const result = await service.generateToken(teacherUser);
+
+      expect(result).toBe('jwt-token-teacher');
+      expect(
+        teacherSchoolAssignmentService.getAccessibleSchoolIds,
+      ).toHaveBeenCalledWith(teacherUser.teacherId);
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sub: teacherUser.id,
+          email: teacherUser.email,
+          role: teacherUser.role,
+          schoolId: teacherUser.schoolId,
+          accessibleSchoolIds: accessibleSchools,
+          tokenVersion: expect.any(Number),
+        }),
+      );
+    });
+
+    it('should not include accessibleSchoolIds for non-teacher users', async () => {
+      jwtService.sign.mockReturnValue('jwt-token');
+
+      await service.generateToken(mockUser);
+
+      expect(
+        teacherSchoolAssignmentService.getAccessibleSchoolIds,
+      ).not.toHaveBeenCalled();
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.not.objectContaining({ accessibleSchoolIds: expect.anything() }),
+      );
+    });
+
+    it('should fallback to schoolId if getAccessibleSchoolIds fails', async () => {
+      const teacherUser: UserEntity = {
+        ...mockUser,
+        role: UserRole.TEACHER,
+        teacherId: '123e4567-e89b-12d3-a456-426614174099',
+      };
+      teacherSchoolAssignmentService.getAccessibleSchoolIds.mockRejectedValue(
+        new Error('DB connection error'),
+      );
+      jwtService.sign.mockReturnValue('jwt-token-fallback');
+
+      const result = await service.generateToken(teacherUser);
+
+      expect(result).toBe('jwt-token-fallback');
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accessibleSchoolIds: [teacherUser.schoolId],
+        }),
+      );
+    });
+
+    it('should not include accessibleSchoolIds if teacher has no teacherId', async () => {
+      const teacherUserNoTeacherId: UserEntity = {
+        ...mockUser,
+        role: UserRole.TEACHER,
+        teacherId: null,
+      };
+      jwtService.sign.mockReturnValue('jwt-token');
+
+      await service.generateToken(teacherUserNoTeacherId);
+
+      expect(
+        teacherSchoolAssignmentService.getAccessibleSchoolIds,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should set tokenVersion as unix timestamp in seconds', async () => {
+      jwtService.sign.mockReturnValue('jwt-token');
+      const before = Math.floor(Date.now() / 1000);
+
+      await service.generateToken(mockUser);
+
+      const signCall = jwtService.sign.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+      const after = Math.floor(Date.now() / 1000);
+      expect(signCall.tokenVersion).toBeGreaterThanOrEqual(before);
+      expect(signCall.tokenVersion).toBeLessThanOrEqual(after);
     });
   });
 

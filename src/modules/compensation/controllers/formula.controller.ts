@@ -10,7 +10,12 @@ import {
   ParseUUIDPipe,
   ParseIntPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { FormulaService } from '../services/formula.service';
 import { CreateFormulaDto } from '../dto/formula/create-formula.dto';
 import { UpdateFormulaDto } from '../dto/formula/update-formula.dto';

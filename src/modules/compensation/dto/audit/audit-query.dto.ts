@@ -3,7 +3,10 @@ import { IsOptional, IsString, IsUUID, IsDateString } from 'class-validator';
 import { PaginationDto } from '../../../../common/dto/pagination.dto';
 
 export class AuditLogQueryDto extends PaginationDto {
-  @ApiPropertyOptional({ description: 'Lọc theo loại thực thể', example: 'formula' })
+  @ApiPropertyOptional({
+    description: 'Lọc theo loại thực thể',
+    example: 'formula',
+  })
   @IsOptional()
   @IsString()
   entityType?: string;

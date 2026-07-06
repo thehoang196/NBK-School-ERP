@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PolicyRepository } from '../repositories/policy.repository';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { CompensationPolicyEntity } from '../entities/compensation-policy.entity';
@@ -15,7 +19,9 @@ export class PolicyService {
     private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
-  async findAll(query: PolicyQueryDto): Promise<PaginatedResponse<CompensationPolicyEntity>> {
+  async findAll(
+    query: PolicyQueryDto,
+  ): Promise<PaginatedResponse<CompensationPolicyEntity>> {
     const [data, total] = await this.policyRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
@@ -40,7 +46,10 @@ export class PolicyService {
     return entity;
   }
 
-  async create(dto: CreatePolicyDto, performedBy?: string): Promise<CompensationPolicyEntity> {
+  async create(
+    dto: CreatePolicyDto,
+    performedBy?: string,
+  ): Promise<CompensationPolicyEntity> {
     // Validate overlap
     const overlapping = await this.policyRepository.findOverlapping(
       dto.schoolId,
@@ -53,7 +62,7 @@ export class PolicyService {
     if (overlapping.length > 0) {
       throw new BadRequestException(
         `Chính sách lương trùng phạm vi và thời gian với: ${overlapping.map((p) => p.name).join(', ')}. ` +
-        'Vui lòng thay đổi thời gian hiệu lực hoặc vô hiệu hóa chính sách cũ.',
+          'Vui lòng thay đổi thời gian hiệu lực hoặc vô hiệu hóa chính sách cũ.',
       );
     }
 
@@ -82,18 +91,31 @@ export class PolicyService {
     return entity;
   }
 
-  async update(id: string, dto: UpdatePolicyDto, performedBy?: string): Promise<CompensationPolicyEntity> {
+  async update(
+    id: string,
+    dto: UpdatePolicyDto,
+    performedBy?: string,
+  ): Promise<CompensationPolicyEntity> {
     const entity = await this.findById(id);
     const oldValue = { ...entity } as unknown as Record<string, unknown>;
 
     // If changing scope or dates, validate overlap
-    if (dto.effectiveFrom || dto.effectiveTo !== undefined || dto.campusId !== undefined || dto.schoolLevel !== undefined) {
+    if (
+      dto.effectiveFrom ||
+      dto.effectiveTo !== undefined ||
+      dto.campusId !== undefined ||
+      dto.schoolLevel !== undefined
+    ) {
       const overlapping = await this.policyRepository.findOverlapping(
         entity.schoolId,
         dto.campusId !== undefined ? dto.campusId || null : entity.campusId,
-        dto.schoolLevel !== undefined ? dto.schoolLevel || null : entity.schoolLevel,
+        dto.schoolLevel !== undefined
+          ? dto.schoolLevel || null
+          : entity.schoolLevel,
         dto.effectiveFrom || entity.effectiveFrom,
-        dto.effectiveTo !== undefined ? dto.effectiveTo || null : entity.effectiveTo,
+        dto.effectiveTo !== undefined
+          ? dto.effectiveTo || null
+          : entity.effectiveTo,
         id,
       );
 
@@ -107,10 +129,18 @@ export class PolicyService {
     const updated = await this.policyRepository.update(id, {
       ...(dto.name !== undefined && { name: dto.name }),
       ...(dto.campusId !== undefined && { campusId: dto.campusId || null }),
-      ...(dto.schoolLevel !== undefined && { schoolLevel: dto.schoolLevel || null }),
-      ...(dto.payComponentIds !== undefined && { payComponentIds: dto.payComponentIds }),
-      ...(dto.effectiveFrom !== undefined && { effectiveFrom: dto.effectiveFrom }),
-      ...(dto.effectiveTo !== undefined && { effectiveTo: dto.effectiveTo || null }),
+      ...(dto.schoolLevel !== undefined && {
+        schoolLevel: dto.schoolLevel || null,
+      }),
+      ...(dto.payComponentIds !== undefined && {
+        payComponentIds: dto.payComponentIds,
+      }),
+      ...(dto.effectiveFrom !== undefined && {
+        effectiveFrom: dto.effectiveFrom,
+      }),
+      ...(dto.effectiveTo !== undefined && {
+        effectiveTo: dto.effectiveTo || null,
+      }),
       ...(dto.status !== undefined && { status: dto.status }),
     });
 

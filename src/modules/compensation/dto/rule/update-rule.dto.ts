@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsInt, Min, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsInt,
+  Min,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RuleActionType } from '../../enums';
 import { RuleConditionDto } from './create-rule.dto';
@@ -11,7 +19,10 @@ export class UpdateRuleDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Danh sách điều kiện', type: [RuleConditionDto] })
+  @ApiPropertyOptional({
+    description: 'Danh sách điều kiện',
+    type: [RuleConditionDto],
+  })
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })

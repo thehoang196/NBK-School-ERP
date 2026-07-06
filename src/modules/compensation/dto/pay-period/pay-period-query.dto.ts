@@ -9,7 +9,10 @@ export class PayPeriodQueryDto extends PaginationDto {
   @IsUUID()
   schoolId?: string;
 
-  @ApiPropertyOptional({ enum: PayPeriodStatus, description: 'Lọc theo trạng thái' })
+  @ApiPropertyOptional({
+    enum: PayPeriodStatus,
+    description: 'Lọc theo trạng thái',
+  })
   @IsOptional()
   @IsEnum(PayPeriodStatus)
   status?: PayPeriodStatus;

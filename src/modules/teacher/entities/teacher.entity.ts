@@ -1,6 +1,10 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
-import { Gender, TeacherType, TeacherStatus } from '../../../common/enums/status.enum';
+import {
+  Gender,
+  TeacherType,
+  TeacherStatus,
+} from '../../../common/enums/status.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { GradeEntity } from '../../class/entities/grade.entity';
 import { DepartmentEntity } from '../../department/entities/department.entity';
@@ -60,13 +64,23 @@ export class TeacherEntity extends BaseEntity {
   @Column({ name: 'job_title', type: 'varchar', length: 100, nullable: true })
   jobTitle: string | null;
 
-  @Column({ name: 'management_level', type: 'varchar', length: 50, nullable: true })
+  @Column({
+    name: 'management_level',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
   managementLevel: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   position: string | null;
 
-  @Column({ name: 'teacher_type', type: 'enum', enum: TeacherType, default: TeacherType.FULL_TIME })
+  @Column({
+    name: 'teacher_type',
+    type: 'enum',
+    enum: TeacherType,
+    default: TeacherType.FULL_TIME,
+  })
   teacherType: TeacherType;
 
   @Column({ name: 'max_periods_per_week', type: 'int', default: 20 })

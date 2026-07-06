@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsInt, Min, IsUUID, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsInt,
+  Min,
+  IsUUID,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { RuleActionType } from '../../enums';
 
@@ -18,7 +28,10 @@ export class RuleConditionDto {
   @IsNotEmpty()
   value: string | number | string[];
 
-  @ApiPropertyOptional({ description: 'Toán tử logic nối tiếp', enum: ['AND', 'OR'] })
+  @ApiPropertyOptional({
+    description: 'Toán tử logic nối tiếp',
+    enum: ['AND', 'OR'],
+  })
   @IsOptional()
   @IsString()
   logicOp?: 'AND' | 'OR';
@@ -45,7 +58,10 @@ export class CreateRuleDto {
   @IsEnum(RuleActionType)
   actionType: RuleActionType;
 
-  @ApiProperty({ description: 'Mục tiêu hành động (variable code hoặc coefficient name)', example: 'LESSON_RATE' })
+  @ApiProperty({
+    description: 'Mục tiêu hành động (variable code hoặc coefficient name)',
+    example: 'LESSON_RATE',
+  })
   @IsString()
   @IsNotEmpty()
   actionTarget: string;
@@ -55,7 +71,10 @@ export class CreateRuleDto {
   @IsNotEmpty()
   actionValue: string;
 
-  @ApiPropertyOptional({ description: 'Mức ưu tiên (số lớn hơn = ưu tiên cao hơn)', default: 0 })
+  @ApiPropertyOptional({
+    description: 'Mức ưu tiên (số lớn hơn = ưu tiên cao hơn)',
+    default: 0,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

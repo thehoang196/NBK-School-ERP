@@ -50,11 +50,14 @@ export class TeachingAssignmentController {
 
   @Get('workload')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
-  @ApiOperation({ summary: 'Lấy thông tin khối lượng giảng dạy tất cả giáo viên' })
+  @ApiOperation({
+    summary: 'Lấy thông tin khối lượng giảng dạy tất cả giáo viên',
+  })
   @ApiResponse({ status: 200, description: 'Thành công' })
   @ApiQuery({ name: 'semesterId', required: true, description: 'ID học kỳ' })
   async getAllWorkloads(@Query('semesterId') semesterId: string) {
-    const data = await this.teachingAssignmentService.checkAllWorkloads(semesterId);
+    const data =
+      await this.teachingAssignmentService.checkAllWorkloads(semesterId);
     return {
       success: true,
       data,
@@ -64,7 +67,9 @@ export class TeachingAssignmentController {
 
   @Get('workload/:teacherId')
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
-  @ApiOperation({ summary: 'Lấy thông tin khối lượng giảng dạy của một giáo viên' })
+  @ApiOperation({
+    summary: 'Lấy thông tin khối lượng giảng dạy của một giáo viên',
+  })
   @ApiResponse({ status: 200, description: 'Thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy giáo viên' })
   @ApiParam({ name: 'teacherId', description: 'ID giáo viên' })
@@ -73,7 +78,10 @@ export class TeachingAssignmentController {
     @Param('teacherId', ParseUUIDPipe) teacherId: string,
     @Query('semesterId') semesterId: string,
   ) {
-    const data = await this.teachingAssignmentService.checkWorkload(teacherId, semesterId);
+    const data = await this.teachingAssignmentService.checkWorkload(
+      teacherId,
+      semesterId,
+    );
     return {
       success: true,
       data,
@@ -97,10 +105,11 @@ export class TeachingAssignmentController {
   @ApiResponse({ status: 409, description: 'Phân công đã tồn tại' })
   async create(@Body() dto: CreateTeachingAssignmentDto) {
     const data = await this.teachingAssignmentService.create(dto);
-    const warning = await this.teachingAssignmentService.getQualificationWarning(
-      dto.teacherId,
-      dto.subjectId,
-    );
+    const warning =
+      await this.teachingAssignmentService.getQualificationWarning(
+        dto.teacherId,
+        dto.subjectId,
+      );
     return {
       success: true,
       data,
@@ -120,10 +129,11 @@ export class TeachingAssignmentController {
     @Body() dto: UpdateTeachingAssignmentDto,
   ) {
     const data = await this.teachingAssignmentService.update(id, dto);
-    const warning = await this.teachingAssignmentService.getQualificationWarning(
-      data.teacherId,
-      data.subjectId,
-    );
+    const warning =
+      await this.teachingAssignmentService.getQualificationWarning(
+        data.teacherId,
+        data.subjectId,
+      );
     return {
       success: true,
       data,
@@ -139,7 +149,11 @@ export class TeachingAssignmentController {
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.teachingAssignmentService.remove(id);
-    return { success: true, data: null, message: 'Xóa phân công giảng dạy thành công' };
+    return {
+      success: true,
+      data: null,
+      message: 'Xóa phân công giảng dạy thành công',
+    };
   }
 
   @Post('bulk')

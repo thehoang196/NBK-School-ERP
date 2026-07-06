@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsUUID, IsOptional, IsInt, Min, Max } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsUUID,
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+} from 'class-validator';
 
 export class GenerateTimetableDto {
   @ApiProperty({ description: 'ID học kỳ' })
@@ -12,7 +19,10 @@ export class GenerateTimetableDto {
   @IsNotEmpty()
   versionId: string;
 
-  @ApiPropertyOptional({ description: 'Thời gian tối đa để FET chạy (giây)', default: 300 })
+  @ApiPropertyOptional({
+    description: 'Thời gian tối đa để FET chạy (giây)',
+    default: 300,
+  })
   @IsOptional()
   @IsInt()
   @Min(60)

@@ -4,7 +4,10 @@ import { IsArray, ValidateNested, ArrayMinSize } from 'class-validator';
 import { CreateTeachingAssignmentDto } from './create-teaching-assignment.dto';
 
 export class BulkCreateTeachingAssignmentDto {
-  @ApiProperty({ type: [CreateTeachingAssignmentDto], description: 'Danh sách phân công' })
+  @ApiProperty({
+    type: [CreateTeachingAssignmentDto],
+    description: 'Danh sách phân công',
+  })
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

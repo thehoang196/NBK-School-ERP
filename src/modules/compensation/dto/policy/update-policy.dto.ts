@@ -28,7 +28,10 @@ export class UpdatePolicyDto {
   @MaxLength(50)
   schoolLevel?: string | null;
 
-  @ApiPropertyOptional({ description: 'Danh sách ID thành phần lương', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Danh sách ID thành phần lương',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })

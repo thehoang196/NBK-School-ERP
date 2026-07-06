@@ -66,7 +66,11 @@ export class PrettyPrinter {
     return `${name}(${argStrings.join(', ')})`;
   }
 
-  private wrapIfNeeded(node: ASTNode, parentOp: string, side: 'left' | 'right'): string {
+  private wrapIfNeeded(
+    node: ASTNode,
+    parentOp: string,
+    side: 'left' | 'right',
+  ): string {
     const str = this.visitNode(node);
 
     if (node.type === 'BinaryExpression') {

@@ -16,14 +16,20 @@ export class AuditLogRepository {
     return this.repo.save(entity);
   }
 
-  async findByEntity(entityType: string, entityId: string): Promise<AuditLogEntity[]> {
+  async findByEntity(
+    entityType: string,
+    entityId: string,
+  ): Promise<AuditLogEntity[]> {
     return this.repo.find({
       where: { entityType, entityId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findByEntityType(entityType: string, limit = 50): Promise<AuditLogEntity[]> {
+  async findByEntityType(
+    entityType: string,
+    limit = 50,
+  ): Promise<AuditLogEntity[]> {
     return this.repo.find({
       where: { entityType },
       order: { createdAt: 'DESC' },
@@ -31,8 +37,20 @@ export class AuditLogRepository {
     });
   }
 
-  async findAllWithFilters(query: AuditLogQueryDto): Promise<[AuditLogEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, entityType, performedBy, action, dateFrom, dateTo } = query;
+  async findAllWithFilters(
+    query: AuditLogQueryDto,
+  ): Promise<[AuditLogEntity[], number]> {
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      entityType,
+      performedBy,
+      action,
+      dateFrom,
+      dateTo,
+    } = query;
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.repo.createQueryBuilder('al');
@@ -54,7 +72,9 @@ export class AuditLogRepository {
     }
 
     if (dateTo) {
-      queryBuilder.andWhere('al.createdAt <= :dateTo', { dateTo: `${dateTo}T23:59:59` });
+      queryBuilder.andWhere('al.createdAt <= :dateTo', {
+        dateTo: `${dateTo}T23:59:59`,
+      });
     }
 
     if (sortBy) {

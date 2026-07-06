@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { FUNCTION_LIBRARY, FunctionDefinition } from '../formula-engine/function-library';
+import {
+  FUNCTION_LIBRARY,
+  FunctionDefinition,
+} from '../formula-engine/function-library';
 
 export interface FunctionDocItem {
   name: string;
@@ -69,7 +72,11 @@ export class FunctionLibraryService {
    * Returns total slots for a teacher within a pay period date range.
    * Placeholder: returns value from context or 0.
    */
-  async getTeachingHours(teacherId: string, startDate: string, endDate: string): Promise<number> {
+  async getTeachingHours(
+    teacherId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<number> {
     // TODO: Integrate with timetable module
     // Query: SELECT COUNT(*) FROM actual_timetable_slots
     //   WHERE teacher_id = :teacherId
@@ -99,7 +106,11 @@ export class FunctionLibraryService {
   /**
    * AttendanceDays: Placeholder for attendance module integration.
    */
-  async getAttendanceDays(teacherId: string, startDate: string, endDate: string): Promise<number> {
+  async getAttendanceDays(
+    teacherId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<number> {
     // TODO: Integrate with attendance module when available
     return 0;
   }

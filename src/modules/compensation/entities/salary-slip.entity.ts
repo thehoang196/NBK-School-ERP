@@ -1,7 +1,11 @@
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SalarySlipStatus } from '../enums';
-import { SalarySlipItem, CalculationSnapshot, CalculationError } from '../interfaces';
+import {
+  SalarySlipItem,
+  CalculationSnapshot,
+  CalculationError,
+} from '../interfaces';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { PayPeriodEntity } from './pay-period.entity';
@@ -35,19 +39,41 @@ export class SalarySlipEntity extends BaseEntity {
   @Column({ type: 'jsonb' })
   deductions: SalarySlipItem[];
 
-  @Column({ name: 'gross_amount', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    name: 'gross_amount',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
   grossAmount: number;
 
-  @Column({ name: 'total_deductions', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    name: 'total_deductions',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
   totalDeductions: number;
 
-  @Column({ name: 'net_amount', type: 'decimal', precision: 15, scale: 2, default: 0 })
+  @Column({
+    name: 'net_amount',
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+  })
   netAmount: number;
 
   @Column({ type: 'jsonb', nullable: true })
   snapshot: CalculationSnapshot | null;
 
-  @Column({ type: 'enum', enum: SalarySlipStatus, default: SalarySlipStatus.DRAFT })
+  @Column({
+    type: 'enum',
+    enum: SalarySlipStatus,
+    default: SalarySlipStatus.DRAFT,
+  })
   status: SalarySlipStatus;
 
   @Column({ type: 'jsonb', nullable: true })

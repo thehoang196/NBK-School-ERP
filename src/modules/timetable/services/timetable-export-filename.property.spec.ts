@@ -32,18 +32,24 @@ describe('Property 7: Export filename matches format', () => {
 
   // Generator for grade names that contain at least one alphanumeric character
   const alphaNumChar = fc.constantFrom(
-    ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split(''),
+    ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split(
+      '',
+    ),
   );
   const gradeNameArb = fc
     .tuple(
       fc.string({ minLength: 0, maxLength: 10 }),
-      fc.array(alphaNumChar, { minLength: 1, maxLength: 10 }).map((chars) => chars.join('')),
+      fc
+        .array(alphaNumChar, { minLength: 1, maxLength: 10 })
+        .map((chars) => chars.join('')),
       fc.string({ minLength: 0, maxLength: 10 }),
     )
     .map(([prefix, alphaNum, suffix]) => `${prefix}${alphaNum}${suffix}`);
 
   // Generator for valid dates (avoids NaN dates)
-  const validDateArb = fc.integer({ min: 0, max: 4102444800000 }).map((ms) => new Date(ms));
+  const validDateArb = fc
+    .integer({ min: 0, max: 4102444800000 })
+    .map((ms) => new Date(ms));
 
   /**
    * **Validates: Requirements 2.7**
@@ -55,33 +61,37 @@ describe('Property 7: Export filename matches format', () => {
     const filenamePattern = /^TKB_[a-zA-Z0-9]+_\d{4}-\d{2}-\d{2}\.xlsx$/;
 
     fc.assert(
-      fc.property(gradeNameArb, validDateArb, (gradeName: string, exportDate: Date) => {
-        const filename = service.generateFilename(gradeName, exportDate);
+      fc.property(
+        gradeNameArb,
+        validDateArb,
+        (gradeName: string, exportDate: Date) => {
+          const filename = service.generateFilename(gradeName, exportDate);
 
-        // Filename must match the overall pattern
-        expect(filename).toMatch(filenamePattern);
+          // Filename must match the overall pattern
+          expect(filename).toMatch(filenamePattern);
 
-        // Filename must start with TKB_
-        expect(filename.startsWith('TKB_')).toBe(true);
+          // Filename must start with TKB_
+          expect(filename.startsWith('TKB_')).toBe(true);
 
-        // Filename must end with .xlsx
-        expect(filename.endsWith('.xlsx')).toBe(true);
+          // Filename must end with .xlsx
+          expect(filename.endsWith('.xlsx')).toBe(true);
 
-        // Date portion must be valid YYYY-MM-DD matching the input date
-        const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})\.xlsx$/);
-        expect(dateMatch).not.toBeNull();
+          // Date portion must be valid YYYY-MM-DD matching the input date
+          const dateMatch = filename.match(/(\d{4}-\d{2}-\d{2})\.xlsx$/);
+          expect(dateMatch).not.toBeNull();
 
-        if (dateMatch) {
-          const [yearStr, monthStr, dayStr] = dateMatch[1].split('-');
-          const year = parseInt(yearStr, 10);
-          const month = parseInt(monthStr, 10);
-          const day = parseInt(dayStr, 10);
+          if (dateMatch) {
+            const [yearStr, monthStr, dayStr] = dateMatch[1].split('-');
+            const year = parseInt(yearStr, 10);
+            const month = parseInt(monthStr, 10);
+            const day = parseInt(dayStr, 10);
 
-          expect(year).toBe(exportDate.getFullYear());
-          expect(month).toBe(exportDate.getMonth() + 1);
-          expect(day).toBe(exportDate.getDate());
-        }
-      }),
+            expect(year).toBe(exportDate.getFullYear());
+            expect(month).toBe(exportDate.getMonth() + 1);
+            expect(day).toBe(exportDate.getDate());
+          }
+        },
+      ),
       { numRuns: 200 },
     );
   });
@@ -174,21 +184,27 @@ describe('Property 7: Export filename matches format', () => {
     );
 
     fc.assert(
-      fc.property(vietnameseNames, validDateArb, (gradeName: string, exportDate: Date) => {
-        const filename = service.generateFilename(gradeName, exportDate);
+      fc.property(
+        vietnameseNames,
+        validDateArb,
+        (gradeName: string, exportDate: Date) => {
+          const filename = service.generateFilename(gradeName, exportDate);
 
-        // Extract the name portion between TKB_ and _YYYY-MM-DD.xlsx
-        const nameMatch = filename.match(/^TKB_(.+)_\d{4}-\d{2}-\d{2}\.xlsx$/);
-        expect(nameMatch).not.toBeNull();
+          // Extract the name portion between TKB_ and _YYYY-MM-DD.xlsx
+          const nameMatch = filename.match(
+            /^TKB_(.+)_\d{4}-\d{2}-\d{2}\.xlsx$/,
+          );
+          expect(nameMatch).not.toBeNull();
 
-        if (nameMatch) {
-          const namePortion = nameMatch[1];
-          // Name portion should only contain alphanumeric characters (no spaces, diacritics, or special chars)
-          expect(namePortion).toMatch(/^[a-zA-Z0-9]+$/);
-          // Name portion should not be empty
-          expect(namePortion.length).toBeGreaterThan(0);
-        }
-      }),
+          if (nameMatch) {
+            const namePortion = nameMatch[1];
+            // Name portion should only contain alphanumeric characters (no spaces, diacritics, or special chars)
+            expect(namePortion).toMatch(/^[a-zA-Z0-9]+$/);
+            // Name portion should not be empty
+            expect(namePortion.length).toBeGreaterThan(0);
+          }
+        },
+      ),
       { numRuns: 200 },
     );
   });

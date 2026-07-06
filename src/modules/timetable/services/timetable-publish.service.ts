@@ -1,14 +1,23 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TimetableVersionRepository } from '../repositories/timetable-version.repository';
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
 import { ActualTimetableSlotEntity } from '../entities/actual-timetable-slot.entity';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
-import { TimetableStatus, SlotStatus } from '../../../common/enums/status.enum';
+import {
+  TimetableVersionStatus,
+  SlotStatus,
+} from '../../../common/enums/status.enum';
 import { ConflictDetectionService } from './conflict-detection.service';
 import { TimetablePublishedEvent } from '../events/timetable-published.event';
 import { WeekEntity } from '../../academic/entities/week.entity';
+import { WeekType } from '../../academic/enums';
 
 export interface PublishResult {
   version: TimetableVersionEntity;
@@ -28,19 +37,23 @@ export class TimetablePublishService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
-  async publish(versionId: string, userId: string, startWeekId?: string): Promise<PublishResult> {
+  async publish(
+    versionId: string,
+    userId: string,
+    startWeekId?: string,
+  ): Promise<PublishResult> {
     const version = await this.versionRepo.findById(versionId);
     if (!version) {
       throw new NotFoundException('Không tìm thấy phiên bản TKB');
     }
 
-    if (version.status === TimetableStatus.PUBLISHED) {
+    if (version.status === TimetableVersionStatus.PUBLISHED) {
       throw new BadRequestException('Phiên bản đã được công bố');
     }
 
     // Check conflicts before publishing
     const conflicts = await this.conflictDetection.checkAllConflicts(versionId);
-    const errorConflicts = conflicts.filter(c => c.severity === 'error');
+    const errorConflicts = conflicts.filter((c) => c.severity === 'error');
     if (errorConflicts.length > 0) {
       throw new BadRequestException({
         message: `Không thể công bố: còn ${errorConflicts.length} xung đột chưa giải quyết`,
@@ -61,13 +74,16 @@ export class TimetablePublishService {
       // Archive previously published version of same semester
       await manager.update(
         TimetableVersionEntity,
-        { semesterId: version.semesterId, status: TimetableStatus.PUBLISHED },
-        { status: TimetableStatus.ARCHIVED },
+        {
+          semesterId: version.semesterId,
+          status: TimetableVersionStatus.PUBLISHED,
+        },
+        { status: TimetableVersionStatus.ARCHIVED },
       );
 
       // Mark this version as published
       await manager.update(TimetableVersionEntity, versionId, {
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         publishedAt: new Date(),
         publishedBy: userId,
       });
@@ -83,19 +99,21 @@ export class TimetablePublishService {
       // Create actual timetable slots for each week
       let totalSlotsPublished = 0;
       for (const week of weeks) {
-        if (week.isHoliday) continue;
+        if (week.weekType === WeekType.HOLIDAY) continue;
 
-        const actualSlots = slots.map(slot => manager.create(ActualTimetableSlotEntity, {
-          semesterId: version.semesterId,
-          weekId: week.id,
-          dayOfWeek: slot.dayOfWeek,
-          periodId: slot.periodId,
-          classId: slot.classId,
-          teacherId: slot.teacherId,
-          subjectId: slot.subjectId,
-          roomId: slot.roomId,
-          slotStatus: SlotStatus.SCHEDULED,
-        }));
+        const actualSlots = slots.map((slot) =>
+          manager.create(ActualTimetableSlotEntity, {
+            semesterId: version.semesterId,
+            weekId: week.id,
+            dayOfWeek: slot.dayOfWeek,
+            periodId: slot.periodId,
+            classId: slot.classId,
+            teacherId: slot.teacherId,
+            subjectId: slot.subjectId,
+            roomId: slot.roomId,
+            slotStatus: SlotStatus.SCHEDULED,
+          }),
+        );
 
         await manager.save(ActualTimetableSlotEntity, actualSlots);
         totalSlotsPublished += actualSlots.length;
@@ -108,7 +126,8 @@ export class TimetablePublishService {
       return {
         version: updatedVersion!,
         slotsPublished: totalSlotsPublished,
-        weeksAffected: weeks.filter(w => !w.isHoliday).length,
+        weeksAffected: weeks.filter((w) => w.weekType !== WeekType.HOLIDAY)
+          .length,
       };
     });
 
@@ -129,7 +148,9 @@ export class TimetablePublishService {
     publishedBy: string,
   ): void {
     try {
-      const uniqueTeacherIds = [...new Set(slots.map(slot => slot.teacherId))];
+      const uniqueTeacherIds = [
+        ...new Set(slots.map((slot) => slot.teacherId)),
+      ];
 
       const event = new TimetablePublishedEvent(
         versionId,
@@ -143,7 +164,7 @@ export class TimetablePublishService {
 
       this.logger.log(
         `Emitted ${TimetablePublishedEvent.eventName} event for version ${versionId}, ` +
-        `notifying ${uniqueTeacherIds.length} teachers`,
+          `notifying ${uniqueTeacherIds.length} teachers`,
       );
     } catch (error) {
       // Notification failure should not break the publish flow
@@ -154,10 +175,14 @@ export class TimetablePublishService {
     }
   }
 
-  private async getWeeksToApply(semesterId: string, startWeekId?: string): Promise<WeekEntity[]> {
+  private async getWeeksToApply(
+    semesterId: string,
+    startWeekId?: string,
+  ): Promise<WeekEntity[]> {
     const weekRepo = this.dataSource.getRepository(WeekEntity);
 
-    const qb = weekRepo.createQueryBuilder('week')
+    const qb = weekRepo
+      .createQueryBuilder('week')
       .where('week.semester_id = :semesterId', { semesterId })
       .andWhere('week.deletedAt IS NULL')
       .orderBy('week.week_number', 'ASC');
@@ -165,7 +190,9 @@ export class TimetablePublishService {
     if (startWeekId) {
       const startWeek = await weekRepo.findOne({ where: { id: startWeekId } });
       if (startWeek) {
-        qb.andWhere('week.week_number >= :weekNumber', { weekNumber: startWeek.weekNumber });
+        qb.andWhere('week.week_number >= :weekNumber', {
+          weekNumber: startWeek.weekNumber,
+        });
       }
     }
 

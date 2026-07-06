@@ -6,7 +6,7 @@ import { TimetableVersionEntity } from '../../timetable/entities/timetable-versi
 import { ClassEntity } from '../../class/entities/class.entity';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { ExportQueryDto, ExportViewType } from '../dto/export-query.dto';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 interface SlotData {
   dayOfWeek: number;
@@ -72,7 +72,7 @@ export class ExportPdfService {
 
     const publishedVersion = await this.versionRepo.findOne({
       where: {
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         deletedAt: IsNull(),
       },
       order: { createdAt: 'DESC' },
@@ -99,14 +99,20 @@ export class ExportPdfService {
       .andWhere('slot.deletedAt IS NULL');
 
     if (query.classId) {
-      queryBuilder.andWhere('slot.classId = :classId', { classId: query.classId });
+      queryBuilder.andWhere('slot.classId = :classId', {
+        classId: query.classId,
+      });
     }
 
     if (query.teacherId) {
-      queryBuilder.andWhere('slot.teacherId = :teacherId', { teacherId: query.teacherId });
+      queryBuilder.andWhere('slot.teacherId = :teacherId', {
+        teacherId: query.teacherId,
+      });
     }
 
-    queryBuilder.orderBy('slot.dayOfWeek', 'ASC').addOrderBy('period.periodNumber', 'ASC');
+    queryBuilder
+      .orderBy('slot.dayOfWeek', 'ASC')
+      .addOrderBy('period.periodNumber', 'ASC');
 
     const slots = await queryBuilder.getMany();
 
@@ -126,7 +132,8 @@ export class ExportPdfService {
     subtitle: string,
     viewType: ExportViewType,
   ): string {
-    const maxPeriod = slots.reduce((max, s) => Math.max(max, s.periodNumber), 0) || 10;
+    const maxPeriod =
+      slots.reduce((max, s) => Math.max(max, s.periodNumber), 0) || 10;
     const viewMode = viewType === ExportViewType.TEACHER ? 'teacher' : 'class';
 
     // Group slots by class or teacher for full view
@@ -232,9 +239,10 @@ export class ExportPdfService {
           (s) => s.dayOfWeek === day && s.periodNumber === period,
         );
         if (slot) {
-          const secondLine = viewMode === 'class'
-            ? `<div class="teacher-name">${slot.teacherName}</div>`
-            : `<div class="class-name">${slot.className}</div>`;
+          const secondLine =
+            viewMode === 'class'
+              ? `<div class="teacher-name">${slot.teacherName}</div>`
+              : `<div class="class-name">${slot.className}</div>`;
           html += `<td class="slot-content"><div class="subject-name">${slot.subjectName}</div>${secondLine}</td>`;
         } else {
           html += '<td></td>';

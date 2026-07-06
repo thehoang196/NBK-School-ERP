@@ -1,7 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsInt, Min, Max, IsOptional, Matches } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsInt,
+  Min,
+  Max,
+  IsOptional,
+  Matches,
+} from 'class-validator';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class CheckConflictsDto {
   @ApiProperty({ description: 'ID phiên bản TKB' })
@@ -9,7 +17,11 @@ export class CheckConflictsDto {
   @IsNotEmpty()
   versionId: string;
 
-  @ApiProperty({ description: 'Ngày trong tuần (2=Thứ 2, 7=Thứ 7)', minimum: 2, maximum: 7 })
+  @ApiProperty({
+    description: 'Ngày trong tuần (2=Thứ 2, 7=Thứ 7)',
+    minimum: 2,
+    maximum: 7,
+  })
   @IsInt()
   @Min(2)
   @Max(7)

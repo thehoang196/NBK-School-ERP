@@ -11,15 +11,31 @@ export class SessionRepository {
     private readonly repo: Repository<SessionEntity>,
   ) {}
 
-  async findAll(query: SessionQueryDto): Promise<[SessionEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId } = query;
+  async findAll(
+    query: SessionQueryDto,
+    schoolId: string,
+  ): Promise<[SessionEntity[], number]> {
+    const { page, limit, sortBy, sortOrder, campusId, gradeLevel, search } =
+      query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('session')
-      .where('session.deletedAt IS NULL');
+    const queryBuilder = this.repo
+      .createQueryBuilder('session')
+      .where('session.deletedAt IS NULL')
+      .andWhere('session.schoolId = :schoolId', { schoolId });
 
-    if (schoolId) {
-      queryBuilder.andWhere('session.schoolId = :schoolId', { schoolId });
+    if (campusId) {
+      queryBuilder.andWhere('session.campusId = :campusId', { campusId });
+    }
+
+    if (gradeLevel) {
+      queryBuilder.andWhere('session.gradeLevel = :gradeLevel', { gradeLevel });
+    }
+
+    if (search) {
+      queryBuilder.andWhere('session.name ILIKE :search', {
+        search: `%${search}%`,
+      });
     }
 
     if (sortBy) {
@@ -33,9 +49,13 @@ export class SessionRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findById(id: string): Promise<SessionEntity | null> {
+  async findById(id: string, schoolId?: string): Promise<SessionEntity | null> {
+    const where: Record<string, unknown> = { id, deletedAt: IsNull() };
+    if (schoolId) {
+      where.schoolId = schoolId;
+    }
     return this.repo.findOne({
-      where: { id, deletedAt: IsNull() },
+      where: where as never,
       relations: { school: true },
     });
   }
@@ -52,7 +72,10 @@ export class SessionRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<SessionEntity>): Promise<SessionEntity | null> {
+  async update(
+    id: string,
+    data: Partial<SessionEntity>,
+  ): Promise<SessionEntity | null> {
     await this.repo.update(id, data);
     return this.findById(id);
   }

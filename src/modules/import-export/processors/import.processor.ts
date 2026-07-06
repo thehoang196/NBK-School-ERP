@@ -2,6 +2,29 @@ import { Injectable } from '@nestjs/common';
 import { Workbook, Worksheet, Row } from 'exceljs';
 import { ImportError } from '../dto/import-result.dto';
 
+/**
+ * Validator: kiểm tra giá trị là số nguyên không âm.
+ * Exported để dùng trực tiếp trong column mappings (tránh mất `this` context).
+ */
+export function validatePositiveNumber(value: unknown): string | null {
+  const num = Number(value);
+  if (isNaN(num) || num < 0 || !Number.isInteger(num)) {
+    return 'Giá trị phải là số không âm';
+  }
+  return null;
+}
+
+/**
+ * Validator: kiểm tra giá trị là ngày trong tuần hợp lệ (2-7).
+ */
+export function validateDayOfWeek(value: unknown): string | null {
+  const num = Number(value);
+  if (isNaN(num) || num < 2 || num > 7) {
+    return 'Thứ phải từ 2 đến 7 (Thứ 2 - Thứ 7)';
+  }
+  return null;
+}
+
 export interface ColumnMapping {
   header: string;
   field: string;
@@ -48,7 +71,9 @@ export class ImportProcessor {
     const map = new Map<string, number>();
 
     headerRow.eachCell((cell, colNumber) => {
-      const headerValue = String(cell.value || '').trim().toLowerCase();
+      const headerValue = String(cell.value || '')
+        .trim()
+        .toLowerCase();
       const mapping = columnMappings.find(
         (m) => m.header.toLowerCase() === headerValue,
       );
@@ -79,7 +104,10 @@ export class ImportProcessor {
       }
 
       // Check required
-      if (mapping.required && (value === null || value === undefined || String(value).trim() === '')) {
+      if (
+        mapping.required &&
+        (value === null || value === undefined || String(value).trim() === '')
+      ) {
         errors.push({
           row: rowNumber,
           field: mapping.field,
@@ -103,7 +131,8 @@ export class ImportProcessor {
         }
       }
 
-      data[mapping.field] = value !== null && value !== undefined ? String(value).trim() : null;
+      data[mapping.field] =
+        value !== null && value !== undefined ? String(value).trim() : null;
     }
 
     return { rowNumber, data, errors };
@@ -111,7 +140,7 @@ export class ImportProcessor {
 
   getTeacherColumnMappings(): ColumnMapping[] {
     return [
-      { header: 'Mã NV', field: 'employeeCode', required: true },
+      { header: 'Mã NV', field: 'employeeCode', required: false },
       { header: 'Họ và Tên', field: 'fullName', required: true },
       { header: 'Tên gọi', field: 'shortName', required: false },
       { header: 'Khối', field: 'gradeName', required: false },
@@ -119,14 +148,24 @@ export class ImportProcessor {
       { header: 'Chức danh/chức vụ', field: 'jobTitle', required: false },
       { header: 'Cấp bậc quản lý', field: 'managementLevel', required: false },
       { header: 'Giới tính', field: 'gender', required: false },
-      { header: 'Max tiết/tuần', field: 'maxPeriodsPerWeek', required: false, validator: this.validatePositiveNumber },
+      {
+        header: 'Max tiết/tuần',
+        field: 'maxPeriodsPerWeek',
+        required: false,
+        validator: validatePositiveNumber,
+      },
     ];
   }
 
   getSubjectColumnMappings(): ColumnMapping[] {
     return [
       { header: 'Môn học', field: 'name', required: true },
-      { header: 'Số tiết/tuần', field: 'periodsPerWeek', required: false, validator: this.validatePositiveNumber },
+      {
+        header: 'Số tiết/tuần',
+        field: 'periodsPerWeek',
+        required: false,
+        validator: validatePositiveNumber,
+      },
     ];
   }
 
@@ -134,7 +173,12 @@ export class ImportProcessor {
     return [
       { header: 'Tên lớp', field: 'name', required: true },
       { header: 'Khối', field: 'gradeName', required: true },
-      { header: 'Sĩ số', field: 'studentCount', required: false, validator: this.validatePositiveNumber },
+      {
+        header: 'Sĩ số',
+        field: 'studentCount',
+        required: false,
+        validator: validatePositiveNumber,
+      },
       { header: 'GVCN', field: 'homeroomTeacherCode', required: false },
     ];
   }
@@ -152,8 +196,18 @@ export class ImportProcessor {
   getTimetableColumnMappings(): ColumnMapping[] {
     return [
       { header: 'Lớp', field: 'className', required: true },
-      { header: 'Thứ', field: 'dayOfWeek', required: true, validator: this.validateDayOfWeek },
-      { header: 'Tiết', field: 'periodOrder', required: true, validator: this.validatePositiveNumber },
+      {
+        header: 'Thứ',
+        field: 'dayOfWeek',
+        required: true,
+        validator: validateDayOfWeek,
+      },
+      {
+        header: 'Tiết',
+        field: 'periodOrder',
+        required: true,
+        validator: validatePositiveNumber,
+      },
       { header: 'Môn', field: 'subjectCode', required: true },
       { header: 'Giáo viên', field: 'teacherCode', required: true },
       { header: 'Phòng', field: 'roomCode', required: false },
@@ -164,22 +218,6 @@ export class ImportProcessor {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (value && !emailRegex.test(String(value))) {
       return 'Email không đúng định dạng';
-    }
-    return null;
-  }
-
-  private validatePositiveNumber(value: unknown): string | null {
-    const num = Number(value);
-    if (isNaN(num) || num < 0) {
-      return 'Giá trị phải là số không âm';
-    }
-    return null;
-  }
-
-  private validateDayOfWeek(value: unknown): string | null {
-    const num = Number(value);
-    if (isNaN(num) || num < 2 || num > 7) {
-      return 'Thứ phải từ 2 đến 7 (Thứ 2 - Thứ 7)';
     }
     return null;
   }

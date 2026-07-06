@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PayComponentService } from '../../../src/modules/compensation/services/pay-component.service';
 import { PayComponentRepository } from '../../../src/modules/compensation/repositories/pay-component.repository';
 import { PayComponentEntity } from '../../../src/modules/compensation/entities/pay-component.entity';
@@ -27,6 +31,9 @@ describe('PayComponentService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
   };
 
   beforeEach(async () => {
@@ -69,7 +76,10 @@ describe('PayComponentService', () => {
       const result = await service.create(dto);
 
       expect(result).toEqual(mockPayComponent);
-      expect(repository.findByCode).toHaveBeenCalledWith('BASIC_SALARY', dto.schoolId);
+      expect(repository.findByCode).toHaveBeenCalledWith(
+        'BASIC_SALARY',
+        dto.schoolId,
+      );
       expect(repository.create).toHaveBeenCalledWith(dto);
     });
 
@@ -142,7 +152,9 @@ describe('PayComponentService', () => {
       repository.findById.mockResolvedValue(mockPayComponent);
 
       // Mock the method to return true (referenced by formula)
-      jest.spyOn(service, 'isReferencedByActiveFormula').mockResolvedValue(true);
+      jest
+        .spyOn(service, 'isReferencedByActiveFormula')
+        .mockResolvedValue(true);
 
       await expect(service.update(mockPayComponent.id, dto)).rejects.toThrow(
         BadRequestException,
@@ -159,7 +171,9 @@ describe('PayComponentService', () => {
       repository.findById.mockResolvedValue(mockPayComponent);
       repository.update.mockResolvedValue(updatedEntity);
 
-      jest.spyOn(service, 'isReferencedByActiveFormula').mockResolvedValue(true);
+      jest
+        .spyOn(service, 'isReferencedByActiveFormula')
+        .mockResolvedValue(true);
 
       const result = await service.update(mockPayComponent.id, dto);
 
@@ -173,16 +187,20 @@ describe('PayComponentService', () => {
       jest.spyOn(service, 'getReferencingActiveFormulas').mockResolvedValue([]);
       repository.softDelete.mockResolvedValue(undefined);
 
-      await expect(service.deactivate(mockPayComponent.id)).resolves.toBeUndefined();
+      await expect(
+        service.deactivate(mockPayComponent.id),
+      ).resolves.toBeUndefined();
       expect(repository.softDelete).toHaveBeenCalledWith(mockPayComponent.id);
     });
 
     it('should reject deactivation when referenced by active formula', async () => {
       repository.findById.mockResolvedValue(mockPayComponent);
-      jest.spyOn(service, 'getReferencingActiveFormulas').mockResolvedValue([
-        { name: 'Formula Lương GV THPT' },
-        { name: 'Formula Phụ cấp' },
-      ]);
+      jest
+        .spyOn(service, 'getReferencingActiveFormulas')
+        .mockResolvedValue([
+          { name: 'Formula Lương GV THPT' },
+          { name: 'Formula Phụ cấp' },
+        ]);
 
       await expect(service.deactivate(mockPayComponent.id)).rejects.toThrow(
         BadRequestException,

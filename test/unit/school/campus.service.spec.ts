@@ -5,7 +5,10 @@ import { CampusRepository } from '../../../src/modules/school/campus.repository'
 import { SchoolRepository } from '../../../src/modules/school/school.repository';
 import { CampusEntity } from '../../../src/modules/school/entities/campus.entity';
 import { SchoolEntity } from '../../../src/modules/school/entities/school.entity';
-import { CampusStatus, SchoolStatus } from '../../../src/common/enums/status.enum';
+import {
+  CampusStatus,
+  SchoolStatus,
+} from '../../../src/common/enums/status.enum';
 import { CampusQueryDto } from '../../../src/modules/school/dto/campus-query.dto';
 
 describe('CampusService', () => {
@@ -71,8 +74,12 @@ describe('CampusService', () => {
     }).compile();
 
     service = module.get<CampusService>(CampusService);
-    campusRepository = module.get(CampusRepository) as jest.Mocked<CampusRepository>;
-    schoolRepository = module.get(SchoolRepository) as jest.Mocked<SchoolRepository>;
+    campusRepository = module.get(
+      CampusRepository,
+    ) as jest.Mocked<CampusRepository>;
+    schoolRepository = module.get(
+      SchoolRepository,
+    ) as jest.Mocked<SchoolRepository>;
   });
 
   afterEach(() => {
@@ -112,12 +119,20 @@ describe('CampusService', () => {
     });
 
     it('should filter by schoolId when provided', async () => {
-      const query: CampusQueryDto = { page: 1, limit: 10, sortOrder: 'ASC', schoolId: mockSchool.id };
+      const query: CampusQueryDto = {
+        page: 1,
+        limit: 10,
+        sortOrder: 'ASC',
+        schoolId: mockSchool.id,
+      };
       campusRepository.findAll.mockResolvedValue([[mockCampus], 1]);
 
       await service.findAll(query);
 
-      expect(campusRepository.findAll).toHaveBeenCalledWith(query, mockSchool.id);
+      expect(campusRepository.findAll).toHaveBeenCalledWith(
+        query,
+        mockSchool.id,
+      );
     });
   });
 
@@ -134,8 +149,12 @@ describe('CampusService', () => {
     it('should throw NotFoundException when campus not found', async () => {
       campusRepository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.findById('non-existent-id')).rejects.toThrow('Không tìm thấy cơ sở');
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy cơ sở',
+      );
     });
   });
 
@@ -151,14 +170,21 @@ describe('CampusService', () => {
     it('should create a campus successfully', async () => {
       schoolRepository.findById.mockResolvedValue(mockSchool);
       campusRepository.findByCode.mockResolvedValue(null);
-      const createdCampus = { ...mockCampus, code: 'CS02', name: 'Cơ sở 2 - Quận 7' };
+      const createdCampus = {
+        ...mockCampus,
+        code: 'CS02',
+        name: 'Cơ sở 2 - Quận 7',
+      };
       campusRepository.create.mockResolvedValue(createdCampus);
 
       const result = await service.create(createDto);
 
       expect(result).toEqual(createdCampus);
       expect(schoolRepository.findById).toHaveBeenCalledWith(mockSchool.id);
-      expect(campusRepository.findByCode).toHaveBeenCalledWith('CS02', mockSchool.id);
+      expect(campusRepository.findByCode).toHaveBeenCalledWith(
+        'CS02',
+        mockSchool.id,
+      );
       expect(campusRepository.create).toHaveBeenCalledWith({
         code: createDto.code,
         name: createDto.name,
@@ -172,15 +198,23 @@ describe('CampusService', () => {
       schoolRepository.findById.mockResolvedValue(mockSchool);
       campusRepository.findByCode.mockResolvedValue(mockCampus);
 
-      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-      await expect(service.create(createDto)).rejects.toThrow('Mã cơ sở đã tồn tại trong trường này');
+      await expect(service.create(createDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.create(createDto)).rejects.toThrow(
+        'Mã cơ sở đã tồn tại trong trường này',
+      );
     });
 
     it('should throw NotFoundException when school does not exist', async () => {
       schoolRepository.findById.mockResolvedValue(null);
 
-      await expect(service.create(createDto)).rejects.toThrow(NotFoundException);
-      await expect(service.create(createDto)).rejects.toThrow('Không tìm thấy trường');
+      await expect(service.create(createDto)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.create(createDto)).rejects.toThrow(
+        'Không tìm thấy trường',
+      );
     });
   });
 
@@ -196,14 +230,21 @@ describe('CampusService', () => {
 
       expect(result).toEqual(updatedCampus);
       expect(campusRepository.findById).toHaveBeenCalledWith(mockCampus.id);
-      expect(campusRepository.update).toHaveBeenCalledWith(mockCampus.id, updateDto);
+      expect(campusRepository.update).toHaveBeenCalledWith(
+        mockCampus.id,
+        updateDto,
+      );
     });
 
     it('should throw NotFoundException when campus not found', async () => {
       campusRepository.findById.mockResolvedValue(null);
 
-      await expect(service.update('non-existent-id', updateDto)).rejects.toThrow(NotFoundException);
-      await expect(service.update('non-existent-id', updateDto)).rejects.toThrow('Không tìm thấy cơ sở');
+      await expect(
+        service.update('non-existent-id', updateDto),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('non-existent-id', updateDto),
+      ).rejects.toThrow('Không tìm thấy cơ sở');
     });
 
     it('should throw ConflictException when updating to duplicate code within same school', async () => {
@@ -212,8 +253,12 @@ describe('CampusService', () => {
       campusRepository.findById.mockResolvedValue(mockCampus);
       campusRepository.findByCode.mockResolvedValue(existingCampus);
 
-      await expect(service.update(mockCampus.id, updateWithCode)).rejects.toThrow(ConflictException);
-      await expect(service.update(mockCampus.id, updateWithCode)).rejects.toThrow('Mã cơ sở đã tồn tại trong trường này');
+      await expect(
+        service.update(mockCampus.id, updateWithCode),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.update(mockCampus.id, updateWithCode),
+      ).rejects.toThrow('Mã cơ sở đã tồn tại trong trường này');
     });
 
     it('should not check code conflict when code is unchanged', async () => {
@@ -233,8 +278,12 @@ describe('CampusService', () => {
       campusRepository.findById.mockResolvedValue(mockCampus);
       schoolRepository.findById.mockResolvedValue(null);
 
-      await expect(service.update(mockCampus.id, updateWithSchool)).rejects.toThrow(NotFoundException);
-      await expect(service.update(mockCampus.id, updateWithSchool)).rejects.toThrow('Không tìm thấy trường');
+      await expect(
+        service.update(mockCampus.id, updateWithSchool),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update(mockCampus.id, updateWithSchool),
+      ).rejects.toThrow('Không tìm thấy trường');
     });
   });
 
@@ -252,8 +301,12 @@ describe('CampusService', () => {
     it('should throw NotFoundException when campus not found', async () => {
       campusRepository.findById.mockResolvedValue(null);
 
-      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.remove('non-existent-id')).rejects.toThrow('Không tìm thấy cơ sở');
+      await expect(service.remove('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.remove('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy cơ sở',
+      );
     });
   });
 });

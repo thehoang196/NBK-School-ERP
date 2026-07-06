@@ -30,9 +30,7 @@ describe('DependencyGraphService', () => {
     });
 
     it('should handle formulas with no dependencies', () => {
-      const formulas = [
-        createFormula('pc-1', null, null),
-      ] as FormulaEntity[];
+      const formulas = [createFormula('pc-1', null, null)] as FormulaEntity[];
 
       const codeMap = new Map<string, string>();
       codeMap.set('pc-1', 'BASIC');

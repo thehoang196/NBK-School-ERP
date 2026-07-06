@@ -52,8 +52,12 @@ export class CreateSubjectGrades1748900011000 implements MigrationInterface {
     await queryRunner.query(`DROP INDEX "IDX_subject_grades_unique"`);
     await queryRunner.query(`DROP INDEX "IDX_subject_grades_grade_id"`);
     await queryRunner.query(`DROP INDEX "IDX_subject_grades_subject_id"`);
-    await queryRunner.query(`ALTER TABLE "subject_grades" DROP CONSTRAINT "FK_subject_grades_grade"`);
-    await queryRunner.query(`ALTER TABLE "subject_grades" DROP CONSTRAINT "FK_subject_grades_subject"`);
+    await queryRunner.query(
+      `ALTER TABLE "subject_grades" DROP CONSTRAINT "FK_subject_grades_grade"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "subject_grades" DROP CONSTRAINT "FK_subject_grades_subject"`,
+    );
     await queryRunner.query(`DROP TABLE "subject_grades"`);
   }
 }

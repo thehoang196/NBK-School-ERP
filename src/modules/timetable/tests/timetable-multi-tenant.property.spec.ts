@@ -38,7 +38,11 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
   /**
    * Helper: create a mock ExecutionContext with user info
    */
-  function createMockContext(user: { id: string; role: UserRole; schoolId: string | null }): {
+  function createMockContext(user: {
+    id: string;
+    role: UserRole;
+    schoolId: string | null;
+  }): {
     context: ExecutionContext;
     request: Record<string, unknown>;
   } {
@@ -136,7 +140,12 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
         schoolScopedRoleArb,
         uuidArb,
         uuidArb,
-        async (userId: string, role: UserRole, userSchoolId: string, otherSchoolId: string) => {
+        async (
+          userId: string,
+          role: UserRole,
+          userSchoolId: string,
+          otherSchoolId: string,
+        ) => {
           // Ensure the two school IDs are different
           fc.pre(userSchoolId !== otherSchoolId);
 
@@ -241,7 +250,9 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
             }
 
             // None of the other school's versions should leak through
-            const leakedVersions = result.filter((v) => v.schoolId === otherSchoolId);
+            const leakedVersions = result.filter(
+              (v) => v.schoolId === otherSchoolId,
+            );
             expect(leakedVersions).toHaveLength(0);
           },
         ),
@@ -265,22 +276,32 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
             fc.pre(schoolA !== schoolB);
 
             // Create versions from two different schools
-            const versionsA: MockVersion[] = Array.from({ length: countA }, (_, i) => ({
-              id: `a-${i}-${schoolA.slice(0, 8)}`,
-              schoolId: schoolA,
-              name: `School A Version ${i}`,
-              versionNumber: i + 1,
-            }));
-            const versionsB: MockVersion[] = Array.from({ length: countB }, (_, i) => ({
-              id: `b-${i}-${schoolB.slice(0, 8)}`,
-              schoolId: schoolB,
-              name: `School B Version ${i}`,
-              versionNumber: i + 1,
-            }));
+            const versionsA: MockVersion[] = Array.from(
+              { length: countA },
+              (_, i) => ({
+                id: `a-${i}-${schoolA.slice(0, 8)}`,
+                schoolId: schoolA,
+                name: `School A Version ${i}`,
+                versionNumber: i + 1,
+              }),
+            );
+            const versionsB: MockVersion[] = Array.from(
+              { length: countB },
+              (_, i) => ({
+                id: `b-${i}-${schoolB.slice(0, 8)}`,
+                schoolId: schoolB,
+                name: `School B Version ${i}`,
+                versionNumber: i + 1,
+              }),
+            );
             const allVersions = [...versionsA, ...versionsB];
 
             // Simulate guard setting schoolScope for SUPER_ADMIN
-            const user = { id: 'superadmin-1', role: UserRole.SUPER_ADMIN, schoolId: null };
+            const user = {
+              id: 'superadmin-1',
+              role: UserRole.SUPER_ADMIN,
+              schoolId: null,
+            };
             const { context, request } = createMockContext(user);
             guard.canActivate(context);
 
@@ -295,8 +316,12 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
             expect(result).toHaveLength(countA + countB);
 
             // Verify both schools' versions are present
-            const schoolAVersions = result.filter((v) => v.schoolId === schoolA);
-            const schoolBVersions = result.filter((v) => v.schoolId === schoolB);
+            const schoolAVersions = result.filter(
+              (v) => v.schoolId === schoolA,
+            );
+            const schoolBVersions = result.filter(
+              (v) => v.schoolId === schoolB,
+            );
             expect(schoolAVersions).toHaveLength(countA);
             expect(schoolBVersions).toHaveLength(countB);
           },
@@ -321,12 +346,15 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
             fc.pre(userSchoolId !== targetSchoolId);
 
             // Create versions that ONLY belong to a different school
-            const targetVersions: MockVersion[] = Array.from({ length: versionCount }, (_, i) => ({
-              id: `target-${i}-${targetSchoolId.slice(0, 8)}`,
-              schoolId: targetSchoolId,
-              name: `Target Version ${i}`,
-              versionNumber: i + 1,
-            }));
+            const targetVersions: MockVersion[] = Array.from(
+              { length: versionCount },
+              (_, i) => ({
+                id: `target-${i}-${targetSchoolId.slice(0, 8)}`,
+                schoolId: targetSchoolId,
+                name: `Target Version ${i}`,
+                versionNumber: i + 1,
+              }),
+            );
 
             // Simulate guard setting schoolScope for non-SUPER_ADMIN user
             const user = { id: 'user-1', role, schoolId: userSchoolId };

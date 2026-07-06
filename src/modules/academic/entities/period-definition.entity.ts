@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { SessionEntity } from './session.entity';
+import { GradeLevel } from '../enums';
 
 @Entity('period_definitions')
 export class PeriodDefinitionEntity extends BaseEntity {
@@ -33,4 +34,12 @@ export class PeriodDefinitionEntity extends BaseEntity {
 
   @Column({ name: 'is_extra', type: 'boolean', default: false })
   isExtra: boolean;
+
+  @Column({
+    name: 'grade_level',
+    type: 'enum',
+    enum: GradeLevel,
+    nullable: true,
+  })
+  gradeLevel: GradeLevel | null;
 }

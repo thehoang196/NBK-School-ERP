@@ -116,10 +116,19 @@ export class CreateCompensationRules1749200003000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropIndex('compensation_rules', 'IDX_COMP_RULES_ACTION_TYPE');
-    await queryRunner.dropIndex('compensation_rules', 'IDX_COMP_RULES_PRIORITY');
+    await queryRunner.dropIndex(
+      'compensation_rules',
+      'IDX_COMP_RULES_ACTION_TYPE',
+    );
+    await queryRunner.dropIndex(
+      'compensation_rules',
+      'IDX_COMP_RULES_PRIORITY',
+    );
     await queryRunner.dropIndex('compensation_rules', 'IDX_COMP_RULES_STATUS');
-    await queryRunner.dropIndex('compensation_rules', 'IDX_COMP_RULES_SCHOOL_ID');
+    await queryRunner.dropIndex(
+      'compensation_rules',
+      'IDX_COMP_RULES_SCHOOL_ID',
+    );
     await queryRunner.dropTable('compensation_rules');
     await queryRunner.query('DROP TYPE "rule_action_type_enum"');
   }

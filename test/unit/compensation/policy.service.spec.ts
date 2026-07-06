@@ -87,13 +87,37 @@ describe('PolicyService', () => {
 
   describe('resolvePolicy', () => {
     it('should resolve most specific policy (campus + level wins over general)', async () => {
-      const generalPolicy = { ...mockPolicy, id: 'p-general', campusId: null, schoolLevel: null };
-      const levelPolicy = { ...mockPolicy, id: 'p-level', campusId: null, schoolLevel: 'THPT' };
-      const campusLevelPolicy = { ...mockPolicy, id: 'p-campus-level', campusId: 'campus-1', schoolLevel: 'THPT' };
+      const generalPolicy = {
+        ...mockPolicy,
+        id: 'p-general',
+        campusId: null,
+        schoolLevel: null,
+      };
+      const levelPolicy = {
+        ...mockPolicy,
+        id: 'p-level',
+        campusId: null,
+        schoolLevel: 'THPT',
+      };
+      const campusLevelPolicy = {
+        ...mockPolicy,
+        id: 'p-campus-level',
+        campusId: 'campus-1',
+        schoolLevel: 'THPT',
+      };
 
-      repository.findActiveByScope.mockResolvedValue([generalPolicy, levelPolicy, campusLevelPolicy] as never);
+      repository.findActiveByScope.mockResolvedValue([
+        generalPolicy,
+        levelPolicy,
+        campusLevelPolicy,
+      ] as never);
 
-      const result = await service.resolvePolicy('school-1', 'campus-1', 'THPT', '2026-01-15');
+      const result = await service.resolvePolicy(
+        'school-1',
+        'campus-1',
+        'THPT',
+        '2026-01-15',
+      );
 
       expect(result?.id).toBe('p-campus-level');
     });
@@ -101,18 +125,41 @@ describe('PolicyService', () => {
     it('should return null when no active policy found', async () => {
       repository.findActiveByScope.mockResolvedValue([]);
 
-      const result = await service.resolvePolicy('school-1', null, null, '2026-01-15');
+      const result = await service.resolvePolicy(
+        'school-1',
+        null,
+        null,
+        '2026-01-15',
+      );
 
       expect(result).toBeNull();
     });
 
     it('should prefer level-specific over general when no campus match', async () => {
-      const generalPolicy = { ...mockPolicy, id: 'p-general', campusId: null, schoolLevel: null };
-      const levelPolicy = { ...mockPolicy, id: 'p-level', campusId: null, schoolLevel: 'THPT' };
+      const generalPolicy = {
+        ...mockPolicy,
+        id: 'p-general',
+        campusId: null,
+        schoolLevel: null,
+      };
+      const levelPolicy = {
+        ...mockPolicy,
+        id: 'p-level',
+        campusId: null,
+        schoolLevel: 'THPT',
+      };
 
-      repository.findActiveByScope.mockResolvedValue([generalPolicy, levelPolicy] as never);
+      repository.findActiveByScope.mockResolvedValue([
+        generalPolicy,
+        levelPolicy,
+      ] as never);
 
-      const result = await service.resolvePolicy('school-1', null, 'THPT', '2026-01-15');
+      const result = await service.resolvePolicy(
+        'school-1',
+        null,
+        'THPT',
+        '2026-01-15',
+      );
 
       expect(result?.id).toBe('p-level');
     });
@@ -133,7 +180,9 @@ describe('PolicyService', () => {
     it('should throw NotFoundException for non-existing policy', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existing')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('non-existing')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

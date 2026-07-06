@@ -107,9 +107,15 @@ export class CreateActualTimetableSlots1749000002000 implements MigrationInterfa
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop indexes
-    await queryRunner.query(`DROP INDEX "IDX_actual_timetable_slots_week_class"`);
-    await queryRunner.query(`DROP INDEX "IDX_actual_timetable_slots_week_teacher"`);
-    await queryRunner.query(`DROP INDEX "IDX_actual_timetable_slots_semester_week_day_period"`);
+    await queryRunner.query(
+      `DROP INDEX "IDX_actual_timetable_slots_week_class"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "IDX_actual_timetable_slots_week_teacher"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "IDX_actual_timetable_slots_semester_week_day_period"`,
+    );
 
     // Drop foreign key constraints
     await queryRunner.query(`

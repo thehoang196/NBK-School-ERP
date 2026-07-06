@@ -10,8 +10,12 @@
  * ROOM_CONFLICT SHALL be reported.
  */
 import * as fc from 'fast-check';
-import { ConflictDetectionService, ConflictType } from '../services/conflict-detection.service';
+import {
+  ConflictDetectionService,
+  ConflictType,
+} from '../services/conflict-detection.service';
 import { TimetableSlotRepository } from '../repositories/timetable-slot.repository';
+import { TimetableVersionRepository } from '../repositories/timetable-version.repository';
 import { TimetableSlotEntity } from '../entities/timetable-slot.entity';
 import { Repository } from 'typeorm';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
@@ -19,6 +23,7 @@ import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 describe('Feature: timetable-management-features, Property 11: Conflict detection accuracy', () => {
   let service: ConflictDetectionService;
   let mockSlotRepository: Record<string, jest.Mock>;
+  let mockVersionRepository: Record<string, jest.Mock>;
   let mockTeacherRepo: Record<string, jest.Mock>;
 
   // Arbitrary: generate a valid UUID v4
@@ -46,13 +51,26 @@ describe('Feature: timetable-management-features, Property 11: Conflict detectio
       findConflicts: jest.fn(),
       findByQuery: jest.fn(),
     };
+    mockVersionRepository = {
+      update: jest.fn(),
+    };
     mockTeacherRepo = {
       findOne: jest.fn(),
     };
 
     service = new ConflictDetectionService(
       mockSlotRepository as unknown as TimetableSlotRepository,
+      mockVersionRepository as unknown as TimetableVersionRepository,
       mockTeacherRepo as unknown as Repository<TeacherEntity>,
+      {} as never, // timetableVersionRepo
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { check: jest.fn().mockReturnValue([]) } as never,
+      { getAccessibleSchoolIds: jest.fn().mockResolvedValue([]) } as never,
     );
   });
 
@@ -123,7 +141,9 @@ describe('Feature: timetable-management-features, Property 11: Conflict detectio
 
           // Verify the conflict references the correct dayOfWeek and periodId
           const hasCorrectTimeslot = teacherConflicts.some(
-            (c) => c.details.dayOfWeek === dayOfWeek && c.details.periodId === periodId,
+            (c) =>
+              c.details.dayOfWeek === dayOfWeek &&
+              c.details.periodId === periodId,
           );
           expect(hasCorrectTimeslot).toBe(true);
         },
@@ -199,7 +219,9 @@ describe('Feature: timetable-management-features, Property 11: Conflict detectio
 
           // Verify the conflict references the correct dayOfWeek and periodId
           const hasCorrectTimeslot = roomConflicts.some(
-            (c) => c.details.dayOfWeek === dayOfWeek && c.details.periodId === periodId,
+            (c) =>
+              c.details.dayOfWeek === dayOfWeek &&
+              c.details.periodId === periodId,
           );
           expect(hasCorrectTimeslot).toBe(true);
         },
@@ -217,7 +239,7 @@ describe('Feature: timetable-management-features, Property 11: Conflict detectio
         // This guarantees no conflicts since each timeslot has exactly one slot
         return slots.map((slot, index) => ({
           ...slot,
-          dayOfWeek: ((index % 6) + 2), // cycles 2-7
+          dayOfWeek: (index % 6) + 2, // cycles 2-7
           periodId: `period-${index}-${slot.periodId}`,
         }));
       });

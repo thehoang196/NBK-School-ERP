@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsDateString, IsUUID, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsDateString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateTimetableVersionDto {
   @ApiProperty({ description: 'ID học kỳ', format: 'uuid' })

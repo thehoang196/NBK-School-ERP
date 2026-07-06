@@ -11,6 +11,9 @@ import { UserRepository } from './user.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UserEntity } from './entities/user.entity';
 import { getJwtConfig } from '../../config/jwt.config';
+import { TokenInvalidationService } from './services/token-invalidation.service';
+import { TeacherSchoolAssignmentModule } from '../teacher-school-assignment/teacher-school-assignment.module';
+import { TeacherSchoolAssignmentService } from '../teacher-school-assignment/teacher-school-assignment.service';
 
 @Module({
   imports: [
@@ -21,9 +24,20 @@ import { getJwtConfig } from '../../config/jwt.config';
       useFactory: getJwtConfig,
       inject: [ConfigService],
     }),
+    TeacherSchoolAssignmentModule,
   ],
   controllers: [AuthController, UserController],
-  providers: [AuthService, UserService, UserRepository, JwtStrategy],
-  exports: [AuthService, UserService, UserRepository],
+  providers: [
+    AuthService,
+    UserService,
+    UserRepository,
+    JwtStrategy,
+    TokenInvalidationService,
+    {
+      provide: 'TEACHER_SCHOOL_ASSIGNMENT_SERVICE',
+      useExisting: TeacherSchoolAssignmentService,
+    },
+  ],
+  exports: [AuthService, UserService, UserRepository, TokenInvalidationService],
 })
 export class AuthModule {}

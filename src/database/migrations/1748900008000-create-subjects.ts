@@ -53,7 +53,9 @@ export class CreateSubjects1748900008000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_subjects_school_code"`);
     await queryRunner.query(`DROP INDEX "IDX_subjects_school_id"`);
-    await queryRunner.query(`ALTER TABLE "subjects" DROP CONSTRAINT "FK_subjects_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "subjects" DROP CONSTRAINT "FK_subjects_school"`,
+    );
     await queryRunner.query(`DROP TABLE "subjects"`);
     await queryRunner.query(`DROP TYPE "room_type_enum"`);
     await queryRunner.query(`DROP TYPE "subject_type_enum"`);

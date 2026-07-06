@@ -1,5 +1,12 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { SalarySlipRepository, SalarySlipQueryDto } from '../repositories/salary-slip.repository';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  SalarySlipRepository,
+  SalarySlipQueryDto,
+} from '../repositories/salary-slip.repository';
 import { SalarySlipEntity } from '../entities/salary-slip.entity';
 import { PaginatedResponse } from '../../../common/interfaces/api-response.interface';
 import { SalarySlipStatus } from '../enums';
@@ -8,7 +15,9 @@ import { SalarySlipStatus } from '../enums';
 export class SalarySlipService {
   constructor(private readonly salarySlipRepository: SalarySlipRepository) {}
 
-  async findAll(query: SalarySlipQueryDto): Promise<PaginatedResponse<SalarySlipEntity>> {
+  async findAll(
+    query: SalarySlipQueryDto,
+  ): Promise<PaginatedResponse<SalarySlipEntity>> {
     const [data, total] = await this.salarySlipRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
@@ -67,11 +76,15 @@ export class SalarySlipService {
    * Check if a teacher has a confirmed/paid slip for a period.
    * Used to prevent recalculation.
    */
-  async hasConfirmedSlip(teacherId: string, payPeriodId: string): Promise<boolean> {
-    const slip = await this.salarySlipRepository.findConfirmedByTeacherAndPeriod(
-      teacherId,
-      payPeriodId,
-    );
+  async hasConfirmedSlip(
+    teacherId: string,
+    payPeriodId: string,
+  ): Promise<boolean> {
+    const slip =
+      await this.salarySlipRepository.findConfirmedByTeacherAndPeriod(
+        teacherId,
+        payPeriodId,
+      );
     return slip !== null;
   }
 }

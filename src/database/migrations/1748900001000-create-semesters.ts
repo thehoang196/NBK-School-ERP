@@ -42,7 +42,9 @@ export class CreateSemesters1748900001000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_semesters_year_number"`);
     await queryRunner.query(`DROP INDEX "IDX_semesters_academic_year_id"`);
-    await queryRunner.query(`ALTER TABLE "semesters" DROP CONSTRAINT "FK_semesters_academic_year"`);
+    await queryRunner.query(
+      `ALTER TABLE "semesters" DROP CONSTRAINT "FK_semesters_academic_year"`,
+    );
     await queryRunner.query(`DROP TABLE "semesters"`);
   }
 }

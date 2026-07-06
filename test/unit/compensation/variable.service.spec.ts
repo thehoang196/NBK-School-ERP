@@ -1,9 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { VariableService } from '../../../src/modules/compensation/services/variable.service';
 import { VariableRepository } from '../../../src/modules/compensation/repositories/variable.repository';
 import { AuditLogRepository } from '../../../src/modules/compensation/repositories/audit-log.repository';
-import { VariableDataType, VariableScope } from '../../../src/modules/compensation/enums';
+import {
+  VariableDataType,
+  VariableScope,
+} from '../../../src/modules/compensation/enums';
 
 describe('VariableService', () => {
   let service: VariableService;
@@ -64,7 +71,11 @@ describe('VariableService', () => {
     it('should return paginated variables', async () => {
       variableRepository.findAll.mockResolvedValue([[mockVariable as any], 1]);
 
-      const result = await service.findAll({ page: 1, limit: 10, sortOrder: 'ASC' });
+      const result = await service.findAll({
+        page: 1,
+        limit: 10,
+        sortOrder: 'ASC',
+      });
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
@@ -81,7 +92,9 @@ describe('VariableService', () => {
 
     it('should throw NotFoundException when not found', async () => {
       variableRepository.findById.mockResolvedValue(null);
-      await expect(service.findById('nonexistent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findById('nonexistent-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -210,10 +223,17 @@ describe('VariableService', () => {
   describe('update', () => {
     it('should update and log audit', async () => {
       variableRepository.findById.mockResolvedValue(mockVariable as any);
-      variableRepository.update.mockResolvedValue({ ...mockVariable, name: 'Updated Name' } as any);
+      variableRepository.update.mockResolvedValue({
+        ...mockVariable,
+        name: 'Updated Name',
+      } as any);
       auditLogRepository.create.mockResolvedValue({} as any);
 
-      const result = await service.update(mockVariable.id, { name: 'Updated Name' }, 'user-1');
+      const result = await service.update(
+        mockVariable.id,
+        { name: 'Updated Name' },
+        'user-1',
+      );
 
       expect(result.name).toBe('Updated Name');
       expect(auditLogRepository.create).toHaveBeenCalledWith(

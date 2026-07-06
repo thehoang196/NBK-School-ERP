@@ -10,8 +10,11 @@ import { PaginatedResponse } from '../../../common/interfaces/api-response.inter
 export class GradeService {
   constructor(private readonly gradeRepository: GradeRepository) {}
 
-  async findAll(query: GradeQueryDto): Promise<PaginatedResponse<GradeEntity>> {
-    const [data, total] = await this.gradeRepository.findAll(query);
+  async findAll(
+    schoolId: string,
+    query: GradeQueryDto,
+  ): Promise<PaginatedResponse<GradeEntity>> {
+    const [data, total] = await this.gradeRepository.findAll(schoolId, query);
     const totalPages = Math.ceil(total / query.limit);
 
     return {
@@ -27,20 +30,27 @@ export class GradeService {
     };
   }
 
-  async findById(id: string): Promise<GradeEntity> {
-    const grade = await this.gradeRepository.findById(id);
+  async findById(id: string, schoolId: string): Promise<GradeEntity> {
+    const grade = await this.gradeRepository.findById(id, schoolId);
     if (!grade) {
       throw new NotFoundException('Không tìm thấy khối');
     }
     return grade;
   }
 
-  async create(dto: CreateGradeDto): Promise<GradeEntity> {
-    return this.gradeRepository.create(dto);
+  async create(dto: CreateGradeDto, schoolId: string): Promise<GradeEntity> {
+    return this.gradeRepository.create({
+      ...dto,
+      schoolId,
+    });
   }
 
-  async update(id: string, dto: UpdateGradeDto): Promise<GradeEntity> {
-    await this.findById(id);
+  async update(
+    id: string,
+    schoolId: string,
+    dto: UpdateGradeDto,
+  ): Promise<GradeEntity> {
+    await this.findById(id, schoolId);
     const updated = await this.gradeRepository.update(id, dto);
     if (!updated) {
       throw new NotFoundException('Không tìm thấy khối');
@@ -48,8 +58,8 @@ export class GradeService {
     return updated;
   }
 
-  async remove(id: string): Promise<void> {
-    await this.findById(id);
+  async remove(id: string, schoolId: string): Promise<void> {
+    await this.findById(id, schoolId);
     await this.gradeRepository.softDelete(id);
   }
 }

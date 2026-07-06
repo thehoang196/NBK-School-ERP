@@ -27,12 +27,18 @@ import { CreateTimetableVersionDto } from '../dto/create-timetable-version.dto';
 import { UpdateTimetableVersionDto } from '../dto/update-timetable-version.dto';
 import { SaveTimetableVersionDto } from '../dto/save-timetable-version.dto';
 import { OverwriteSlotsDto } from '../dto/overwrite-slots.dto';
-import { TimetableVersionQueryDto, CompareVersionsDto } from '../dto/timetable-query.dto';
+import {
+  TimetableVersionQueryDto,
+  CompareVersionsDto,
+} from '../dto/timetable-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { SchoolScopeGuard } from '../../../common/guards/school-scope.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { CurrentUser, CurrentUserPayload } from '../../../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  CurrentUserPayload,
+} from '../../../common/decorators/current-user.decorator';
 import { UserRole } from '../../../common/enums/role.enum';
 import { ApiResponse as ApiResponseType } from '../../../common/interfaces/api-response.interface';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
@@ -117,13 +123,19 @@ export class TimetableVersionController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Lưu TKB thành phiên bản mới' })
-  @ApiResponse({ status: 201, description: 'Phiên bản TKB mới được tạo thành công' })
+  @ApiResponse({
+    status: 201,
+    description: 'Phiên bản TKB mới được tạo thành công',
+  })
   @ApiResponse({ status: 400, description: 'Dữ liệu không hợp lệ' })
   async saveAsNewVersion(
     @Body() dto: SaveTimetableVersionDto,
     @CurrentUser() user: CurrentUserPayload,
   ): Promise<ApiResponseType<TimetableVersionEntity>> {
-    const version = await this.timetableVersionService.saveAsNewVersion(dto, user.schoolId ?? '');
+    const version = await this.timetableVersionService.saveAsNewVersion(
+      dto,
+      user.schoolId ?? '',
+    );
     return {
       success: true,
       data: version,
@@ -136,7 +148,10 @@ export class TimetableVersionController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Tạo bản sao nháp từ phiên bản' })
   @ApiResponse({ status: 201, description: 'Bản sao được tạo thành công' })
-  @ApiResponse({ status: 400, description: 'Không thể tạo bản sao từ phiên bản nháp' })
+  @ApiResponse({
+    status: 400,
+    description: 'Không thể tạo bản sao từ phiên bản nháp',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy phiên bản' })
   async cloneVersion(
     @Param('id', ParseUUIDPipe) id: string,
@@ -153,7 +168,10 @@ export class TimetableVersionController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
   @ApiOperation({ summary: 'Ghi đè slots phiên bản DRAFT' })
   @ApiResponse({ status: 200, description: 'Ghi đè slots thành công' })
-  @ApiResponse({ status: 400, description: 'Phiên bản không ở trạng thái nháp' })
+  @ApiResponse({
+    status: 400,
+    description: 'Phiên bản không ở trạng thái nháp',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy phiên bản' })
   async overwriteSlots(
     @Param('id', ParseUUIDPipe) id: string,
@@ -171,7 +189,10 @@ export class TimetableVersionController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
   @ApiOperation({ summary: 'Cập nhật phiên bản TKB' })
   @ApiResponse({ status: 200, description: 'Cập nhật thành công' })
-  @ApiResponse({ status: 400, description: 'Không thể cập nhật phiên bản đã công bố' })
+  @ApiResponse({
+    status: 400,
+    description: 'Không thể cập nhật phiên bản đã công bố',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -189,7 +210,10 @@ export class TimetableVersionController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER)
   @ApiOperation({ summary: 'Xóa phiên bản TKB (chỉ draft)' })
   @ApiResponse({ status: 200, description: 'Xóa thành công' })
-  @ApiResponse({ status: 400, description: 'Không thể xóa phiên bản đã công bố' })
+  @ApiResponse({
+    status: 400,
+    description: 'Không thể xóa phiên bản đã công bố',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async delete(
     @Param('id', ParseUUIDPipe) id: string,
@@ -207,7 +231,10 @@ export class TimetableVersionController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Công bố phiên bản TKB' })
   @ApiResponse({ status: 200, description: 'Công bố thành công' })
-  @ApiResponse({ status: 400, description: 'Không thể công bố (trạng thái không hợp lệ)' })
+  @ApiResponse({
+    status: 400,
+    description: 'Không thể công bố (trạng thái không hợp lệ)',
+  })
   @ApiResponse({ status: 404, description: 'Không tìm thấy' })
   async publish(
     @Param('id', ParseUUIDPipe) id: string,

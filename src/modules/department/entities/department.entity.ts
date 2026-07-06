@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
@@ -21,4 +21,7 @@ export class DepartmentEntity extends BaseEntity {
   @ManyToOne(() => TeacherEntity, { nullable: true })
   @JoinColumn({ name: 'head_teacher_id' })
   headTeacher: TeacherEntity | null;
+
+  @OneToMany(() => TeacherEntity, (teacher) => teacher.department)
+  teachers: TeacherEntity[];
 }

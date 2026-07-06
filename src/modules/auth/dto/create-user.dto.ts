@@ -23,17 +23,26 @@ export class CreateUserDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: 'password123', description: 'Mật khẩu (tối thiểu 6 ký tự)' })
+  @ApiProperty({
+    example: 'password123',
+    description: 'Mật khẩu (tối thiểu 6 ký tự)',
+  })
   @IsString()
   @IsNotEmpty()
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ enum: UserRole, example: UserRole.TEACHER, description: 'Vai trò' })
+  @ApiProperty({
+    enum: UserRole,
+    example: UserRole.TEACHER,
+    description: 'Vai trò',
+  })
   @IsEnum(UserRole)
   role: UserRole;
 
-  @ApiPropertyOptional({ description: 'ID trường học (bắt buộc nếu role không phải super_admin)' })
+  @ApiPropertyOptional({
+    description: 'ID trường học (bắt buộc nếu role không phải super_admin)',
+  })
   @IsOptional()
   @IsUUID()
   schoolId?: string;

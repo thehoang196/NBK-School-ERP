@@ -11,15 +11,24 @@ export class SemesterRepository {
     private readonly repo: Repository<SemesterEntity>,
   ) {}
 
-  async findAll(query: SemesterQueryDto): Promise<[SemesterEntity[], number]> {
+  async findAll(
+    schoolId: string,
+    query: SemesterQueryDto,
+  ): Promise<[SemesterEntity[], number]> {
     const { page, limit, sortBy, sortOrder, academicYearId, status } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('semester')
-      .where('semester.deletedAt IS NULL');
+    const queryBuilder = this.repo
+      .createQueryBuilder('semester')
+      .innerJoin('semester.academicYear', 'academicYear')
+      .where('semester.deletedAt IS NULL')
+      .andWhere('academicYear.schoolId = :schoolId', { schoolId })
+      .andWhere('academicYear.deletedAt IS NULL');
 
     if (academicYearId) {
-      queryBuilder.andWhere('semester.academicYearId = :academicYearId', { academicYearId });
+      queryBuilder.andWhere('semester.academicYearId = :academicYearId', {
+        academicYearId,
+      });
     }
 
     if (status) {
@@ -37,14 +46,43 @@ export class SemesterRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findById(id: string): Promise<SemesterEntity | null> {
+  async findById(
+    id: string,
+    schoolId?: string,
+  ): Promise<SemesterEntity | null> {
+    if (schoolId) {
+      return this.repo
+        .createQueryBuilder('semester')
+        .innerJoinAndSelect('semester.academicYear', 'academicYear')
+        .where('semester.id = :id', { id })
+        .andWhere('semester.deletedAt IS NULL')
+        .andWhere('academicYear.schoolId = :schoolId', { schoolId })
+        .andWhere('academicYear.deletedAt IS NULL')
+        .getOne();
+    }
+
     return this.repo.findOne({
       where: { id, deletedAt: IsNull() },
       relations: { academicYear: true },
     });
   }
 
-  async findByAcademicYear(academicYearId: string): Promise<SemesterEntity[]> {
+  async findByAcademicYear(
+    academicYearId: string,
+    schoolId?: string,
+  ): Promise<SemesterEntity[]> {
+    if (schoolId) {
+      return this.repo
+        .createQueryBuilder('semester')
+        .innerJoin('semester.academicYear', 'academicYear')
+        .where('semester.academicYearId = :academicYearId', { academicYearId })
+        .andWhere('semester.deletedAt IS NULL')
+        .andWhere('academicYear.schoolId = :schoolId', { schoolId })
+        .andWhere('academicYear.deletedAt IS NULL')
+        .orderBy('semester.semesterNumber', 'ASC')
+        .getMany();
+    }
+
     return this.repo.find({
       where: { academicYearId, deletedAt: IsNull() },
       order: { semesterNumber: 'ASC' },
@@ -56,9 +94,15 @@ export class SemesterRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<SemesterEntity>): Promise<SemesterEntity | null> {
+  async update(
+    id: string,
+    data: Partial<SemesterEntity>,
+  ): Promise<SemesterEntity | null> {
     await this.repo.update(id, data);
-    return this.findById(id);
+    return this.repo.findOne({
+      where: { id, deletedAt: IsNull() },
+      relations: { academicYear: true },
+    });
   }
 
   async softDelete(id: string): Promise<void> {

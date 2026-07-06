@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import { TimetableVersionEntity } from '../../modules/timetable/entities/timetable-version.entity';
 import { TimetableSlotEntity } from '../../modules/timetable/entities/timetable-slot.entity';
-import { TimetableStatus } from '../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../common/enums/status.enum';
 import { AcademicYearEntity } from '../../modules/academic/entities/academic-year.entity';
 import { SemesterEntity } from '../../modules/academic/entities/semester.entity';
 import { SessionEntity } from '../../modules/academic/entities/session.entity';
@@ -12,7 +12,16 @@ import { TeacherEntity } from '../../modules/teacher/entities/teacher.entity';
 import { SubjectEntity } from '../../modules/subject/entities/subject.entity';
 import { RoomEntity } from '../../modules/room/entities/room.entity';
 import { SchoolEntity } from '../../modules/school/entities/school.entity';
-import { AcademicStatus, EntityStatus, TeacherStatus, TeacherType, Gender, SubjectType, RoomType, RoomStatus } from '../../common/enums/status.enum';
+import {
+  AcademicStatus,
+  EntityStatus,
+  TeacherStatus,
+  TeacherType,
+  Gender,
+  SubjectType,
+  RoomType,
+  RoomStatus,
+} from '../../common/enums/status.enum';
 
 export async function seedTimetable(dataSource: DataSource): Promise<void> {
   console.log('🕐 Seeding timetable data...');
@@ -42,7 +51,7 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
   // --- Find or create prerequisite data ---
 
   // School
-  let school = await schoolRepo.findOne({ where: { code: 'TH01' } });
+  const school = await schoolRepo.findOne({ where: { code: 'TH01' } });
   if (!school) {
     console.log('⚠️  School TH01 not found. Please run base seed first.');
     return;
@@ -94,17 +103,51 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
 
   // Period Definitions (5 tiết sáng)
   const periodData = [
-    { periodNumber: 1, startTime: '07:00', endTime: '07:45', isBreak: false, isExtra: false },
-    { periodNumber: 2, startTime: '07:50', endTime: '08:35', isBreak: false, isExtra: false },
-    { periodNumber: 3, startTime: '08:50', endTime: '09:35', isBreak: false, isExtra: false },
-    { periodNumber: 4, startTime: '09:40', endTime: '10:25', isBreak: false, isExtra: false },
-    { periodNumber: 5, startTime: '10:30', endTime: '11:15', isBreak: false, isExtra: false },
+    {
+      periodNumber: 1,
+      startTime: '07:00',
+      endTime: '07:45',
+      isBreak: false,
+      isExtra: false,
+    },
+    {
+      periodNumber: 2,
+      startTime: '07:50',
+      endTime: '08:35',
+      isBreak: false,
+      isExtra: false,
+    },
+    {
+      periodNumber: 3,
+      startTime: '08:50',
+      endTime: '09:35',
+      isBreak: false,
+      isExtra: false,
+    },
+    {
+      periodNumber: 4,
+      startTime: '09:40',
+      endTime: '10:25',
+      isBreak: false,
+      isExtra: false,
+    },
+    {
+      periodNumber: 5,
+      startTime: '10:30',
+      endTime: '11:15',
+      isBreak: false,
+      isExtra: false,
+    },
   ];
 
   const periods: PeriodDefinitionEntity[] = [];
   for (const pd of periodData) {
     let period = await periodRepo.findOne({
-      where: { schoolId: school.id, sessionId: session.id, periodNumber: pd.periodNumber },
+      where: {
+        schoolId: school.id,
+        sessionId: session.id,
+        periodNumber: pd.periodNumber,
+      },
     });
     if (!period) {
       period = await periodRepo.save({
@@ -145,11 +188,36 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
 
   // Teachers
   const teacherData = [
-    { employeeCode: 'GV001', fullName: 'Nguyễn Thị Mai', shortName: 'Mai', gender: Gender.FEMALE },
-    { employeeCode: 'GV002', fullName: 'Trần Văn Hùng', shortName: 'Hùng', gender: Gender.MALE },
-    { employeeCode: 'GV003', fullName: 'Lê Thị Hoa', shortName: 'Hoa', gender: Gender.FEMALE },
-    { employeeCode: 'GV004', fullName: 'Phạm Minh Tuấn', shortName: 'Tuấn', gender: Gender.MALE },
-    { employeeCode: 'GV005', fullName: 'Võ Thị Lan', shortName: 'Lan', gender: Gender.FEMALE },
+    {
+      employeeCode: 'GV001',
+      fullName: 'Nguyễn Thị Mai',
+      shortName: 'Mai',
+      gender: Gender.FEMALE,
+    },
+    {
+      employeeCode: 'GV002',
+      fullName: 'Trần Văn Hùng',
+      shortName: 'Hùng',
+      gender: Gender.MALE,
+    },
+    {
+      employeeCode: 'GV003',
+      fullName: 'Lê Thị Hoa',
+      shortName: 'Hoa',
+      gender: Gender.FEMALE,
+    },
+    {
+      employeeCode: 'GV004',
+      fullName: 'Phạm Minh Tuấn',
+      shortName: 'Tuấn',
+      gender: Gender.MALE,
+    },
+    {
+      employeeCode: 'GV005',
+      fullName: 'Võ Thị Lan',
+      shortName: 'Lan',
+      gender: Gender.FEMALE,
+    },
   ];
 
   const teachers: TeacherEntity[] = [];
@@ -176,11 +244,41 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
 
   // Subjects
   const subjectData = [
-    { code: 'TOAN', name: 'Toán học', shortName: 'Toán', periodsPerWeek: 4, colorCode: '#FF6B6B' },
-    { code: 'VAN', name: 'Ngữ văn', shortName: 'Văn', periodsPerWeek: 3, colorCode: '#4ECDC4' },
-    { code: 'ANH', name: 'Tiếng Anh', shortName: 'Anh', periodsPerWeek: 3, colorCode: '#45B7D1' },
-    { code: 'LY', name: 'Vật lý', shortName: 'Lý', periodsPerWeek: 2, colorCode: '#96CEB4' },
-    { code: 'HOA', name: 'Hóa học', shortName: 'Hóa', periodsPerWeek: 2, colorCode: '#FFEAA7' },
+    {
+      code: 'TOAN',
+      name: 'Toán học',
+      shortName: 'Toán',
+      periodsPerWeek: 4,
+      colorCode: '#FF6B6B',
+    },
+    {
+      code: 'VAN',
+      name: 'Ngữ văn',
+      shortName: 'Văn',
+      periodsPerWeek: 3,
+      colorCode: '#4ECDC4',
+    },
+    {
+      code: 'ANH',
+      name: 'Tiếng Anh',
+      shortName: 'Anh',
+      periodsPerWeek: 3,
+      colorCode: '#45B7D1',
+    },
+    {
+      code: 'LY',
+      name: 'Vật lý',
+      shortName: 'Lý',
+      periodsPerWeek: 2,
+      colorCode: '#96CEB4',
+    },
+    {
+      code: 'HOA',
+      name: 'Hóa học',
+      shortName: 'Hóa',
+      periodsPerWeek: 2,
+      colorCode: '#FFEAA7',
+    },
   ];
 
   const subjects: SubjectEntity[] = [];
@@ -236,7 +334,7 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
     semesterId: semester.id,
     name: 'TKB Nháp - HK1 2024-2025',
     versionNumber: 1,
-    status: TimetableStatus.DRAFT,
+    status: TimetableVersionStatus.DRAFT,
     effectiveDate: null,
     publishedAt: null,
     publishedBy: null,
@@ -258,33 +356,166 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
     isDoublePeriod: boolean;
   }> = [
     // Thứ 2 (Monday)
-    { dayOfWeek: 2, periodIndex: 0, teacherIndex: 0, subjectIndex: 0, roomIndex: 0, isDoublePeriod: false }, // Tiết 1: Toán - Cô Mai
-    { dayOfWeek: 2, periodIndex: 1, teacherIndex: 0, subjectIndex: 0, roomIndex: 0, isDoublePeriod: false }, // Tiết 2: Toán - Cô Mai
-    { dayOfWeek: 2, periodIndex: 2, teacherIndex: 1, subjectIndex: 1, roomIndex: 0, isDoublePeriod: false }, // Tiết 3: Văn - Thầy Hùng
-    { dayOfWeek: 2, periodIndex: 3, teacherIndex: 2, subjectIndex: 2, roomIndex: 0, isDoublePeriod: false }, // Tiết 4: Anh - Cô Hoa
-    { dayOfWeek: 2, periodIndex: 4, teacherIndex: 3, subjectIndex: 3, roomIndex: 0, isDoublePeriod: false }, // Tiết 5: Lý - Thầy Tuấn
+    {
+      dayOfWeek: 2,
+      periodIndex: 0,
+      teacherIndex: 0,
+      subjectIndex: 0,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 1: Toán - Cô Mai
+    {
+      dayOfWeek: 2,
+      periodIndex: 1,
+      teacherIndex: 0,
+      subjectIndex: 0,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 2: Toán - Cô Mai
+    {
+      dayOfWeek: 2,
+      periodIndex: 2,
+      teacherIndex: 1,
+      subjectIndex: 1,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 3: Văn - Thầy Hùng
+    {
+      dayOfWeek: 2,
+      periodIndex: 3,
+      teacherIndex: 2,
+      subjectIndex: 2,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 4: Anh - Cô Hoa
+    {
+      dayOfWeek: 2,
+      periodIndex: 4,
+      teacherIndex: 3,
+      subjectIndex: 3,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 5: Lý - Thầy Tuấn
 
     // Thứ 3 (Tuesday)
-    { dayOfWeek: 3, periodIndex: 0, teacherIndex: 1, subjectIndex: 1, roomIndex: 1, isDoublePeriod: false }, // Tiết 1: Văn - Thầy Hùng
-    { dayOfWeek: 3, periodIndex: 1, teacherIndex: 2, subjectIndex: 2, roomIndex: 1, isDoublePeriod: false }, // Tiết 2: Anh - Cô Hoa
-    { dayOfWeek: 3, periodIndex: 2, teacherIndex: 4, subjectIndex: 4, roomIndex: 1, isDoublePeriod: false }, // Tiết 3: Hóa - Cô Lan
-    { dayOfWeek: 3, periodIndex: 3, teacherIndex: 0, subjectIndex: 0, roomIndex: 1, isDoublePeriod: false }, // Tiết 4: Toán - Cô Mai
-    { dayOfWeek: 3, periodIndex: 4, teacherIndex: 3, subjectIndex: 3, roomIndex: 1, isDoublePeriod: false }, // Tiết 5: Lý - Thầy Tuấn
+    {
+      dayOfWeek: 3,
+      periodIndex: 0,
+      teacherIndex: 1,
+      subjectIndex: 1,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 1: Văn - Thầy Hùng
+    {
+      dayOfWeek: 3,
+      periodIndex: 1,
+      teacherIndex: 2,
+      subjectIndex: 2,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 2: Anh - Cô Hoa
+    {
+      dayOfWeek: 3,
+      periodIndex: 2,
+      teacherIndex: 4,
+      subjectIndex: 4,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 3: Hóa - Cô Lan
+    {
+      dayOfWeek: 3,
+      periodIndex: 3,
+      teacherIndex: 0,
+      subjectIndex: 0,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 4: Toán - Cô Mai
+    {
+      dayOfWeek: 3,
+      periodIndex: 4,
+      teacherIndex: 3,
+      subjectIndex: 3,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 5: Lý - Thầy Tuấn
 
     // Thứ 4 (Wednesday)
-    { dayOfWeek: 4, periodIndex: 0, teacherIndex: 2, subjectIndex: 2, roomIndex: 2, isDoublePeriod: false }, // Tiết 1: Anh - Cô Hoa
-    { dayOfWeek: 4, periodIndex: 1, teacherIndex: 0, subjectIndex: 0, roomIndex: 2, isDoublePeriod: false }, // Tiết 2: Toán - Cô Mai
-    { dayOfWeek: 4, periodIndex: 2, teacherIndex: 1, subjectIndex: 1, roomIndex: 2, isDoublePeriod: false }, // Tiết 3: Văn - Thầy Hùng
+    {
+      dayOfWeek: 4,
+      periodIndex: 0,
+      teacherIndex: 2,
+      subjectIndex: 2,
+      roomIndex: 2,
+      isDoublePeriod: false,
+    }, // Tiết 1: Anh - Cô Hoa
+    {
+      dayOfWeek: 4,
+      periodIndex: 1,
+      teacherIndex: 0,
+      subjectIndex: 0,
+      roomIndex: 2,
+      isDoublePeriod: false,
+    }, // Tiết 2: Toán - Cô Mai
+    {
+      dayOfWeek: 4,
+      periodIndex: 2,
+      teacherIndex: 1,
+      subjectIndex: 1,
+      roomIndex: 2,
+      isDoublePeriod: false,
+    }, // Tiết 3: Văn - Thầy Hùng
 
     // Thứ 5 (Thursday)
-    { dayOfWeek: 5, periodIndex: 0, teacherIndex: 4, subjectIndex: 4, roomIndex: 0, isDoublePeriod: false }, // Tiết 1: Hóa - Cô Lan
-    { dayOfWeek: 5, periodIndex: 1, teacherIndex: 0, subjectIndex: 0, roomIndex: 0, isDoublePeriod: false }, // Tiết 2: Toán - Cô Mai (đôi)
-    { dayOfWeek: 5, periodIndex: 2, teacherIndex: 3, subjectIndex: 3, roomIndex: 0, isDoublePeriod: false }, // Tiết 3: Lý - Thầy Tuấn
+    {
+      dayOfWeek: 5,
+      periodIndex: 0,
+      teacherIndex: 4,
+      subjectIndex: 4,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 1: Hóa - Cô Lan
+    {
+      dayOfWeek: 5,
+      periodIndex: 1,
+      teacherIndex: 0,
+      subjectIndex: 0,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 2: Toán - Cô Mai (đôi)
+    {
+      dayOfWeek: 5,
+      periodIndex: 2,
+      teacherIndex: 3,
+      subjectIndex: 3,
+      roomIndex: 0,
+      isDoublePeriod: false,
+    }, // Tiết 3: Lý - Thầy Tuấn
 
     // Thứ 6 (Friday)
-    { dayOfWeek: 6, periodIndex: 0, teacherIndex: 1, subjectIndex: 1, roomIndex: 1, isDoublePeriod: false }, // Tiết 1: Văn - Thầy Hùng (đôi - kết hợp)
-    { dayOfWeek: 6, periodIndex: 1, teacherIndex: 4, subjectIndex: 4, roomIndex: 1, isDoublePeriod: false }, // Tiết 2: Hóa - Cô Lan
-    { dayOfWeek: 6, periodIndex: 2, teacherIndex: 2, subjectIndex: 2, roomIndex: 1, isDoublePeriod: false }, // Tiết 3: Anh - Cô Hoa (đôi - kết hợp)
+    {
+      dayOfWeek: 6,
+      periodIndex: 0,
+      teacherIndex: 1,
+      subjectIndex: 1,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 1: Văn - Thầy Hùng (đôi - kết hợp)
+    {
+      dayOfWeek: 6,
+      periodIndex: 1,
+      teacherIndex: 4,
+      subjectIndex: 4,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 2: Hóa - Cô Lan
+    {
+      dayOfWeek: 6,
+      periodIndex: 2,
+      teacherIndex: 2,
+      subjectIndex: 2,
+      roomIndex: 1,
+      isDoublePeriod: false,
+    }, // Tiết 3: Anh - Cô Hoa (đôi - kết hợp)
   ];
 
   const slotsToInsert = slotSchedule.map((slot) => ({
@@ -300,6 +531,8 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
 
   await slotRepo.save(slotsToInsert);
 
-  console.log(`✅ ${slotsToInsert.length} timetable slots created for class 10A1`);
+  console.log(
+    `✅ ${slotsToInsert.length} timetable slots created for class 10A1`,
+  );
   console.log('🎉 Timetable seed completed!');
 }

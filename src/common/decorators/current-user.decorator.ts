@@ -5,6 +5,8 @@ export interface CurrentUserPayload {
   email: string;
   role: string;
   schoolId: string | null;
+  accessibleSchoolIds?: string[];
+  tokenVersion?: number;
 }
 
 /**

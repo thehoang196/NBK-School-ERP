@@ -6,11 +6,20 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { ApiResponse, PaginationMeta } from '../interfaces/api-response.interface';
+import {
+  ApiResponse,
+  PaginationMeta,
+} from '../interfaces/api-response.interface';
 
 @Injectable()
-export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T>> {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponse<T>> {
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponse<T>
+> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
       map((data) => {
         // If the response already has success property, pass through
@@ -19,7 +28,12 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T
         }
 
         // Handle paginated responses: { data: T[], meta: PaginationMeta }
-        if (data && typeof data === 'object' && 'data' in data && 'meta' in data) {
+        if (
+          data &&
+          typeof data === 'object' &&
+          'data' in data &&
+          'meta' in data
+        ) {
           const paginatedData = data as { data: T; meta: PaginationMeta };
           return {
             success: true,

@@ -46,7 +46,9 @@ export class CreateAcademicYears1748900000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_academic_years_is_current"`);
     await queryRunner.query(`DROP INDEX "IDX_academic_years_school_id"`);
-    await queryRunner.query(`ALTER TABLE "academic_years" DROP CONSTRAINT "FK_academic_years_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "academic_years" DROP CONSTRAINT "FK_academic_years_school"`,
+    );
     await queryRunner.query(`DROP TABLE "academic_years"`);
     await queryRunner.query(`DROP TYPE "academic_status_enum"`);
   }

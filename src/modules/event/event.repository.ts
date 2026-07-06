@@ -12,10 +12,21 @@ export class EventRepository {
   ) {}
 
   async findAll(query: EventQueryDto): Promise<[EventEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, eventType, status, startFrom, startTo } = query;
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      schoolId,
+      eventType,
+      status,
+      startFrom,
+      startTo,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('event')
+    const queryBuilder = this.repo
+      .createQueryBuilder('event')
       .where('event.deletedAt IS NULL');
 
     if (schoolId) {
@@ -64,7 +75,8 @@ export class EventRepository {
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
 
-    const queryBuilder = this.repo.createQueryBuilder('event')
+    const queryBuilder = this.repo
+      .createQueryBuilder('event')
       .where('event.deletedAt IS NULL')
       .andWhere(
         '(event.start_date <= :endOfMonth AND event.end_date >= :startOfMonth)',
@@ -72,7 +84,9 @@ export class EventRepository {
       );
 
     if (query.schoolId) {
-      queryBuilder.andWhere('event.school_id = :schoolId', { schoolId: query.schoolId });
+      queryBuilder.andWhere('event.school_id = :schoolId', {
+        schoolId: query.schoolId,
+      });
     }
 
     queryBuilder.orderBy('event.start_date', 'ASC');
@@ -80,8 +94,13 @@ export class EventRepository {
     return queryBuilder.getMany();
   }
 
-  async findByDateRange(schoolId: string, startDate: Date, endDate: Date): Promise<EventEntity[]> {
-    return this.repo.createQueryBuilder('event')
+  async findByDateRange(
+    schoolId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<EventEntity[]> {
+    return this.repo
+      .createQueryBuilder('event')
       .where('event.deletedAt IS NULL')
       .andWhere('event.school_id = :schoolId', { schoolId })
       .andWhere('event.affects_schedule = :affects', { affects: true })
@@ -97,8 +116,13 @@ export class EventRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<EventEntity>): Promise<EventEntity | null> {
-    const event = await this.repo.findOne({ where: { id, deletedAt: IsNull() } });
+  async update(
+    id: string,
+    data: Partial<EventEntity>,
+  ): Promise<EventEntity | null> {
+    const event = await this.repo.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
     if (!event) return null;
 
     Object.assign(event, data);

@@ -19,33 +19,67 @@ import { TimetableSlotEntity } from '../../modules/timetable/entities/timetable-
 import { TeachingAssignmentEntity } from '../../modules/teaching-assignment/entities/teaching-assignment.entity';
 import { seedTimetable } from './timetable.seed';
 import { seedTeachingAssignments } from './teaching-assignment.seed';
+import { seedRolePermissions } from './role-permission.seed';
+import { seedSystemConfig } from './system-config.seed';
 
-const dataSource = new DataSource({
-  type: 'postgres',
-  host: process.env['DB_HOST'] || 'localhost',
-  port: parseInt(process.env['DB_PORT'] || '5432'),
-  username: process.env['DB_USERNAME'] || 'postgres',
-  password: process.env['DB_PASSWORD'] || 'postgres',
-  database: process.env['DB_DATABASE'] || 'stms',
-  entities: [
-    UserEntity,
-    SchoolEntity,
-    CampusEntity,
-    AcademicYearEntity,
-    SemesterEntity,
-    SessionEntity,
-    PeriodDefinitionEntity,
-    GradeEntity,
-    ClassEntity,
-    TeacherEntity,
-    SubjectEntity,
-    RoomEntity,
-    TimetableVersionEntity,
-    TimetableSlotEntity,
-    TeachingAssignmentEntity,
-  ],
-  synchronize: false,
-});
+const databaseUrl = process.env['DATABASE_URL'];
+
+const dataSource = new DataSource(
+  databaseUrl
+    ? {
+        type: 'postgres',
+        url: databaseUrl,
+        ssl: { rejectUnauthorized: false },
+        entities: [
+          UserEntity,
+          SchoolEntity,
+          CampusEntity,
+          AcademicYearEntity,
+          SemesterEntity,
+          SessionEntity,
+          PeriodDefinitionEntity,
+          GradeEntity,
+          ClassEntity,
+          TeacherEntity,
+          SubjectEntity,
+          RoomEntity,
+          TimetableVersionEntity,
+          TimetableSlotEntity,
+          TeachingAssignmentEntity,
+        ],
+        synchronize: false,
+      }
+    : {
+        type: 'postgres',
+        host: process.env['DB_HOST'] || 'localhost',
+        port: parseInt(process.env['DB_PORT'] || '5432'),
+        username: process.env['DB_USERNAME'] || 'postgres',
+        password: process.env['DB_PASSWORD'] || 'postgres',
+        database: process.env['DB_DATABASE'] || 'stms',
+        ssl:
+          process.env['DB_SSL'] === 'true'
+            ? { rejectUnauthorized: false }
+            : false,
+        entities: [
+          UserEntity,
+          SchoolEntity,
+          CampusEntity,
+          AcademicYearEntity,
+          SemesterEntity,
+          SessionEntity,
+          PeriodDefinitionEntity,
+          GradeEntity,
+          ClassEntity,
+          TeacherEntity,
+          SubjectEntity,
+          RoomEntity,
+          TimetableVersionEntity,
+          TimetableSlotEntity,
+          TeachingAssignmentEntity,
+        ],
+        synchronize: false,
+      },
+);
 
 async function seed(): Promise<void> {
   await dataSource.initialize();
@@ -91,7 +125,9 @@ async function seed(): Promise<void> {
   }
 
   // --- Campuses (idempotent) ---
-  const existingCampus1 = await campusRepo.findOne({ where: { code: 'CS01-TH01' } });
+  const existingCampus1 = await campusRepo.findOne({
+    where: { code: 'CS01-TH01' },
+  });
   if (!existingCampus1) {
     await campusRepo.save({
       code: 'CS01-TH01',
@@ -105,7 +141,9 @@ async function seed(): Promise<void> {
     console.log('⏭️  Campus CS01-TH01 already exists');
   }
 
-  const existingCampus2 = await campusRepo.findOne({ where: { code: 'CS02-TH01' } });
+  const existingCampus2 = await campusRepo.findOne({
+    where: { code: 'CS02-TH01' },
+  });
   if (!existingCampus2) {
     await campusRepo.save({
       code: 'CS02-TH01',
@@ -122,7 +160,9 @@ async function seed(): Promise<void> {
   // --- Users (idempotent: check by email before inserting) ---
   const hashedPassword = await bcrypt.hash('password123', 10);
 
-  const existingSuperAdmin = await userRepo.findOne({ where: { email: 'admin@stms.vn' } });
+  const existingSuperAdmin = await userRepo.findOne({
+    where: { email: 'admin@stms.vn' },
+  });
   if (!existingSuperAdmin) {
     await userRepo.save({
       name: 'Super Admin',
@@ -137,7 +177,9 @@ async function seed(): Promise<void> {
     console.log('⏭️  Super Admin user already exists');
   }
 
-  const existingSchoolAdmin = await userRepo.findOne({ where: { email: 'admin.th01@stms.vn' } });
+  const existingSchoolAdmin = await userRepo.findOne({
+    where: { email: 'admin.th01@stms.vn' },
+  });
   if (!existingSchoolAdmin) {
     await userRepo.save({
       name: 'Admin Trường Nguyễn Huệ',
@@ -152,7 +194,9 @@ async function seed(): Promise<void> {
     console.log('⏭️  School Admin user already exists');
   }
 
-  const existingTeacher = await userRepo.findOne({ where: { email: 'teacher.th01@stms.vn' } });
+  const existingTeacher = await userRepo.findOne({
+    where: { email: 'teacher.th01@stms.vn' },
+  });
   if (!existingTeacher) {
     await userRepo.save({
       name: 'GV Trần Thị B',
@@ -168,6 +212,12 @@ async function seed(): Promise<void> {
   }
 
   console.log('✅ Schools & Users seed completed');
+
+  // Seed role/permission defaults
+  await seedRolePermissions(dataSource);
+
+  // Seed system config (NBK-specific schools, campuses, users)
+  await seedSystemConfig(dataSource);
 
   // Seed timetable data
   await seedTimetable(dataSource);

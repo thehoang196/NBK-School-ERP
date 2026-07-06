@@ -1,6 +1,13 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, IsNull } from 'typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Workbook } from 'exceljs';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { SubjectEntity } from '../../subject/entities/subject.entity';
@@ -12,11 +19,25 @@ import { TimetableSlotEntity } from '../../timetable/entities/timetable-slot.ent
 import { PeriodDefinitionEntity } from '../../academic/entities/period-definition.entity';
 import { AcademicYearEntity } from '../../academic/entities/academic-year.entity';
 import { ImportResultDto, ImportError } from '../dto/import-result.dto';
+import {
+  ImportBatchEntity,
+  ImportBatchStatus,
+  ImportEntityType,
+} from '../entities/import-batch.entity';
+import { ImportBatchResponseDto } from '../dto/import-batch-response.dto';
 import { ImportProcessor } from '../processors/import.processor';
+import { ConflictStrategy } from '../enums/conflict-strategy.enum';
+import { TeacherImportJobData } from '../processors/teacher-import.processor';
 import { Gender } from '../../../common/enums/status.enum';
+
+/** Threshold: files with more rows than this go async via queue.
+ * Set high because BullMQ/Redis is currently disabled — all imports run synchronously. */
+const ASYNC_THRESHOLD_ROWS = 5000;
 
 @Injectable()
 export class ImportService {
+  private readonly logger = new Logger(ImportService.name);
+
   constructor(
     @InjectRepository(TeacherEntity)
     private readonly teacherRepo: Repository<TeacherEntity>,
@@ -36,14 +57,22 @@ export class ImportService {
     private readonly periodRepo: Repository<PeriodDefinitionEntity>,
     @InjectRepository(AcademicYearEntity)
     private readonly academicYearRepo: Repository<AcademicYearEntity>,
+    @InjectRepository(ImportBatchEntity)
+    private readonly batchRepo: Repository<ImportBatchEntity>,
+    @InjectQueue('teacher-import')
+    private readonly teacherImportQueue: Queue<TeacherImportJobData>,
     private readonly dataSource: DataSource,
     private readonly importProcessor: ImportProcessor,
   ) {}
 
+  // ─── TEACHER IMPORT ───────────────────────────────────────────────────────
+
   async importTeachers(
     file: Express.Multer.File,
     schoolId: string,
-  ): Promise<ImportResultDto> {
+    conflictStrategy: ConflictStrategy = ConflictStrategy.STRICT,
+    userId?: string,
+  ): Promise<ImportResultDto | ImportBatchResponseDto> {
     this.validateFile(file);
 
     const workbook = await this.importProcessor.parseExcelFile(file.buffer);
@@ -54,20 +83,162 @@ export class ImportService {
     }
 
     const columnMappings = this.importProcessor.getTeacherColumnMappings();
-    const parsedRows = this.importProcessor.parseWorksheet(worksheet, columnMappings);
+    const parsedRows = this.importProcessor.parseWorksheet(
+      worksheet,
+      columnMappings,
+    );
 
-    const allErrors: ImportError[] = [];
-    let successCount = 0;
+    // For large files, process asynchronously via queue
+    if (parsedRows.length > ASYNC_THRESHOLD_ROWS) {
+      return this.importTeachersAsync(
+        file,
+        schoolId,
+        conflictStrategy,
+        userId || 'system',
+      );
+    }
+
+    // Synchronous processing for small files
+    return this.importTeachersSync(
+      parsedRows,
+      schoolId,
+      conflictStrategy,
+      file,
+      userId,
+    );
+  }
+
+  /**
+   * Async import: creates batch record and pushes job to BullMQ queue.
+   * Returns batch info with status 'queued'. Client polls GET /import-batches/:id.
+   */
+  async importTeachersAsync(
+    file: Express.Multer.File,
+    schoolId: string,
+    conflictStrategy: ConflictStrategy,
+    userId: string,
+  ): Promise<ImportBatchResponseDto> {
+    const batch = this.batchRepo.create({
+      schoolId,
+      entityType: ImportEntityType.TEACHER,
+      fileName: file.originalname || 'unknown.xlsx',
+      fileSize: file.size,
+      status: ImportBatchStatus.QUEUED,
+      conflictStrategy,
+      uploadedByUserId: userId,
+      progress: 0,
+    });
+
+    const savedBatch = await this.batchRepo.save(batch);
+
+    const jobData: TeacherImportJobData = {
+      batchId: savedBatch.id,
+      fileBuffer: file.buffer.toString('base64'),
+      schoolId,
+      conflictStrategy,
+    };
+
+    await this.teacherImportQueue.add('process-teacher-import', jobData, {
+      priority: 10,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: { age: 86400 }, // 24h
+      removeOnFail: { age: 604800 }, // 7 days
+    });
+
+    this.logger.log(
+      `Import batch ${savedBatch.id} queued: ${file.originalname}, ${file.size} bytes`,
+    );
+
+    return {
+      batchId: savedBatch.id,
+      status: ImportBatchStatus.QUEUED,
+      entityType: ImportEntityType.TEACHER,
+      fileName: savedBatch.fileName,
+      totalRows: 0,
+      successCount: 0,
+      errorCount: 0,
+      progress: 0,
+      createdAt: savedBatch.createdAt,
+    };
+  }
+
+  /**
+   * Get batch import status/progress.
+   */
+  async getImportBatchStatus(batchId: string): Promise<ImportBatchResponseDto> {
+    const batch = await this.batchRepo.findOne({ where: { id: batchId } });
+
+    if (!batch) {
+      throw new NotFoundException(
+        `Không tìm thấy batch import với ID "${batchId}"`,
+      );
+    }
+
+    return {
+      batchId: batch.id,
+      status: batch.status,
+      entityType: batch.entityType,
+      fileName: batch.fileName,
+      totalRows: batch.totalRows,
+      successCount: batch.successCount,
+      errorCount: batch.errorCount,
+      progress: batch.progress,
+      errors: batch.errors || undefined,
+      startedAt: batch.startedAt,
+      completedAt: batch.completedAt,
+      createdAt: batch.createdAt,
+    };
+  }
+
+  /**
+   * Synchronous teacher import with conflict strategy support.
+   */
+  private async importTeachersSync(
+    parsedRows: Array<{
+      rowNumber: number;
+      data: Record<string, unknown>;
+      errors: ImportError[];
+    }>,
+    schoolId: string,
+    conflictStrategy: ConflictStrategy,
+    file: Express.Multer.File,
+    userId?: string,
+  ): Promise<ImportResultDto> {
+    // Phase 1: Validate ALL rows before any insert (fail-fast)
+    const validationErrors: ImportError[] = [];
+    const validatedTeachers: Array<{
+      rowNumber: number;
+      employeeCode: string;
+      fullName: string;
+      shortName: string | null;
+      gradeId: string | null;
+      departmentId: string | null;
+      jobTitle: string | null;
+      managementLevel: string | null;
+      gender: Gender | null;
+      maxPeriodsPerWeek: number;
+      existingTeacher: TeacherEntity | null;
+    }> = [];
+
+    // Pre-fetch lookup data to avoid N+1 queries
+    const grades = await this.gradeRepo.find({ where: { schoolId } });
+    const departments = await this.departmentRepo.find({ where: { schoolId } });
+    const gradeMap = new Map(grades.map((g) => [g.name, g.id]));
+    const departmentMap = new Map(departments.map((d) => [d.name, d.id]));
+
+    // Track employee codes within this import batch for intra-file duplicate detection
+    const seenEmployeeCodes = new Set<string>();
 
     for (const row of parsedRows) {
       if (row.errors.length > 0) {
-        allErrors.push(...row.errors);
+        validationErrors.push(...row.errors);
         continue;
       }
 
       const employeeCode = row.data['employeeCode'] as string;
       if (!employeeCode) {
-        allErrors.push({
+        validationErrors.push({
           row: row.rowNumber,
           field: 'employeeCode',
           message: 'Trường "Mã NV" là bắt buộc',
@@ -76,116 +247,236 @@ export class ImportService {
         continue;
       }
 
-      // Check duplicate employeeCode
-      const existing = await this.teacherRepo.findOne({
-        where: {
-          employeeCode,
-          schoolId,
-          deletedAt: IsNull(),
-        },
-      });
-
-      if (existing) {
-        allErrors.push({
+      // Check intra-file duplicate
+      if (seenEmployeeCodes.has(employeeCode)) {
+        validationErrors.push({
           row: row.rowNumber,
           field: 'employeeCode',
-          message: `Mã nhân viên "${employeeCode}" đã tồn tại`,
+          message: `Mã nhân viên "${employeeCode}" bị trùng trong file import`,
+          value: employeeCode,
+        });
+        continue;
+      }
+      seenEmployeeCodes.add(employeeCode);
+
+      // Check duplicate employeeCode in DB
+      const existing = await this.teacherRepo.findOne({
+        where: { employeeCode, schoolId, deletedAt: IsNull() },
+      });
+
+      if (existing && conflictStrategy === ConflictStrategy.STRICT) {
+        validationErrors.push({
+          row: row.rowNumber,
+          field: 'employeeCode',
+          message: `Mã nhân viên "${employeeCode}" đã tồn tại trong hệ thống`,
           value: employeeCode,
         });
         continue;
       }
 
-      // Lookup grade by name if provided
+      // Validate grade_id existence
       let gradeId: string | null = null;
       const gradeName = row.data['gradeName'] as string | null;
       if (gradeName) {
-        const grade = await this.gradeRepo.findOne({
-          where: { name: gradeName, schoolId },
-        });
-        if (!grade) {
-          allErrors.push({
+        const foundGradeId = gradeMap.get(gradeName);
+        if (!foundGradeId) {
+          validationErrors.push({
             row: row.rowNumber,
             field: 'gradeName',
-            message: `Không tìm thấy khối "${gradeName}"`,
+            message: `Không tìm thấy khối "${gradeName}" trong danh mục. Vui lòng tạo khối trước khi import.`,
             value: gradeName,
           });
           continue;
         }
-        gradeId = grade.id;
+        gradeId = foundGradeId;
       }
 
-      // Lookup department by name if provided
+      // Validate department_id existence
       let departmentId: string | null = null;
       const departmentName = row.data['departmentName'] as string | null;
       if (departmentName) {
-        const department = await this.departmentRepo.findOne({
-          where: { name: departmentName, schoolId },
-        });
-        if (!department) {
-          allErrors.push({
+        const foundDepartmentId = departmentMap.get(departmentName);
+        if (!foundDepartmentId) {
+          validationErrors.push({
             row: row.rowNumber,
             field: 'departmentName',
-            message: `Không tìm thấy tổ/môn "${departmentName}"`,
+            message: `Không tìm thấy tổ/bộ môn "${departmentName}" trong danh mục. Vui lòng tạo tổ bộ môn trước khi import.`,
             value: departmentName,
           });
           continue;
         }
-        departmentId = department.id;
+        departmentId = foundDepartmentId;
       }
 
-      // Parse gender
+      // Parse and validate gender
       let gender: Gender | null = null;
       const genderRaw = row.data['gender'] as string | null;
       if (genderRaw) {
         const genderLower = genderRaw.toLowerCase().trim();
         if (genderLower === 'nam' || genderLower === 'male') {
           gender = Gender.MALE;
-        } else if (genderLower === 'nữ' || genderLower === 'nu' || genderLower === 'female') {
+        } else if (
+          genderLower === 'nữ' ||
+          genderLower === 'nu' ||
+          genderLower === 'female'
+        ) {
           gender = Gender.FEMALE;
-        } else if (genderLower === 'khác' || genderLower === 'khac' || genderLower === 'other') {
+        } else if (
+          genderLower === 'khác' ||
+          genderLower === 'khac' ||
+          genderLower === 'other'
+        ) {
           gender = Gender.OTHER;
+        } else {
+          validationErrors.push({
+            row: row.rowNumber,
+            field: 'gender',
+            message: `Giới tính "${genderRaw}" không hợp lệ. Chấp nhận: Nam, Nữ, Khác`,
+            value: genderRaw,
+          });
+          continue;
         }
       }
 
-      // Parse maxPeriodsPerWeek
-      const maxPeriodsPerWeek = row.data['maxPeriodsPerWeek']
-        ? Number(row.data['maxPeriodsPerWeek'])
-        : 20;
-
-      try {
-        const teacher = this.teacherRepo.create({
-          schoolId,
-          employeeCode,
-          fullName: row.data['fullName'] as string,
-          shortName: (row.data['shortName'] as string) || null,
-          gradeId,
-          departmentId,
-          jobTitle: (row.data['jobTitle'] as string) || null,
-          managementLevel: (row.data['managementLevel'] as string) || null,
-          gender,
-          maxPeriodsPerWeek,
-        });
-
-        await this.teacherRepo.save(teacher);
-        successCount++;
-      } catch (saveError: unknown) {
-        const errMsg = saveError instanceof Error ? saveError.message : 'Lỗi không xác định khi lưu';
-        allErrors.push({
-          row: row.rowNumber,
-          field: 'save',
-          message: errMsg,
-          value: employeeCode,
-        });
+      // Parse and validate maxPeriodsPerWeek
+      const maxPeriodsPerWeekRaw = row.data['maxPeriodsPerWeek'];
+      let maxPeriodsPerWeek = 20;
+      if (maxPeriodsPerWeekRaw) {
+        const parsed = Number(maxPeriodsPerWeekRaw);
+        if (isNaN(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+          validationErrors.push({
+            row: row.rowNumber,
+            field: 'maxPeriodsPerWeek',
+            message: `Max tiết/tuần "${maxPeriodsPerWeekRaw}" phải là số nguyên dương`,
+            value: String(maxPeriodsPerWeekRaw),
+          });
+          continue;
+        }
+        maxPeriodsPerWeek = parsed;
       }
+
+      validatedTeachers.push({
+        rowNumber: row.rowNumber,
+        employeeCode,
+        fullName: row.data['fullName'] as string,
+        shortName: (row.data['shortName'] as string) || null,
+        gradeId,
+        departmentId,
+        jobTitle: (row.data['jobTitle'] as string) || null,
+        managementLevel: (row.data['managementLevel'] as string) || null,
+        gender,
+        maxPeriodsPerWeek,
+        existingTeacher: existing || null,
+      });
+    }
+
+    // If validation errors exist, return immediately without inserting anything
+    if (validationErrors.length > 0) {
+      return {
+        totalRows: parsedRows.length,
+        successCount: 0,
+        errorCount: validationErrors.length,
+        errors: validationErrors,
+      };
+    }
+
+    // Phase 2: Insert/Update all validated rows within a single transaction
+    let successCount = 0;
+
+    await this.dataSource.transaction(async (manager) => {
+      for (const teacherData of validatedTeachers) {
+        if (teacherData.existingTeacher) {
+          // Handle upsert or merge for existing records
+          if (conflictStrategy === ConflictStrategy.UPSERT) {
+            await manager.update(
+              TeacherEntity,
+              teacherData.existingTeacher.id,
+              {
+                fullName: teacherData.fullName,
+                shortName: teacherData.shortName,
+                gradeId: teacherData.gradeId,
+                departmentId: teacherData.departmentId,
+                jobTitle: teacherData.jobTitle,
+                managementLevel: teacherData.managementLevel,
+                gender: teacherData.gender,
+                maxPeriodsPerWeek: teacherData.maxPeriodsPerWeek,
+              },
+            );
+          } else if (conflictStrategy === ConflictStrategy.MERGE) {
+            const updates: Partial<TeacherEntity> = {};
+            if (teacherData.fullName) updates.fullName = teacherData.fullName;
+            if (teacherData.shortName !== null)
+              updates.shortName = teacherData.shortName;
+            if (teacherData.gradeId !== null)
+              updates.gradeId = teacherData.gradeId;
+            if (teacherData.departmentId !== null)
+              updates.departmentId = teacherData.departmentId;
+            if (teacherData.jobTitle !== null)
+              updates.jobTitle = teacherData.jobTitle;
+            if (teacherData.managementLevel !== null)
+              updates.managementLevel = teacherData.managementLevel;
+            if (teacherData.gender !== null)
+              updates.gender = teacherData.gender;
+            if (teacherData.maxPeriodsPerWeek !== 20)
+              updates.maxPeriodsPerWeek = teacherData.maxPeriodsPerWeek;
+
+            if (Object.keys(updates).length > 0) {
+              await manager.update(
+                TeacherEntity,
+                teacherData.existingTeacher.id,
+                updates,
+              );
+            }
+          }
+        } else {
+          // Create new teacher
+          const teacher = manager.create(TeacherEntity, {
+            schoolId,
+            employeeCode: teacherData.employeeCode,
+            fullName: teacherData.fullName,
+            shortName: teacherData.shortName,
+            gradeId: teacherData.gradeId,
+            departmentId: teacherData.departmentId,
+            jobTitle: teacherData.jobTitle,
+            managementLevel: teacherData.managementLevel,
+            gender: teacherData.gender,
+            maxPeriodsPerWeek: teacherData.maxPeriodsPerWeek,
+          });
+          await manager.save(teacher);
+        }
+        successCount++;
+      }
+    });
+
+    // Record batch for audit
+    if (userId) {
+      const batch = this.batchRepo.create({
+        schoolId,
+        entityType: ImportEntityType.TEACHER,
+        fileName: file.originalname || 'unknown.xlsx',
+        fileSize: file.size,
+        totalRows: parsedRows.length,
+        successCount,
+        errorCount: 0,
+        status: ImportBatchStatus.COMPLETED,
+        conflictStrategy,
+        uploadedByUserId: userId,
+        progress: 100,
+        startedAt: new Date(),
+        completedAt: new Date(),
+      });
+      await this.batchRepo.save(batch);
     }
 
     return {
       totalRows: parsedRows.length,
       successCount,
-      errorCount: allErrors.length > 0 ? parsedRows.length - successCount : 0,
-      errors: allErrors,
+      errorCount: 0,
+      errors: [],
     };
   }
+
+  // ─── DEPARTMENT IMPORT ────────────────────────────────────────────────────
 
   async importDepartments(
     file: Express.Multer.File,
@@ -201,7 +492,10 @@ export class ImportService {
     }
 
     const columnMappings = this.importProcessor.getDepartmentColumnMappings();
-    const parsedRows = this.importProcessor.parseWorksheet(worksheet, columnMappings);
+    const parsedRows = this.importProcessor.parseWorksheet(
+      worksheet,
+      columnMappings,
+    );
 
     const allErrors: ImportError[] = [];
     let successCount = 0;
@@ -286,7 +580,10 @@ export class ImportService {
           await manager.save(department);
           successCount++;
         } catch (saveError: unknown) {
-          const errMsg = saveError instanceof Error ? saveError.message : 'Lỗi không xác định khi lưu';
+          const errMsg =
+            saveError instanceof Error
+              ? saveError.message
+              : 'Lỗi không xác định khi lưu';
           allErrors.push({
             row: row.rowNumber,
             field: 'save',
@@ -305,6 +602,8 @@ export class ImportService {
     };
   }
 
+  // ─── SUBJECT IMPORT ─────────────────────────────────────────────────────
+
   async importSubjects(
     file: Express.Multer.File,
     schoolId: string,
@@ -319,7 +618,10 @@ export class ImportService {
     }
 
     const columnMappings = this.importProcessor.getSubjectColumnMappings();
-    const parsedRows = this.importProcessor.parseWorksheet(worksheet, columnMappings);
+    const parsedRows = this.importProcessor.parseWorksheet(
+      worksheet,
+      columnMappings,
+    );
 
     const allErrors: ImportError[] = [];
     let successCount = 0;
@@ -334,10 +636,11 @@ export class ImportService {
 
         const name = row.data['name'] as string;
         // Auto-generate code from name (uppercase initials of words)
-        const code = name
-          .split(/\s+/)
-          .map((w: string) => w.charAt(0).toUpperCase())
-          .join('') || name.substring(0, 5).toUpperCase();
+        const code =
+          name
+            .split(/\s+/)
+            .map((w: string) => w.charAt(0).toUpperCase())
+            .join('') || name.substring(0, 5).toUpperCase();
 
         // Check duplicate name within school
         const existing = await manager.findOne(SubjectEntity, {
@@ -385,6 +688,8 @@ export class ImportService {
     };
   }
 
+  // ─── CLASS IMPORT ───────────────────────────────────────────────────────
+
   async importClasses(
     file: Express.Multer.File,
     schoolId: string,
@@ -399,7 +704,10 @@ export class ImportService {
     }
 
     const columnMappings = this.importProcessor.getClassColumnMappings();
-    const parsedRows = this.importProcessor.parseWorksheet(worksheet, columnMappings);
+    const parsedRows = this.importProcessor.parseWorksheet(
+      worksheet,
+      columnMappings,
+    );
 
     const currentAcademicYear = await this.academicYearRepo.findOne({
       where: { schoolId, isCurrent: true, deletedAt: IsNull() },
@@ -459,6 +767,8 @@ export class ImportService {
     };
   }
 
+  // ─── TIMETABLE IMPORT ───────────────────────────────────────────────────
+
   async importTimetable(
     file: Express.Multer.File,
     schoolId: string,
@@ -474,7 +784,10 @@ export class ImportService {
     }
 
     const columnMappings = this.importProcessor.getTimetableColumnMappings();
-    const parsedRows = this.importProcessor.parseWorksheet(worksheet, columnMappings);
+    const parsedRows = this.importProcessor.parseWorksheet(
+      worksheet,
+      columnMappings,
+    );
 
     const allErrors: ImportError[] = [];
     let successCount = 0;
@@ -585,6 +898,8 @@ export class ImportService {
     };
   }
 
+  // ─── TEMPLATE GENERATION ─────────────────────────────────────────────────
+
   async generateTemplate(type: string): Promise<Buffer> {
     const workbook = new Workbook();
     const worksheet = workbook.addWorksheet('Template');
@@ -606,12 +921,16 @@ export class ImportService {
         this.buildDepartmentTemplate(worksheet);
         break;
       default:
-        throw new BadRequestException(`Loại template "${type}" không hợp lệ. Chấp nhận: teachers, subjects, classes, timetable, departments`);
+        throw new BadRequestException(
+          `Loại template "${type}" không hợp lệ. Chấp nhận: teachers, subjects, classes, timetable, departments`,
+        );
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }
+
+  // ─── PRIVATE HELPERS ────────────────────────────────────────────────────
 
   private buildTeacherTemplate(worksheet: import('exceljs').Worksheet): void {
     worksheet.columns = [
@@ -628,14 +947,14 @@ export class ImportService {
 
     // Add sample row
     worksheet.addRow({
-      employeeCode: '001176019610',
-      fullName: 'Nguyễn Thị Lan Hương',
-      shortName: 'Lan Hương -T',
-      gradeName: 'THCS',
-      departmentName: 'TOÁN',
-      jobTitle: 'GVCN 7D0, GVBM',
-      managementLevel: 'Tổ trưởng, Nhóm trưởng',
-      gender: 'Nữ',
+      employeeCode: 'GV001',
+      fullName: 'Nguyễn Văn A',
+      shortName: 'A',
+      gradeName: 'Khối 10',
+      departmentName: 'Tổ Toán',
+      jobTitle: 'Giáo viên chính',
+      managementLevel: 'Tổ trưởng',
+      gender: 'Nam',
       maxPeriodsPerWeek: 20,
     });
 
@@ -696,7 +1015,9 @@ export class ImportService {
     this.styleHeaderRow(worksheet);
   }
 
-  private buildDepartmentTemplate(worksheet: import('exceljs').Worksheet): void {
+  private buildDepartmentTemplate(
+    worksheet: import('exceljs').Worksheet,
+  ): void {
     worksheet.columns = [
       { header: 'Tổ bộ môn', key: 'name', width: 25 },
       { header: 'Mã Trường', key: 'schoolCode', width: 15 },
@@ -729,10 +1050,26 @@ export class ImportService {
 
   private generateSubjectColor(index: number): string {
     const colors = [
-      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-      '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-      '#14b8a6', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
-      '#eab308', '#d946ef', '#0891b2', '#65a30d', '#dc2626',
+      '#3b82f6',
+      '#ef4444',
+      '#10b981',
+      '#f59e0b',
+      '#8b5cf6',
+      '#ec4899',
+      '#06b6d4',
+      '#84cc16',
+      '#f97316',
+      '#6366f1',
+      '#14b8a6',
+      '#e11d48',
+      '#0ea5e9',
+      '#a855f7',
+      '#22c55e',
+      '#eab308',
+      '#d946ef',
+      '#0891b2',
+      '#65a30d',
+      '#dc2626',
     ];
     return colors[index % colors.length];
   }
@@ -748,7 +1085,9 @@ export class ImportService {
     ];
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException('File phải có định dạng Excel (.xlsx hoặc .xls)');
+      throw new BadRequestException(
+        'File phải có định dạng Excel (.xlsx hoặc .xls)',
+      );
     }
 
     const maxSize = 10 * 1024 * 1024; // 10MB

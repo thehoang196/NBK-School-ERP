@@ -9,7 +9,7 @@
 import * as fc from 'fast-check';
 import { TimetableVersionRepository } from '../repositories/timetable-version.repository';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 describe('Feature: timetable-management-features, Property 10: Version list sorted by version_number descending', () => {
   // Arbitrary: generate a random version number (1 to 1000)
@@ -17,13 +17,15 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
 
   // Arbitrary: generate a random TimetableStatus
   const statusArb = fc.constantFrom(
-    TimetableStatus.DRAFT,
-    TimetableStatus.PUBLISHED,
-    TimetableStatus.ARCHIVED,
+    TimetableVersionStatus.DRAFT,
+    TimetableVersionStatus.PUBLISHED,
+    TimetableVersionStatus.ARCHIVED,
   );
 
   // Arbitrary: generate a random TimetableVersionEntity with a given versionNumber
-  const versionEntityArb = (semesterId: string): fc.Arbitrary<Partial<TimetableVersionEntity>> =>
+  const versionEntityArb = (
+    semesterId: string,
+  ): fc.Arbitrary<Partial<TimetableVersionEntity>> =>
     fc.record({
       id: fc.uuid(),
       name: fc.string({ minLength: 1, maxLength: 100 }),
@@ -31,32 +33,42 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
       status: statusArb,
       semesterId: fc.constant(semesterId),
       effectiveDate: fc.option(fc.constant('2024-06-01'), { nil: null }),
-      note: fc.option(fc.string({ minLength: 0, maxLength: 200 }), { nil: null }),
+      note: fc.option(fc.string({ minLength: 0, maxLength: 200 }), {
+        nil: null,
+      }),
       createdAt: fc.constant(new Date('2024-01-01')),
       updatedAt: fc.constant(new Date('2024-01-01')),
       deletedAt: fc.constant(null),
     }) as fc.Arbitrary<Partial<TimetableVersionEntity>>;
 
   // Arbitrary: generate a list of version entities (2 to 30) with unique version numbers
-  const versionListArb = (semesterId: string): fc.Arbitrary<Partial<TimetableVersionEntity>[]> =>
-    fc.uniqueArray(versionNumberArb, { minLength: 2, maxLength: 30 }).chain((versionNumbers) =>
-      fc.tuple(
-        ...versionNumbers.map((vn) =>
-          fc.record({
-            id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            versionNumber: fc.constant(vn),
-            status: statusArb,
-            semesterId: fc.constant(semesterId),
-            effectiveDate: fc.option(fc.constant('2024-06-01'), { nil: null }),
-            note: fc.option(fc.string({ minLength: 0, maxLength: 200 }), { nil: null }),
-            createdAt: fc.constant(new Date('2024-01-01')),
-            updatedAt: fc.constant(new Date('2024-01-01')),
-            deletedAt: fc.constant(null),
-          }),
+  const versionListArb = (
+    semesterId: string,
+  ): fc.Arbitrary<Partial<TimetableVersionEntity>[]> =>
+    fc
+      .uniqueArray(versionNumberArb, { minLength: 2, maxLength: 30 })
+      .chain((versionNumbers) =>
+        fc.tuple(
+          ...versionNumbers.map((vn) =>
+            fc.record({
+              id: fc.uuid(),
+              name: fc.string({ minLength: 1, maxLength: 100 }),
+              versionNumber: fc.constant(vn),
+              status: statusArb,
+              semesterId: fc.constant(semesterId),
+              effectiveDate: fc.option(fc.constant('2024-06-01'), {
+                nil: null,
+              }),
+              note: fc.option(fc.string({ minLength: 0, maxLength: 200 }), {
+                nil: null,
+              }),
+              createdAt: fc.constant(new Date('2024-01-01')),
+              updatedAt: fc.constant(new Date('2024-01-01')),
+              deletedAt: fc.constant(null),
+            }),
+          ),
         ),
-      ),
-    ) as fc.Arbitrary<Partial<TimetableVersionEntity>[]>;
+      ) as fc.Arbitrary<Partial<TimetableVersionEntity>[]>;
 
   describe('findBySemester returns versions sorted by version_number DESC', () => {
     it('should return versions sorted by version_number in descending order for any random version list', async () => {
@@ -72,7 +84,8 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
 
             // Apply the same sorting logic as the repository: order by versionNumber DESC
             const sorted = [...shuffled].sort(
-              (a, b) => (b.versionNumber as number) - (a.versionNumber as number),
+              (a, b) =>
+                (b.versionNumber as number) - (a.versionNumber as number),
             );
 
             // Property: result is sorted by versionNumber descending
@@ -98,7 +111,8 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
           async (versions: Partial<TimetableVersionEntity>[]) => {
             // Simulate repository behavior: take input, sort by versionNumber DESC
             const sorted = [...versions].sort(
-              (a, b) => (b.versionNumber as number) - (a.versionNumber as number),
+              (a, b) =>
+                (b.versionNumber as number) - (a.versionNumber as number),
             );
 
             // Property: same count in as count out (no versions lost or duplicated)
@@ -130,24 +144,37 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
             // Mock the TypeORM repository behavior
             // Simulate the query builder ordering: .orderBy('tv.version_number', 'DESC')
             const mockRepo = {
-              find: jest.fn().mockImplementation(async (options: { where: Record<string, unknown>; order: Record<string, string> }) => {
-                // Simulate TypeORM find with order
-                const filtered = versions.filter(
-                  (v) => v.semesterId === options.where.semesterId && v.deletedAt === null,
-                );
-                if (options.order?.versionNumber === 'DESC') {
-                  return filtered.sort(
-                    (a, b) => (b.versionNumber as number) - (a.versionNumber as number),
-                  );
-                }
-                return filtered;
-              }),
+              find: jest
+                .fn()
+                .mockImplementation(
+                  async (options: {
+                    where: Record<string, unknown>;
+                    order: Record<string, string>;
+                  }) => {
+                    // Simulate TypeORM find with order
+                    const filtered = versions.filter(
+                      (v) =>
+                        v.semesterId === options.where.semesterId &&
+                        v.deletedAt === null,
+                    );
+                    if (options.order?.versionNumber === 'DESC') {
+                      return filtered.sort(
+                        (a, b) =>
+                          (b.versionNumber as number) -
+                          (a.versionNumber as number),
+                      );
+                    }
+                    return filtered;
+                  },
+                ),
               findOne: jest.fn(),
               createQueryBuilder: jest.fn(),
             };
 
             // Create repository instance with mock
-            const repository = new TimetableVersionRepository(mockRepo as never);
+            const repository = new TimetableVersionRepository(
+              mockRepo as never,
+            );
 
             // Act: call findBySemester
             const result = await repository.findBySemester(semesterId);
@@ -172,7 +199,10 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
 
       // Generate versions with widely varying version numbers
       const wideRangeVersionListArb = fc
-        .uniqueArray(fc.integer({ min: 1, max: 10000 }), { minLength: 2, maxLength: 50 })
+        .uniqueArray(fc.integer({ min: 1, max: 10000 }), {
+          minLength: 2,
+          maxLength: 50,
+        })
         .chain((versionNumbers) =>
           fc.tuple(
             ...versionNumbers.map((vn) =>
@@ -182,8 +212,12 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
                 versionNumber: fc.constant(vn),
                 status: statusArb,
                 semesterId: fc.constant(semesterId),
-                effectiveDate: fc.option(fc.constant('2024-06-01'), { nil: null }),
-                note: fc.option(fc.string({ minLength: 0, maxLength: 200 }), { nil: null }),
+                effectiveDate: fc.option(fc.constant('2024-06-01'), {
+                  nil: null,
+                }),
+                note: fc.option(fc.string({ minLength: 0, maxLength: 200 }), {
+                  nil: null,
+                }),
                 createdAt: fc.constant(new Date('2024-01-01')),
                 updatedAt: fc.constant(new Date('2024-01-01')),
                 deletedAt: fc.constant(null),
@@ -198,23 +232,36 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
           async (versions: Partial<TimetableVersionEntity>[]) => {
             // Mock the TypeORM repository behavior
             const mockRepo = {
-              find: jest.fn().mockImplementation(async (options: { where: Record<string, unknown>; order: Record<string, string> }) => {
-                const filtered = versions.filter(
-                  (v) => v.semesterId === options.where.semesterId && v.deletedAt === null,
-                );
-                if (options.order?.versionNumber === 'DESC') {
-                  return filtered.sort(
-                    (a, b) => (b.versionNumber as number) - (a.versionNumber as number),
-                  );
-                }
-                return filtered;
-              }),
+              find: jest
+                .fn()
+                .mockImplementation(
+                  async (options: {
+                    where: Record<string, unknown>;
+                    order: Record<string, string>;
+                  }) => {
+                    const filtered = versions.filter(
+                      (v) =>
+                        v.semesterId === options.where.semesterId &&
+                        v.deletedAt === null,
+                    );
+                    if (options.order?.versionNumber === 'DESC') {
+                      return filtered.sort(
+                        (a, b) =>
+                          (b.versionNumber as number) -
+                          (a.versionNumber as number),
+                      );
+                    }
+                    return filtered;
+                  },
+                ),
               findOne: jest.fn(),
               createQueryBuilder: jest.fn(),
             };
 
             // Create repository instance with mock
-            const repository = new TimetableVersionRepository(mockRepo as never);
+            const repository = new TimetableVersionRepository(
+              mockRepo as never,
+            );
 
             // Act
             const result = await repository.findBySemester(semesterId);
@@ -227,12 +274,18 @@ describe('Feature: timetable-management-features, Property 10: Version list sort
             }
 
             // Assert: first element is the max version number
-            const maxVersionNumber = Math.max(...versions.map((v) => v.versionNumber as number));
+            const maxVersionNumber = Math.max(
+              ...versions.map((v) => v.versionNumber as number),
+            );
             expect(result[0].versionNumber).toBe(maxVersionNumber);
 
             // Assert: last element is the min version number
-            const minVersionNumber = Math.min(...versions.map((v) => v.versionNumber as number));
-            expect(result[result.length - 1].versionNumber).toBe(minVersionNumber);
+            const minVersionNumber = Math.min(
+              ...versions.map((v) => v.versionNumber as number),
+            );
+            expect(result[result.length - 1].versionNumber).toBe(
+              minVersionNumber,
+            );
           },
         ),
         { numRuns: 100 },

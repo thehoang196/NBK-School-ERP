@@ -14,7 +14,16 @@ export class TeachingAssignmentRepository {
   async findAll(
     query: TeachingAssignmentQueryDto,
   ): Promise<[TeachingAssignmentEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, semesterId, teacherId, classId, subjectId } = query;
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      semesterId,
+      teacherId,
+      classId,
+      subjectId,
+    } = query;
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.repo
@@ -59,7 +68,9 @@ export class TeachingAssignmentRepository {
     });
   }
 
-  async findBySemester(semesterId: string): Promise<TeachingAssignmentEntity[]> {
+  async findBySemester(
+    semesterId: string,
+  ): Promise<TeachingAssignmentEntity[]> {
     return this.repo.find({
       where: { semesterId, deletedAt: IsNull() },
       relations: { teacher: true, class: true, subject: true },

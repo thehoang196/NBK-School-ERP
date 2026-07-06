@@ -1,18 +1,35 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsBoolean, IsInt, Min, Matches, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEnum,
+  IsOptional,
+  IsBoolean,
+  IsInt,
+  Min,
+  Matches,
+  IsUUID,
+} from 'class-validator';
 import { PayComponentType } from '../../enums';
 
 export class CreatePayComponentDto {
-  @ApiProperty({ description: 'ID trường', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @ApiProperty({
+    description: 'ID trường',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
   @IsUUID()
   @IsNotEmpty()
   schoolId: string;
 
-  @ApiProperty({ description: 'Mã thành phần lương (chỉ chữ hoa, số, gạch dưới)', example: 'BASIC_SALARY' })
+  @ApiProperty({
+    description: 'Mã thành phần lương (chỉ chữ hoa, số, gạch dưới)',
+    example: 'BASIC_SALARY',
+  })
   @IsString()
   @IsNotEmpty()
   @Matches(/^[A-Z][A-Z0-9_]*$/, {
-    message: 'Code phải bắt đầu bằng chữ hoa và chỉ chứa chữ hoa, số, gạch dưới',
+    message:
+      'Code phải bắt đầu bằng chữ hoa và chỉ chứa chữ hoa, số, gạch dưới',
   })
   code: string;
 
@@ -21,7 +38,10 @@ export class CreatePayComponentDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ description: 'Loại: earning hoặc deduction', enum: PayComponentType })
+  @ApiProperty({
+    description: 'Loại: earning hoặc deduction',
+    enum: PayComponentType,
+  })
   @IsEnum(PayComponentType)
   type: PayComponentType;
 
@@ -41,7 +61,10 @@ export class CreatePayComponentDto {
   @IsBoolean()
   isInsuranceApplicable?: boolean;
 
-  @ApiPropertyOptional({ description: 'Bắt buộc theo pháp luật', default: false })
+  @ApiPropertyOptional({
+    description: 'Bắt buộc theo pháp luật',
+    default: false,
+  })
   @IsOptional()
   @IsBoolean()
   isStatutory?: boolean;

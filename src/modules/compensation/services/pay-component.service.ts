@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PayComponentRepository } from '../repositories/pay-component.repository';
 import { PayComponentEntity } from '../entities/pay-component.entity';
 import { CreatePayComponentDto } from '../dto/pay-component/create-pay-component.dto';
@@ -9,9 +14,13 @@ import { EntityStatus } from '../../../common/enums/status.enum';
 
 @Injectable()
 export class PayComponentService {
-  constructor(private readonly payComponentRepository: PayComponentRepository) {}
+  constructor(
+    private readonly payComponentRepository: PayComponentRepository,
+  ) {}
 
-  async findAll(query: PayComponentQueryDto): Promise<PaginatedResponse<PayComponentEntity>> {
+  async findAll(
+    query: PayComponentQueryDto,
+  ): Promise<PaginatedResponse<PayComponentEntity>> {
     const [data, total] = await this.payComponentRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
@@ -45,7 +54,10 @@ export class PayComponentService {
     }
 
     // Check unique code per school
-    const existing = await this.payComponentRepository.findByCode(dto.code, dto.schoolId);
+    const existing = await this.payComponentRepository.findByCode(
+      dto.code,
+      dto.schoolId,
+    );
     if (existing) {
       throw new ConflictException(
         `Mã thành phần lương "${dto.code}" đã tồn tại trong trường này`,
@@ -55,13 +67,23 @@ export class PayComponentService {
     return this.payComponentRepository.create(dto);
   }
 
-  async update(id: string, dto: UpdatePayComponentDto): Promise<PayComponentEntity> {
+  async update(
+    id: string,
+    dto: UpdatePayComponentDto,
+  ): Promise<PayComponentEntity> {
     const entity = await this.findById(id);
 
     // If component is referenced by formula, only allow name/sortOrder changes
     const isReferencedByFormula = await this.isReferencedByActiveFormula(id);
     if (isReferencedByFormula) {
-      const restrictedFields = ['code', 'type', 'isTaxable', 'isInsuranceApplicable', 'isStatutory', 'status'];
+      const restrictedFields = [
+        'code',
+        'type',
+        'isTaxable',
+        'isInsuranceApplicable',
+        'isStatutory',
+        'status',
+      ];
       const hasRestrictedChange = restrictedFields.some(
         (field) => dto[field as keyof UpdatePayComponentDto] !== undefined,
       );
@@ -74,7 +96,10 @@ export class PayComponentService {
 
     // If code is being changed, validate uniqueness
     if (dto.code && dto.code !== entity.code) {
-      const existing = await this.payComponentRepository.findByCode(dto.code, entity.schoolId);
+      const existing = await this.payComponentRepository.findByCode(
+        dto.code,
+        entity.schoolId,
+      );
       if (existing) {
         throw new ConflictException(
           `Mã thành phần lương "${dto.code}" đã tồn tại trong trường này`,
@@ -119,7 +144,9 @@ export class PayComponentService {
    * Get list of active formulas referencing this pay component.
    * Placeholder until Formula module is implemented.
    */
-  async getReferencingActiveFormulas(payComponentId: string): Promise<{ name: string }[]> {
+  async getReferencingActiveFormulas(
+    payComponentId: string,
+  ): Promise<{ name: string }[]> {
     // TODO: Implement when FormulaRepository is available
     return [];
   }

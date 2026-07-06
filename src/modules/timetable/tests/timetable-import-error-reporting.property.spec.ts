@@ -20,9 +20,13 @@ import {
 
 describe('Feature: timetable-management-features, Property 4: Import error reporting completeness', () => {
   // --- Arbitraries ---
-  const alphanumChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const alphanumChars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const nonEmptyAlphanumString: fc.Arbitrary<string> = fc
-    .array(fc.constantFrom(...alphanumChars.split('')), { minLength: 1, maxLength: 10 })
+    .array(fc.constantFrom(...alphanumChars.split('')), {
+      minLength: 1,
+      maxLength: 10,
+    })
     .map((chars) => chars.join(''));
 
   const uuidArb: fc.Arbitrary<string> = fc.uuid();
@@ -104,12 +108,16 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
    */
   function createMockRepo<T>(entities: T[]): { find: jest.Mock } {
     return {
-      find: jest.fn().mockImplementation(({ where }: { where: { schoolId: string; deletedAt: unknown } }) => {
-        const filtered = entities.filter(
-          (e: any) => e.schoolId === where.schoolId && e.deletedAt === null,
-        );
-        return Promise.resolve(filtered);
-      }),
+      find: jest
+        .fn()
+        .mockImplementation(
+          ({ where }: { where: { schoolId: string; deletedAt: unknown } }) => {
+            const filtered = entities.filter(
+              (e: any) => e.schoolId === where.schoolId && e.deletedAt === null,
+            );
+            return Promise.resolve(filtered);
+          },
+        ),
     };
   }
 
@@ -153,10 +161,18 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
     }));
 
     // Deduplicate by code/name/number (Maps use last value for duplicate keys)
-    const uniqueTeachers = [...new Map(teachers.map((t) => [t.employeeCode, t])).values()];
-    const uniqueSubjects = [...new Map(subjects.map((s) => [s.code, s])).values()];
-    const uniqueClasses = [...new Map(classes.map((c) => [c.name, c])).values()];
-    const uniquePeriods = [...new Map(periods.map((p) => [p.periodNumber, p])).values()];
+    const uniqueTeachers = [
+      ...new Map(teachers.map((t) => [t.employeeCode, t])).values(),
+    ];
+    const uniqueSubjects = [
+      ...new Map(subjects.map((s) => [s.code, s])).values(),
+    ];
+    const uniqueClasses = [
+      ...new Map(classes.map((c) => [c.name, c])).values(),
+    ];
+    const uniquePeriods = [
+      ...new Map(periods.map((p) => [p.periodNumber, p])).values(),
+    ];
     const uniqueRooms = [...new Map(rooms.map((r) => [r.code, r])).values()];
 
     const mockTeacherRepo = createMockRepo(uniqueTeachers);
@@ -178,10 +194,12 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
             id: 'mock-version-id',
             ...data,
           })),
-          save: jest.fn().mockImplementation(async (_entity: any, data: any) => {
-            if (data) return data;
-            return { id: 'mock-version-id' };
-          }),
+          save: jest
+            .fn()
+            .mockImplementation(async (_entity: any, data: any) => {
+              if (data) return data;
+              return { id: 'mock-version-id' };
+            }),
         };
         return cb(mockManager);
       }),
@@ -200,11 +218,13 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
 
   it('should satisfy totalRows = successCount + errorCount for any mix of valid/invalid rows', async () => {
     // Generate unique valid rows to avoid duplicate detection
-    const scenarioArb = fc.record({
-      schoolId: uuidArb,
-      validRows: fc.array(validRowArb, { minLength: 0, maxLength: 8 }),
-      invalidRows: fc.array(invalidDayRowArb, { minLength: 0, maxLength: 8 }),
-    }).filter((s) => s.validRows.length + s.invalidRows.length >= 1);
+    const scenarioArb = fc
+      .record({
+        schoolId: uuidArb,
+        validRows: fc.array(validRowArb, { minLength: 0, maxLength: 8 }),
+        invalidRows: fc.array(invalidDayRowArb, { minLength: 0, maxLength: 8 }),
+      })
+      .filter((s) => s.validRows.length + s.invalidRows.length >= 1);
 
     await fc.assert(
       fc.asyncProperty(scenarioArb, async (scenario) => {
@@ -224,11 +244,16 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
 
         const file = {
           buffer,
-          mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimetype:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           size: buffer.length,
         } as Express.Multer.File;
 
-        const result = await service.importFromExcel({ file, schoolId, semesterId: 'sem-1' });
+        const result = await service.importFromExcel({
+          file,
+          schoolId,
+          semesterId: 'sem-1',
+        });
 
         // PROPERTY: totalRows = successCount + errorCount
         expect(result.totalRows).toBe(result.successCount + result.errorCount);
@@ -262,11 +287,16 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
 
         const file = {
           buffer,
-          mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimetype:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           size: buffer.length,
         } as Express.Multer.File;
 
-        const result = await service.importFromExcel({ file, schoolId, semesterId: 'sem-1' });
+        const result = await service.importFromExcel({
+          file,
+          schoolId,
+          semesterId: 'sem-1',
+        });
 
         // PROPERTY: errors array has at least one entry per invalid row
         // (one row can produce multiple errors if multiple fields are invalid)
@@ -304,11 +334,16 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
 
         const file = {
           buffer,
-          mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimetype:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           size: buffer.length,
         } as Express.Multer.File;
 
-        const result = await service.importFromExcel({ file, schoolId, semesterId: 'sem-1' });
+        const result = await service.importFromExcel({
+          file,
+          schoolId,
+          semesterId: 'sem-1',
+        });
 
         // PROPERTY: all error row numbers are within [2, totalRows + 1]
         // Row 1 is header, data rows start at 2, last row = totalRows + 1
@@ -343,14 +378,27 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
 
         const file = {
           buffer,
-          mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimetype:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           size: buffer.length,
         } as Express.Multer.File;
 
-        const result = await service.importFromExcel({ file, schoolId, semesterId: 'sem-1' });
+        const result = await service.importFromExcel({
+          file,
+          schoolId,
+          semesterId: 'sem-1',
+        });
 
         // PROPERTY: each error has non-empty field, non-empty message, and value is a string
-        const validFields = ['Lớp', 'Thứ', 'Tiết', 'Môn', 'Giáo viên', 'Phòng', 'Lớp+Thứ+Tiết'];
+        const validFields = [
+          'Lớp',
+          'Thứ',
+          'Tiết',
+          'Môn',
+          'Giáo viên',
+          'Phòng',
+          'Lớp+Thứ+Tiết',
+        ];
         for (const error of result.errors) {
           expect(error.field).toBeTruthy();
           expect(validFields).toContain(error.field);
@@ -383,11 +431,16 @@ describe('Feature: timetable-management-features, Property 4: Import error repor
 
         const file = {
           buffer,
-          mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          mimetype:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           size: buffer.length,
         } as Express.Multer.File;
 
-        const result = await service.importFromExcel({ file, schoolId, semesterId: 'sem-1' });
+        const result = await service.importFromExcel({
+          file,
+          schoolId,
+          semesterId: 'sem-1',
+        });
 
         // PROPERTY: when all rows are valid + unique, errorCount = 0 and errors is empty
         expect(result.totalRows).toBe(dedupedValidRows.length);

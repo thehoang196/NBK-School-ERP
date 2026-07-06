@@ -18,5 +18,9 @@ export { DependencyExtractor } from './dependency-extractor';
 export { CircularDependencyDetector } from './circular-dependency-detector';
 export type { CycleDetectionResult } from './circular-dependency-detector';
 export { PrettyPrinter } from './pretty-printer';
-export { FUNCTION_LIBRARY, getAvailableFunctionNames, getFunctionImplementations } from './function-library';
+export {
+  FUNCTION_LIBRARY,
+  getAvailableFunctionNames,
+  getFunctionImplementations,
+} from './function-library';
 export type { FunctionDefinition } from './function-library';

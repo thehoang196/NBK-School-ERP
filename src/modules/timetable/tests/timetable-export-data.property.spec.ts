@@ -23,7 +23,7 @@ import { SubjectEntity } from '../../subject/entities/subject.entity';
 import { PeriodDefinitionEntity } from '../../academic/entities/period-definition.entity';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { SemesterEntity } from '../../academic/entities/semester.entity';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 // --- Generators ---
 
@@ -38,7 +38,7 @@ function uuid(): string {
 /** Generate a unique set of (dayOfWeek, periodNumber, classIndex) tuples - no duplicates */
 const slotKeyArb = (classCount: number, maxPeriod: number) =>
   fc.tuple(
-    fc.integer({ min: 2, max: 7 }),        // dayOfWeek
+    fc.integer({ min: 2, max: 7 }), // dayOfWeek
     fc.integer({ min: 1, max: maxPeriod }), // periodNumber
     fc.integer({ min: 0, max: classCount - 1 }), // classIndex
   );
@@ -64,10 +64,10 @@ interface GeneratedTestData {
  */
 const testDataArb: fc.Arbitrary<GeneratedTestData> = fc
   .tuple(
-    fc.integer({ min: 1, max: 4 }),  // classCount
-    fc.integer({ min: 1, max: 5 }),  // teacherCount
-    fc.integer({ min: 1, max: 5 }),  // subjectCount
-    fc.integer({ min: 2, max: 8 }),  // maxPeriods
+    fc.integer({ min: 1, max: 4 }), // classCount
+    fc.integer({ min: 1, max: 5 }), // teacherCount
+    fc.integer({ min: 1, max: 5 }), // subjectCount
+    fc.integer({ min: 2, max: 8 }), // maxPeriods
     fc.integer({ min: 1, max: 20 }), // slotCount
   )
   .chain(([classCount, teacherCount, subjectCount, maxPeriods, slotCount]) => {
@@ -100,42 +100,54 @@ const testDataArb: fc.Arbitrary<GeneratedTestData> = fc
           level: 10,
         } as GradeEntity;
 
-        const classes: ClassEntity[] = Array.from({ length: classCount }, (_, i) => ({
-          id: uuid(),
-          schoolId,
-          gradeId,
-          name: `10A${i + 1}`,
-          academicYearId,
-          homeroomTeacherId: null,
-          studentCount: 30,
-          status: 'active',
-        })) as unknown as ClassEntity[];
+        const classes: ClassEntity[] = Array.from(
+          { length: classCount },
+          (_, i) => ({
+            id: uuid(),
+            schoolId,
+            gradeId,
+            name: `10A${i + 1}`,
+            academicYearId,
+            homeroomTeacherId: null,
+            studentCount: 30,
+            status: 'active',
+          }),
+        ) as unknown as ClassEntity[];
 
-        const teachers: TeacherEntity[] = Array.from({ length: teacherCount }, (_, i) => ({
-          id: uuid(),
-          schoolId,
-          employeeCode: `GV${String(i + 1).padStart(3, '0')}`,
-          fullName: `Nguyen Van ${String.fromCharCode(65 + i)}`,
-          shortName: `${String.fromCharCode(65 + i)} N.V`,
-        })) as unknown as TeacherEntity[];
+        const teachers: TeacherEntity[] = Array.from(
+          { length: teacherCount },
+          (_, i) => ({
+            id: uuid(),
+            schoolId,
+            employeeCode: `GV${String(i + 1).padStart(3, '0')}`,
+            fullName: `Nguyen Van ${String.fromCharCode(65 + i)}`,
+            shortName: `${String.fromCharCode(65 + i)} N.V`,
+          }),
+        ) as unknown as TeacherEntity[];
 
-        const subjects: SubjectEntity[] = Array.from({ length: subjectCount }, (_, i) => ({
-          id: uuid(),
-          schoolId,
-          code: `MON${String(i + 1).padStart(2, '0')}`,
-          name: `Mon hoc ${i + 1}`,
-          shortName: `MH${i + 1}`,
-        })) as unknown as SubjectEntity[];
+        const subjects: SubjectEntity[] = Array.from(
+          { length: subjectCount },
+          (_, i) => ({
+            id: uuid(),
+            schoolId,
+            code: `MON${String(i + 1).padStart(2, '0')}`,
+            name: `Mon hoc ${i + 1}`,
+            shortName: `MH${i + 1}`,
+          }),
+        ) as unknown as SubjectEntity[];
 
-        const periods: PeriodDefinitionEntity[] = Array.from({ length: maxPeriods }, (_, i) => ({
-          id: uuid(),
-          schoolId,
-          periodNumber: i + 1,
-          startTime: `0${7 + i}:00`,
-          endTime: `0${7 + i}:45`,
-          isBreak: false,
-          isExtra: false,
-        })) as unknown as PeriodDefinitionEntity[];
+        const periods: PeriodDefinitionEntity[] = Array.from(
+          { length: maxPeriods },
+          (_, i) => ({
+            id: uuid(),
+            schoolId,
+            periodNumber: i + 1,
+            startTime: `0${7 + i}:00`,
+            endTime: `0${7 + i}:45`,
+            isBreak: false,
+            isExtra: false,
+          }),
+        ) as unknown as PeriodDefinitionEntity[];
 
         const semester = {
           id: semesterId,
@@ -149,7 +161,7 @@ const testDataArb: fc.Arbitrary<GeneratedTestData> = fc
           semesterId,
           name: 'Test Version',
           versionNumber: 1,
-          status: TimetableStatus.DRAFT,
+          status: TimetableVersionStatus.DRAFT,
           effectiveDate: null,
           publishedAt: null,
           publishedBy: null,
@@ -157,32 +169,34 @@ const testDataArb: fc.Arbitrary<GeneratedTestData> = fc
         } as unknown as TimetableVersionEntity;
 
         // Build slots from unique keys
-        const slots: TimetableSlotEntity[] = slotKeys.map(([dayOfWeek, periodNum, classIdx]) => {
-          const teacherIdx = Math.floor(Math.random() * teacherCount);
-          const subjectIdx = Math.floor(Math.random() * subjectCount);
-          const period = periods[periodNum - 1];
-          const cls = classes[classIdx];
-          const teacher = teachers[teacherIdx];
-          const subject = subjects[subjectIdx];
+        const slots: TimetableSlotEntity[] = slotKeys.map(
+          ([dayOfWeek, periodNum, classIdx]) => {
+            const teacherIdx = Math.floor(Math.random() * teacherCount);
+            const subjectIdx = Math.floor(Math.random() * subjectCount);
+            const period = periods[periodNum - 1];
+            const cls = classes[classIdx];
+            const teacher = teachers[teacherIdx];
+            const subject = subjects[subjectIdx];
 
-          return {
-            id: uuid(),
-            versionId,
-            dayOfWeek,
-            periodId: period.id,
-            period,
-            classId: cls.id,
-            class: cls,
-            teacherId: teacher.id,
-            teacher,
-            subjectId: subject.id,
-            subject,
-            roomId: null,
-            room: null,
-            isDoublePeriod: false,
-            deletedAt: null,
-          } as unknown as TimetableSlotEntity;
-        });
+            return {
+              id: uuid(),
+              versionId,
+              dayOfWeek,
+              periodId: period.id,
+              period,
+              classId: cls.id,
+              class: cls,
+              teacherId: teacher.id,
+              teacher,
+              subjectId: subject.id,
+              subject,
+              roomId: null,
+              room: null,
+              isDoublePeriod: false,
+              deletedAt: null,
+            } as unknown as TimetableSlotEntity;
+          },
+        );
 
         return {
           grade,
@@ -263,10 +277,17 @@ describe('Property 5: Export data completeness', () => {
       findOne: jest.fn().mockResolvedValue(data.school),
     };
 
-    (mockDataSource.getRepository as jest.Mock).mockImplementation((entity: unknown) => {
-      const entityName = (entity as { name: string }).name;
-      return mockRepos[entityName] || { find: jest.fn().mockResolvedValue([]), findOne: jest.fn().mockResolvedValue(null) };
-    });
+    (mockDataSource.getRepository as jest.Mock).mockImplementation(
+      (entity: unknown) => {
+        const entityName = (entity as { name: string }).name;
+        return (
+          mockRepos[entityName] || {
+            find: jest.fn().mockResolvedValue([]),
+            findOne: jest.fn().mockResolvedValue(null),
+          }
+        );
+      },
+    );
   }
 
   /**
@@ -297,15 +318,18 @@ describe('Property 5: Export data completeness', () => {
     const dataStartRow = 5; // After headers
 
     // Build a map of extracted cell data: key = "classId-dayOfWeek-periodNumber"
-    const extractedSlots = new Map<string, { subjectDisplay: string; teacherDisplay: string }>();
+    const extractedSlots = new Map<
+      string,
+      { subjectDisplay: string; teacherDisplay: string }
+    >();
 
     // Calculate maxPeriods the same way the export service does:
     // uses max period number from actual slots in this grade
     const classIds = data.classes.map((c) => c.id);
     const gradeSlots = data.slots.filter((s) => classIds.includes(s.classId));
-    const periodNumbers = [...new Set(gradeSlots.map((s) => s.period?.periodNumber || 0))].sort(
-      (a, b) => a - b,
-    );
+    const periodNumbers = [
+      ...new Set(gradeSlots.map((s) => s.period?.periodNumber || 0)),
+    ].sort((a, b) => a - b);
     const maxPeriod = periodNumbers.length > 0 ? Math.max(...periodNumbers) : 8;
     const DAYS = [2, 3, 4, 5, 6, 7];
 
@@ -351,7 +375,9 @@ describe('Property 5: Export data completeness', () => {
       fc.asyncProperty(testDataArb, async (data: GeneratedTestData) => {
         configureMocks(data);
 
-        const result = await service.exportToExcel({ versionId: data.version.id });
+        const result = await service.exportToExcel({
+          versionId: data.version.id,
+        });
         const extractedSlots = await parseExcelSlots(result.buffer, data);
 
         // Every input slot should appear in the extracted output
@@ -366,11 +392,16 @@ describe('Property 5: Export data completeness', () => {
 
           if (extracted) {
             // Verify subject display matches
-            const expectedSubject = slot.subject?.shortName || slot.subject?.code || slot.subject?.name || '';
+            const expectedSubject =
+              slot.subject?.shortName ||
+              slot.subject?.code ||
+              slot.subject?.name ||
+              '';
             expect(extracted.subjectDisplay).toBe(expectedSubject);
 
             // Verify teacher display matches
-            const expectedTeacher = slot.teacher?.shortName || slot.teacher?.fullName || '';
+            const expectedTeacher =
+              slot.teacher?.shortName || slot.teacher?.fullName || '';
             expect(extracted.teacherDisplay).toBe(expectedTeacher);
           }
         }
@@ -393,7 +424,9 @@ describe('Property 5: Export data completeness', () => {
       fc.asyncProperty(testDataArb, async (data: GeneratedTestData) => {
         configureMocks(data);
 
-        const result = await service.exportToExcel({ versionId: data.version.id });
+        const result = await service.exportToExcel({
+          versionId: data.version.id,
+        });
         const extractedSlots = await parseExcelSlots(result.buffer, data);
 
         // Total extracted cells must equal total input slots (no duplicates, no missing)
@@ -402,7 +435,9 @@ describe('Property 5: Export data completeness', () => {
         // Verify each key from input is unique (already guaranteed by generator,
         // but double-check the output doesn't merge or duplicate)
         const inputKeys = new Set(
-          data.slots.map((s) => `${s.classId}-${s.dayOfWeek}-${s.period.periodNumber}`),
+          data.slots.map(
+            (s) => `${s.classId}-${s.dayOfWeek}-${s.period.periodNumber}`,
+          ),
         );
         expect(inputKeys.size).toBe(data.slots.length);
         expect(extractedSlots.size).toBe(inputKeys.size);
@@ -421,7 +456,9 @@ describe('Property 5: Export data completeness', () => {
       fc.asyncProperty(testDataArb, async (data: GeneratedTestData) => {
         configureMocks(data);
 
-        const result = await service.exportToExcel({ versionId: data.version.id });
+        const result = await service.exportToExcel({
+          versionId: data.version.id,
+        });
 
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(result.buffer as unknown as ArrayBuffer);

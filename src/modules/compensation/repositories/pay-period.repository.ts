@@ -11,11 +11,14 @@ export class PayPeriodRepository {
     private readonly repo: Repository<PayPeriodEntity>,
   ) {}
 
-  async findAll(query: PayPeriodQueryDto): Promise<[PayPeriodEntity[], number]> {
+  async findAll(
+    query: PayPeriodQueryDto,
+  ): Promise<[PayPeriodEntity[], number]> {
     const { page, limit, sortBy, sortOrder, schoolId, status } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('pp')
+    const queryBuilder = this.repo
+      .createQueryBuilder('pp')
       .where('pp.deletedAt IS NULL');
 
     if (schoolId) {
@@ -43,8 +46,14 @@ export class PayPeriodRepository {
     });
   }
 
-  async findOverlapping(schoolId: string, startDate: string, endDate: string, excludeId?: string): Promise<PayPeriodEntity[]> {
-    const queryBuilder = this.repo.createQueryBuilder('pp')
+  async findOverlapping(
+    schoolId: string,
+    startDate: string,
+    endDate: string,
+    excludeId?: string,
+  ): Promise<PayPeriodEntity[]> {
+    const queryBuilder = this.repo
+      .createQueryBuilder('pp')
       .where('pp.schoolId = :schoolId', { schoolId })
       .andWhere('pp.deletedAt IS NULL')
       .andWhere('pp.startDate <= :endDate', { endDate })
@@ -62,7 +71,10 @@ export class PayPeriodRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<PayPeriodEntity>): Promise<PayPeriodEntity | null> {
+  async update(
+    id: string,
+    data: Partial<PayPeriodEntity>,
+  ): Promise<PayPeriodEntity | null> {
     await this.repo.update(id, data as Record<string, unknown>);
     return this.findById(id);
   }

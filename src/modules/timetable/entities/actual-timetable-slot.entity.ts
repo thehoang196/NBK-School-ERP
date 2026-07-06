@@ -1,6 +1,7 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SlotStatus } from '../../../common/enums/status.enum';
+import { SchoolEntity } from '../../school/entities/school.entity';
 import { SemesterEntity } from '../../academic/entities/semester.entity';
 import { WeekEntity } from '../../academic/entities/week.entity';
 import { PeriodDefinitionEntity } from '../../academic/entities/period-definition.entity';
@@ -10,7 +11,15 @@ import { SubjectEntity } from '../../subject/entities/subject.entity';
 import { RoomEntity } from '../../room/entities/room.entity';
 
 @Entity('actual_timetable_slots')
+@Index(['schoolId', 'deletedAt'])
 export class ActualTimetableSlotEntity extends BaseEntity {
+  @Column({ name: 'school_id', type: 'uuid' })
+  schoolId: string;
+
+  @ManyToOne(() => SchoolEntity)
+  @JoinColumn({ name: 'school_id' })
+  school: SchoolEntity;
+
   @Column({ name: 'semester_id', type: 'uuid' })
   semesterId: string;
 
@@ -66,7 +75,12 @@ export class ActualTimetableSlotEntity extends BaseEntity {
   @Column({ name: 'original_teacher_id', type: 'uuid', nullable: true })
   originalTeacherId: string | null;
 
-  @Column({ name: 'slot_status', type: 'enum', enum: SlotStatus, default: SlotStatus.SCHEDULED })
+  @Column({
+    name: 'slot_status',
+    type: 'enum',
+    enum: SlotStatus,
+    default: SlotStatus.SCHEDULED,
+  })
   slotStatus: SlotStatus;
 
   @Column({ type: 'text', nullable: true })

@@ -39,7 +39,9 @@ export class CreateGrades1748900005000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_grades_school_level"`);
     await queryRunner.query(`DROP INDEX "IDX_grades_school_id"`);
-    await queryRunner.query(`ALTER TABLE "grades" DROP CONSTRAINT "FK_grades_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "grades" DROP CONSTRAINT "FK_grades_school"`,
+    );
     await queryRunner.query(`DROP TABLE "grades"`);
   }
 }

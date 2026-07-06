@@ -1,4 +1,7 @@
-import { TimetableGeneratorService, FetActivity } from './timetable-generator.service';
+import {
+  TimetableGeneratorService,
+  FetActivity,
+} from './timetable-generator.service';
 
 describe('TimetableGeneratorService', () => {
   let service: TimetableGeneratorService;
@@ -12,9 +15,27 @@ describe('TimetableGeneratorService', () => {
     const versionId = 'version-uuid-001';
 
     const activities: FetActivity[] = [
-      { id: 'act-1', teacherId: 'teacher-1', subjectId: 'subject-1', studentsSet: 'Class10A', duration: 1 },
-      { id: 'act-2', teacherId: 'teacher-2', subjectId: 'subject-2', studentsSet: 'Class10B', duration: 2 },
-      { id: 'act-3', teacherId: 'teacher-1', subjectId: 'subject-3', studentsSet: 'Class11A', duration: 1 },
+      {
+        id: 'act-1',
+        teacherId: 'teacher-1',
+        subjectId: 'subject-1',
+        studentsSet: 'Class10A',
+        duration: 1,
+      },
+      {
+        id: 'act-2',
+        teacherId: 'teacher-2',
+        subjectId: 'subject-2',
+        studentsSet: 'Class10B',
+        duration: 2,
+      },
+      {
+        id: 'act-3',
+        teacherId: 'teacher-1',
+        subjectId: 'subject-3',
+        studentsSet: 'Class11A',
+        duration: 1,
+      },
     ];
 
     const periodMap = new Map<string, string>([
@@ -57,7 +78,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(3);
 
@@ -106,7 +134,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
@@ -131,7 +166,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].roomId).toBeNull();
@@ -154,7 +196,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].dayOfWeek).toBe(4); // Wed
@@ -171,7 +220,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(0);
     });
@@ -187,14 +243,27 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(0);
     });
 
     it('should skip entries with unknown class (studentsSet)', () => {
       const activitiesWithUnknownClass: FetActivity[] = [
-        { id: 'act-x', teacherId: 'teacher-1', subjectId: 'subject-1', studentsSet: 'UnknownClass', duration: 1 },
+        {
+          id: 'act-x',
+          teacherId: 'teacher-1',
+          subjectId: 'subject-1',
+          studentsSet: 'UnknownClass',
+          duration: 1,
+        },
       ];
 
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -207,7 +276,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activitiesWithUnknownClass, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activitiesWithUnknownClass,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(0);
     });
@@ -223,7 +299,14 @@ describe('TimetableGeneratorService', () => {
   </Activity>
 </Solution>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0].roomId).toBeNull();
@@ -232,7 +315,14 @@ describe('TimetableGeneratorService', () => {
     it('should return empty array for malformed XML', () => {
       const xml = 'not valid xml <<>>';
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       // fast-xml-parser is lenient, so this might still parse to something
       // But it won't have Solution/Activity elements
@@ -242,7 +332,14 @@ describe('TimetableGeneratorService', () => {
     it('should return empty array for XML without Solution element', () => {
       const xml = `<?xml version="1.0" encoding="UTF-8"?><Root><Data>nothing</Data></Root>`;
 
-      const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+      const result = service.parseFetOutput(
+        xml,
+        versionId,
+        activities,
+        periodMap,
+        roomMap,
+        classMap,
+      );
 
       expect(result).toEqual([]);
     });
@@ -259,7 +356,14 @@ describe('TimetableGeneratorService', () => {
 
       for (const { day, expected } of dayTests) {
         const xml = `<Solution><Activity><Id>act-1</Id><Day>${day}</Day><Hour>Period1</Hour></Activity></Solution>`;
-        const result = service.parseFetOutput(xml, versionId, activities, periodMap, roomMap, classMap);
+        const result = service.parseFetOutput(
+          xml,
+          versionId,
+          activities,
+          periodMap,
+          roomMap,
+          classMap,
+        );
         expect(result[0].dayOfWeek).toBe(expected);
       }
     });

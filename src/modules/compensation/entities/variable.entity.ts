@@ -13,7 +13,12 @@ export class VariableEntity extends BaseEntity {
   @Column({ name: 'data_type', type: 'enum', enum: VariableDataType })
   dataType: VariableDataType;
 
-  @Column({ name: 'default_value', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'default_value',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   defaultValue: string | null;
 
   @Column({ type: 'enum', enum: VariableScope })

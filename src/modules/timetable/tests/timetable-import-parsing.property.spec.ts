@@ -65,9 +65,13 @@ describe('Feature: timetable-management-features, Property 1: Import row parsing
   }
 
   // Arbitraries for generating valid timetable row data
-  const alphanumChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const alphanumChars =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const nonEmptyAlphanumString: fc.Arbitrary<string> = fc
-    .array(fc.constantFrom(...alphanumChars.split('')), { minLength: 1, maxLength: 20 })
+    .array(fc.constantFrom(...alphanumChars.split('')), {
+      minLength: 1,
+      maxLength: 20,
+    })
     .map((chars) => chars.join(''));
 
   const dayOfWeekArb = fc.integer({ min: 2, max: 7 });
@@ -98,7 +102,8 @@ describe('Feature: timetable-management-features, Property 1: Import row parsing
         const buffer = await createExcelBuffer([inputRow]);
 
         // Parse the buffer
-        const result: ParsedTimetableRow[] = await service.parseExcelRows(buffer);
+        const result: ParsedTimetableRow[] =
+          await service.parseExcelRows(buffer);
 
         // Verify exactly 1 row parsed
         expect(result).toHaveLength(1);
@@ -125,7 +130,8 @@ describe('Feature: timetable-management-features, Property 1: Import row parsing
           const buffer = await createExcelBuffer(inputRows);
 
           // Parse the buffer
-          const result: ParsedTimetableRow[] = await service.parseExcelRows(buffer);
+          const result: ParsedTimetableRow[] =
+            await service.parseExcelRows(buffer);
 
           // Verify correct number of rows
           expect(result).toHaveLength(inputRows.length);

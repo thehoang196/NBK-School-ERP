@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { VariableRepository } from '../repositories/variable.repository';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { VariableEntity } from '../entities/variable.entity';
@@ -18,7 +23,9 @@ export class VariableService {
     private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
-  async findAll(query: VariableQueryDto): Promise<PaginatedResponse<VariableEntity>> {
+  async findAll(
+    query: VariableQueryDto,
+  ): Promise<PaginatedResponse<VariableEntity>> {
     const [data, total] = await this.variableRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
@@ -51,7 +58,10 @@ export class VariableService {
     return entity;
   }
 
-  async create(dto: CreateVariableDto, performedBy?: string): Promise<VariableEntity> {
+  async create(
+    dto: CreateVariableDto,
+    performedBy?: string,
+  ): Promise<VariableEntity> {
     // Validate code format
     if (!/^[A-Z][A-Z0-9_]*$/.test(dto.code)) {
       throw new BadRequestException(
@@ -91,7 +101,11 @@ export class VariableService {
     return entity;
   }
 
-  async update(id: string, dto: UpdateVariableDto, performedBy?: string): Promise<VariableEntity> {
+  async update(
+    id: string,
+    dto: UpdateVariableDto,
+    performedBy?: string,
+  ): Promise<VariableEntity> {
     const entity = await this.findById(id);
     const oldValue = { ...entity } as unknown as Record<string, unknown>;
 
@@ -128,7 +142,9 @@ export class VariableService {
     const entity = await this.findById(id);
 
     // Check if referenced by active (PUBLISHED) formulas
-    const referencingFormulas = await this.getReferencingPublishedFormulas(entity.code);
+    const referencingFormulas = await this.getReferencingPublishedFormulas(
+      entity.code,
+    );
     if (referencingFormulas.length > 0) {
       throw new BadRequestException(
         `Không thể xóa biến đang được sử dụng trong các công thức đã publish: ${referencingFormulas.join(', ')}`,
@@ -236,9 +252,7 @@ export class VariableService {
     }
 
     const schoolOverride = overrides.find(
-      (o) =>
-        o.scope === VariableScope.SCHOOL &&
-        o.scopeId === context.schoolId,
+      (o) => o.scope === VariableScope.SCHOOL && o.scopeId === context.schoolId,
     );
     if (schoolOverride) {
       return schoolOverride.value;
@@ -264,7 +278,9 @@ export class VariableService {
    * Check if variable code is referenced by published formulas.
    * Will check formula variableRefs JSONB field.
    */
-  private async getReferencingPublishedFormulas(variableCode: string): Promise<string[]> {
+  private async getReferencingPublishedFormulas(
+    variableCode: string,
+  ): Promise<string[]> {
     // This will be properly integrated when FormulaRepository is available
     // For now, we'll import and query directly if FormulaRepository becomes available
     // TODO: Inject FormulaRepository when circular dependency is resolved

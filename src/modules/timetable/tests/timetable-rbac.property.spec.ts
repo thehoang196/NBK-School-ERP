@@ -31,11 +31,34 @@ enum TimetableOperation {
  * Role-permission matrix as defined by requirements 5.1, 5.2
  */
 const PERMISSION_MATRIX: Record<TimetableOperation, UserRole[]> = {
-  [TimetableOperation.IMPORT]: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER],
-  [TimetableOperation.SAVE]: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER],
-  [TimetableOperation.EDIT]: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER],
-  [TimetableOperation.EXPORT]: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER, UserRole.TEACHER],
-  [TimetableOperation.VIEW]: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.SCHEDULER, UserRole.TEACHER, UserRole.VIEWER],
+  [TimetableOperation.IMPORT]: [
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.SCHEDULER,
+  ],
+  [TimetableOperation.SAVE]: [
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.SCHEDULER,
+  ],
+  [TimetableOperation.EDIT]: [
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.SCHEDULER,
+  ],
+  [TimetableOperation.EXPORT]: [
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.SCHEDULER,
+    UserRole.TEACHER,
+  ],
+  [TimetableOperation.VIEW]: [
+    UserRole.SUPER_ADMIN,
+    UserRole.SCHOOL_ADMIN,
+    UserRole.SCHEDULER,
+    UserRole.TEACHER,
+    UserRole.VIEWER,
+  ],
 };
 
 /**
@@ -74,8 +97,8 @@ describe('Feature: timetable-management-features, Property 14: Role-based access
       getClass: () => jest.fn(),
       getArgs: () => [],
       getArgByIndex: () => undefined,
-      switchToRpc: () => ({} as ReturnType<ExecutionContext['switchToRpc']>),
-      switchToWs: () => ({} as ReturnType<ExecutionContext['switchToWs']>),
+      switchToRpc: () => ({}) as ReturnType<ExecutionContext['switchToRpc']>,
+      switchToWs: () => ({}) as ReturnType<ExecutionContext['switchToWs']>,
       getType: () => 'http' as const,
     } as unknown as ExecutionContext;
   }
@@ -97,7 +120,9 @@ describe('Feature: timetable-management-features, Property 14: Role-based access
           fc.pre(allowedRoles.includes(role));
 
           // Mock reflector to return allowed roles for this operation
-          jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(allowedRoles);
+          jest
+            .spyOn(reflector, 'getAllAndOverride')
+            .mockReturnValue(allowedRoles);
 
           const context = createMockContext(role);
           const result = guard.canActivate(context);
@@ -122,7 +147,9 @@ describe('Feature: timetable-management-features, Property 14: Role-based access
           fc.pre(!allowedRoles.includes(role));
 
           // Mock reflector to return allowed roles for this operation
-          jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(allowedRoles);
+          jest
+            .spyOn(reflector, 'getAllAndOverride')
+            .mockReturnValue(allowedRoles);
 
           const context = createMockContext(role);
           const result = guard.canActivate(context);
@@ -137,25 +164,26 @@ describe('Feature: timetable-management-features, Property 14: Role-based access
 
   it('should ALLOW all roles when no @Roles decorator is set (no restriction)', () => {
     fc.assert(
-      fc.property(
-        roleArb,
-        (role: UserRole) => {
-          // Mock reflector to return undefined (no decorator)
-          jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
+      fc.property(roleArb, (role: UserRole) => {
+        // Mock reflector to return undefined (no decorator)
+        jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);
 
-          const context = createMockContext(role);
-          const result = guard.canActivate(context);
+        const context = createMockContext(role);
+        const result = guard.canActivate(context);
 
-          // When no roles specified, guard should allow all
-          expect(result).toBe(true);
-        },
-      ),
+        // When no roles specified, guard should allow all
+        expect(result).toBe(true);
+      }),
       { numRuns: 100 },
     );
   });
 
   it('should correctly enforce Import/Save/Edit restriction to SUPER_ADMIN, SCHOOL_ADMIN, SCHEDULER only', () => {
-    const writeOperations = [TimetableOperation.IMPORT, TimetableOperation.SAVE, TimetableOperation.EDIT];
+    const writeOperations = [
+      TimetableOperation.IMPORT,
+      TimetableOperation.SAVE,
+      TimetableOperation.EDIT,
+    ];
     const writeOperationArb = fc.constantFrom(...writeOperations);
 
     fc.assert(
@@ -165,7 +193,9 @@ describe('Feature: timetable-management-features, Property 14: Role-based access
         (role: UserRole, operation: TimetableOperation) => {
           const allowedRoles = PERMISSION_MATRIX[operation];
 
-          jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(allowedRoles);
+          jest
+            .spyOn(reflector, 'getAllAndOverride')
+            .mockReturnValue(allowedRoles);
 
           const context = createMockContext(role);
           const result = guard.canActivate(context);
@@ -185,45 +215,43 @@ describe('Feature: timetable-management-features, Property 14: Role-based access
 
   it('should correctly enforce Export restriction: VIEWER denied, TEACHER allowed', () => {
     fc.assert(
-      fc.property(
-        roleArb,
-        (role: UserRole) => {
-          const allowedRoles = PERMISSION_MATRIX[TimetableOperation.EXPORT];
+      fc.property(roleArb, (role: UserRole) => {
+        const allowedRoles = PERMISSION_MATRIX[TimetableOperation.EXPORT];
 
-          jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(allowedRoles);
+        jest
+          .spyOn(reflector, 'getAllAndOverride')
+          .mockReturnValue(allowedRoles);
 
-          const context = createMockContext(role);
-          const result = guard.canActivate(context);
+        const context = createMockContext(role);
+        const result = guard.canActivate(context);
 
-          if (role === UserRole.VIEWER) {
-            // VIEWER should be denied for export
-            expect(result).toBe(false);
-          } else {
-            // All other roles should be allowed for export
-            expect(result).toBe(true);
-          }
-        },
-      ),
+        if (role === UserRole.VIEWER) {
+          // VIEWER should be denied for export
+          expect(result).toBe(false);
+        } else {
+          // All other roles should be allowed for export
+          expect(result).toBe(true);
+        }
+      }),
       { numRuns: 100 },
     );
   });
 
   it('should allow ALL roles for View operation', () => {
     fc.assert(
-      fc.property(
-        roleArb,
-        (role: UserRole) => {
-          const allowedRoles = PERMISSION_MATRIX[TimetableOperation.VIEW];
+      fc.property(roleArb, (role: UserRole) => {
+        const allowedRoles = PERMISSION_MATRIX[TimetableOperation.VIEW];
 
-          jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(allowedRoles);
+        jest
+          .spyOn(reflector, 'getAllAndOverride')
+          .mockReturnValue(allowedRoles);
 
-          const context = createMockContext(role);
-          const result = guard.canActivate(context);
+        const context = createMockContext(role);
+        const result = guard.canActivate(context);
 
-          // All roles should be allowed for view
-          expect(result).toBe(true);
-        },
-      ),
+        // All roles should be allowed for view
+        expect(result).toBe(true);
+      }),
       { numRuns: 100 },
     );
   });

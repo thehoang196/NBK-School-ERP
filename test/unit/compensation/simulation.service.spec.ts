@@ -5,7 +5,11 @@ import { PayComponentRepository } from '../../../src/modules/compensation/reposi
 import { VariableService } from '../../../src/modules/compensation/services/variable.service';
 import { RuleEvaluator } from '../../../src/modules/compensation/services/rule-evaluator';
 import { DependencyGraphService } from '../../../src/modules/compensation/services/dependency-graph.service';
-import { PayComponentType, FormulaStatus, RuleActionType } from '../../../src/modules/compensation/enums';
+import {
+  PayComponentType,
+  FormulaStatus,
+  RuleActionType,
+} from '../../../src/modules/compensation/enums';
 import { EntityStatus } from '../../../src/common/enums/status.enum';
 
 describe('SimulationService', () => {
@@ -124,8 +128,13 @@ describe('SimulationService', () => {
 
   describe('simulate', () => {
     it('should return detailed simulation result without persisting', async () => {
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
       variableService.resolveValue.mockImplementation(async (code: string) => {
         const values: Record<string, string> = {
@@ -151,8 +160,13 @@ describe('SimulationService', () => {
     });
 
     it('should apply variable overrides', async () => {
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
       variableService.resolveValue.mockImplementation(async (code: string) => {
         const values: Record<string, string> = {
@@ -175,8 +189,13 @@ describe('SimulationService', () => {
     });
 
     it('should apply rule results to variables', async () => {
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([
         {
           ruleId: 'rule-1',
@@ -216,8 +235,14 @@ describe('SimulationService', () => {
         expression: 'LESSON_RATE / 0',
         variableRefs: ['LESSON_RATE'],
       };
-      formulaRepository.findPublishedBySchool.mockResolvedValue([badFormula, mockFormulas[1]] as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue([
+        badFormula,
+        mockFormulas[1],
+      ] as never);
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
       variableService.resolveValue.mockImplementation(async (code: string) => {
         const values: Record<string, string> = {
@@ -239,8 +264,13 @@ describe('SimulationService', () => {
     });
 
     it('should provide detailed breakdown per component', async () => {
-      formulaRepository.findPublishedBySchool.mockResolvedValue(mockFormulas as never);
-      payComponentRepository.findAll.mockResolvedValue([mockPayComponents, 2] as never);
+      formulaRepository.findPublishedBySchool.mockResolvedValue(
+        mockFormulas as never,
+      );
+      payComponentRepository.findAll.mockResolvedValue([
+        mockPayComponents,
+        2,
+      ] as never);
       ruleEvaluator.evaluate.mockResolvedValue([]);
       variableService.resolveValue.mockResolvedValue('100');
 

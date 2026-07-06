@@ -1,10 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TeacherService } from './teacher.service';
 import { TeacherRepository } from './teacher.repository';
 import { TeacherSubjectService } from './teacher-subject.service';
 import { TeacherEntity } from './entities/teacher.entity';
-import { TeacherStatus, TeacherType, Gender } from '../../common/enums/status.enum';
+import { DuplicateEmployeeCodeException } from './exceptions/duplicate-employee-code.exception';
+import {
+  TeacherStatus,
+  TeacherType,
+  Gender,
+} from '../../common/enums/status.enum';
 
 describe('TeacherService', () => {
   let service: TeacherService;
@@ -38,6 +44,9 @@ describe('TeacherService', () => {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
     school: undefined as never,
   };
 
@@ -48,8 +57,11 @@ describe('TeacherService', () => {
         {
           provide: TeacherRepository,
           useValue: {
+            findBySchool: jest.fn(),
             findAll: jest.fn(),
             findById: jest.fn(),
+            findByIdInternal: jest.fn(),
+            findByEmployeeCode: jest.fn(),
             create: jest.fn(),
             update: jest.fn(),
             softDelete: jest.fn(),
@@ -60,6 +72,12 @@ describe('TeacherService', () => {
           useValue: {
             getSubjectsForTeacher: jest.fn().mockResolvedValue([]),
             getSubjectsMapForTeachers: jest.fn().mockResolvedValue(new Map()),
+          },
+        },
+        {
+          provide: EventEmitter2,
+          useValue: {
+            emit: jest.fn(),
           },
         },
       ],
@@ -79,7 +97,7 @@ describe('TeacherService', () => {
       const query = { page: 1, limit: 10, sortOrder: 'ASC' as const };
       repository.findAll.mockResolvedValue([[mockTeacher], 1]);
 
-      const result = await service.findAll(query);
+      const result = await service.findAll(query, 'school-uuid');
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
@@ -90,14 +108,18 @@ describe('TeacherService', () => {
   describe('findById', () => {
     it('should return teacher by id with subjects', async () => {
       repository.findById.mockResolvedValue(mockTeacher);
-      const result = await service.findById('teacher-uuid');
+      const result = await service.findById('teacher-uuid', 'school-uuid');
       expect(result).toEqual({ ...mockTeacher, subjects: [] });
-      expect(teacherSubjectService.getSubjectsForTeacher).toHaveBeenCalledWith('teacher-uuid');
+      expect(teacherSubjectService.getSubjectsForTeacher).toHaveBeenCalledWith(
+        'teacher-uuid',
+      );
     });
 
     it('should throw NotFoundException if not found', async () => {
       repository.findById.mockResolvedValue(null);
-      await expect(service.findById('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.findById('nonexistent', 'school-uuid'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -109,11 +131,26 @@ describe('TeacherService', () => {
         fullName: 'Nguyễn Văn A',
         unavailableSlots: [{ dayOfWeek: 2, periodId: 'period-uuid' }],
       };
+      repository.findByEmployeeCode.mockResolvedValue(null);
       repository.create.mockResolvedValue(mockTeacher);
 
       const result = await service.create(dto);
       expect(result.unavailableSlots).toHaveLength(1);
       expect(result.unavailableSlots![0].dayOfWeek).toBe(2);
+    });
+
+    it('should throw DuplicateEmployeeCodeException when employeeCode already exists in same school', async () => {
+      const dto = {
+        schoolId: 'school-uuid',
+        employeeCode: 'GV001',
+        fullName: 'Nguyễn Văn B',
+      };
+      repository.findByEmployeeCode.mockResolvedValue(mockTeacher);
+
+      await expect(service.create(dto)).rejects.toThrow(
+        DuplicateEmployeeCodeException,
+      );
+      expect(repository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -125,13 +162,44 @@ describe('TeacherService', () => {
       repository.findById.mockResolvedValue(mockTeacher);
       repository.update.mockResolvedValue(updated);
 
-      const result = await service.update('teacher-uuid', dto);
+      const result = await service.update('teacher-uuid', 'school-uuid', dto);
       expect(result.fullName).toBe('Trần Thị B');
     });
 
     it('should throw NotFoundException if not found', async () => {
       repository.findById.mockResolvedValue(null);
-      await expect(service.update('nonexistent', { fullName: 'Test' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('nonexistent', 'school-uuid', { fullName: 'Test' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw DuplicateEmployeeCodeException when changing to an existing employeeCode', async () => {
+      const dto = { employeeCode: 'GV002' };
+      const anotherTeacher = {
+        ...mockTeacher,
+        id: 'another-uuid',
+        employeeCode: 'GV002',
+      };
+
+      repository.findById.mockResolvedValue(mockTeacher);
+      repository.findByEmployeeCode.mockResolvedValue(anotherTeacher);
+
+      await expect(
+        service.update('teacher-uuid', 'school-uuid', dto),
+      ).rejects.toThrow(DuplicateEmployeeCodeException);
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
+    it('should not check duplicate when employeeCode is unchanged', async () => {
+      const dto = { employeeCode: 'GV001', fullName: 'Nguyễn Văn C' };
+      const updated = { ...mockTeacher, fullName: 'Nguyễn Văn C' };
+
+      repository.findById.mockResolvedValue(mockTeacher);
+      repository.update.mockResolvedValue(updated);
+
+      const result = await service.update('teacher-uuid', 'school-uuid', dto);
+      expect(result.fullName).toBe('Nguyễn Văn C');
+      expect(repository.findByEmployeeCode).not.toHaveBeenCalled();
     });
   });
 
@@ -140,8 +208,11 @@ describe('TeacherService', () => {
       repository.findById.mockResolvedValue(mockTeacher);
       repository.softDelete.mockResolvedValue(undefined);
 
-      await service.remove('teacher-uuid');
-      expect(repository.softDelete).toHaveBeenCalledWith('teacher-uuid');
+      await service.remove('teacher-uuid', 'school-uuid');
+      expect(repository.softDelete).toHaveBeenCalledWith(
+        'teacher-uuid',
+        'school-uuid',
+      );
     });
   });
 });

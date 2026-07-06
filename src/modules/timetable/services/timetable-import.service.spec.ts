@@ -12,7 +12,10 @@ import { SubjectEntity } from '../../subject/entities/subject.entity';
 import { ClassEntity } from '../../class/entities/class.entity';
 import { PeriodDefinitionEntity } from '../../academic/entities/period-definition.entity';
 import { RoomEntity } from '../../room/entities/room.entity';
-import { ParsedTimetableRow, ImportTimetableOptions } from '../interfaces/timetable-import.interface';
+import {
+  ParsedTimetableRow,
+  ImportTimetableOptions,
+} from '../interfaces/timetable-import.interface';
 
 describe('TimetableImportService - generateTemplate', () => {
   let service: TimetableImportService;
@@ -121,7 +124,9 @@ describe('TimetableImportService - validateRows', () => {
     service = module.get<TimetableImportService>(TimetableImportService);
   });
 
-  const createValidRow = (overrides?: Partial<ParsedTimetableRow>): ParsedTimetableRow => ({
+  const createValidRow = (
+    overrides?: Partial<ParsedTimetableRow>,
+  ): ParsedTimetableRow => ({
     className: '10A1',
     dayOfWeek: 2,
     periodNumber: 1,
@@ -250,7 +255,12 @@ describe('TimetableImportService - validateRows', () => {
   it('should detect duplicate className+dayOfWeek+periodNumber combination', () => {
     const rows: ParsedTimetableRow[] = [
       createValidRow({ className: '10A1', dayOfWeek: 2, periodNumber: 1 }),
-      createValidRow({ className: '10A1', dayOfWeek: 2, periodNumber: 1, subjectCode: 'LY' }),
+      createValidRow({
+        className: '10A1',
+        dayOfWeek: 2,
+        periodNumber: 1,
+        subjectCode: 'LY',
+      }),
     ];
 
     const result = service.validateRows(rows);
@@ -293,7 +303,13 @@ describe('TimetableImportService - validateRows', () => {
 
   it('should collect multiple errors for a single row with multiple issues', () => {
     const rows: ParsedTimetableRow[] = [
-      createValidRow({ className: '', dayOfWeek: 0, periodNumber: -1, subjectCode: '', teacherCode: '' }),
+      createValidRow({
+        className: '',
+        dayOfWeek: 0,
+        periodNumber: -1,
+        subjectCode: '',
+        teacherCode: '',
+      }),
     ];
 
     const result = service.validateRows(rows);
@@ -337,12 +353,27 @@ describe('TimetableImportService - lookupEntities', () => {
   const SCHOOL_ID = 'school-uuid-001';
 
   const mockTeachers = [
-    { id: 'teacher-uuid-1', employeeCode: 'GV001', schoolId: SCHOOL_ID, deletedAt: null },
-    { id: 'teacher-uuid-2', employeeCode: 'GV002', schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'teacher-uuid-1',
+      employeeCode: 'GV001',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
+    {
+      id: 'teacher-uuid-2',
+      employeeCode: 'GV002',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as TeacherEntity[];
 
   const mockSubjects = [
-    { id: 'subject-uuid-1', code: 'TOAN', schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'subject-uuid-1',
+      code: 'TOAN',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
     { id: 'subject-uuid-2', code: 'LY', schoolId: SCHOOL_ID, deletedAt: null },
   ] as SubjectEntity[];
 
@@ -352,8 +383,18 @@ describe('TimetableImportService - lookupEntities', () => {
   ] as ClassEntity[];
 
   const mockPeriods = [
-    { id: 'period-uuid-1', periodNumber: 1, schoolId: SCHOOL_ID, deletedAt: null },
-    { id: 'period-uuid-2', periodNumber: 2, schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'period-uuid-1',
+      periodNumber: 1,
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
+    {
+      id: 'period-uuid-2',
+      periodNumber: 2,
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as PeriodDefinitionEntity[];
 
   const mockRooms = [
@@ -373,10 +414,19 @@ describe('TimetableImportService - lookupEntities', () => {
         TimetableImportService,
         { provide: DataSource, useValue: {} },
         { provide: TimetableVersionRepository, useValue: {} },
-        { provide: getRepositoryToken(TeacherEntity), useValue: mockTeacherRepo },
-        { provide: getRepositoryToken(SubjectEntity), useValue: mockSubjectRepo },
+        {
+          provide: getRepositoryToken(TeacherEntity),
+          useValue: mockTeacherRepo,
+        },
+        {
+          provide: getRepositoryToken(SubjectEntity),
+          useValue: mockSubjectRepo,
+        },
         { provide: getRepositoryToken(ClassEntity), useValue: mockClassRepo },
-        { provide: getRepositoryToken(PeriodDefinitionEntity), useValue: mockPeriodRepo },
+        {
+          provide: getRepositoryToken(PeriodDefinitionEntity),
+          useValue: mockPeriodRepo,
+        },
         { provide: getRepositoryToken(RoomEntity), useValue: mockRoomRepo },
       ],
     }).compile();
@@ -384,7 +434,9 @@ describe('TimetableImportService - lookupEntities', () => {
     service = module.get<TimetableImportService>(TimetableImportService);
   });
 
-  const createValidRow = (overrides?: Partial<ParsedTimetableRow>): ParsedTimetableRow => ({
+  const createValidRow = (
+    overrides?: Partial<ParsedTimetableRow>,
+  ): ParsedTimetableRow => ({
     className: '10A1',
     dayOfWeek: 2,
     periodNumber: 1,
@@ -492,7 +544,13 @@ describe('TimetableImportService - lookupEntities', () => {
   });
 
   it('should collect multiple errors for a row with multiple lookup failures', async () => {
-    const rows = [createValidRow({ teacherCode: 'GV999', subjectCode: 'HOA', className: '12B1' })];
+    const rows = [
+      createValidRow({
+        teacherCode: 'GV999',
+        subjectCode: 'HOA',
+        className: '12B1',
+      }),
+    ];
 
     const result = await service.lookupEntities(rows, SCHOOL_ID);
 
@@ -504,8 +562,18 @@ describe('TimetableImportService - lookupEntities', () => {
   it('should process multiple rows independently', async () => {
     const rows = [
       createValidRow(), // valid
-      createValidRow({ teacherCode: 'GV999', className: '10A2', dayOfWeek: 3, periodNumber: 2 }), // invalid teacher
-      createValidRow({ className: '10A2', dayOfWeek: 4, periodNumber: 2, teacherCode: 'GV002' }), // valid
+      createValidRow({
+        teacherCode: 'GV999',
+        className: '10A2',
+        dayOfWeek: 3,
+        periodNumber: 2,
+      }), // invalid teacher
+      createValidRow({
+        className: '10A2',
+        dayOfWeek: 4,
+        periodNumber: 2,
+        teacherCode: 'GV002',
+      }), // valid
     ];
 
     const result = await service.lookupEntities(rows, SCHOOL_ID);
@@ -518,7 +586,11 @@ describe('TimetableImportService - lookupEntities', () => {
   it('should compute correct Excel row numbers (index + 2)', async () => {
     const rows = [
       createValidRow({ teacherCode: 'GV999' }), // index 0 → row 2
-      createValidRow({ className: '10A2', dayOfWeek: 3, subjectCode: 'UNKNOWN' }), // index 1 → row 3
+      createValidRow({
+        className: '10A2',
+        dayOfWeek: 3,
+        subjectCode: 'UNKNOWN',
+      }), // index 1 → row 3
     ];
 
     const result = await service.lookupEntities(rows, SCHOOL_ID);
@@ -554,7 +626,6 @@ describe('TimetableImportService - lookupEntities', () => {
     });
   });
 });
-
 
 /**
  * Helper: Create a valid Excel buffer with given rows (6 columns)
@@ -697,7 +768,6 @@ describe('TimetableImportService - parseExcelRows', () => {
   });
 });
 
-
 describe('TimetableImportService - importFromExcel (file validation)', () => {
   let service: TimetableImportService;
 
@@ -718,11 +788,14 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
     service = module.get<TimetableImportService>(TimetableImportService);
   });
 
-  const createMockFile = (overrides?: Partial<Express.Multer.File>): Express.Multer.File => ({
+  const createMockFile = (
+    overrides?: Partial<Express.Multer.File>,
+  ): Express.Multer.File => ({
     fieldname: 'file',
     originalname: 'test.xlsx',
     encoding: '7bit',
-    mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    mimetype:
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     size: 1024,
     buffer: Buffer.from(''),
     stream: null as any,
@@ -740,7 +813,9 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
       semesterId: 'semester-1',
     };
 
-    await expect(service.importFromExcel(options)).rejects.toThrow(BadRequestException);
+    await expect(service.importFromExcel(options)).rejects.toThrow(
+      BadRequestException,
+    );
     await expect(service.importFromExcel(options)).rejects.toThrow(
       'File phải có định dạng Excel (.xlsx hoặc .xls)',
     );
@@ -754,7 +829,9 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
       semesterId: 'semester-1',
     };
 
-    await expect(service.importFromExcel(options)).rejects.toThrow(BadRequestException);
+    await expect(service.importFromExcel(options)).rejects.toThrow(
+      BadRequestException,
+    );
     await expect(service.importFromExcel(options)).rejects.toThrow(
       'File phải có định dạng Excel (.xlsx hoặc .xls)',
     );
@@ -770,7 +847,9 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
       semesterId: 'semester-1',
     };
 
-    await expect(service.importFromExcel(options)).rejects.toThrow(BadRequestException);
+    await expect(service.importFromExcel(options)).rejects.toThrow(
+      BadRequestException,
+    );
     await expect(service.importFromExcel(options)).rejects.toThrow(
       'Kích thước file tối đa là 10MB',
     );
@@ -783,7 +862,8 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
     const file = createMockFile({
       size: 10 * 1024 * 1024, // exactly 10MB
       buffer: validBuffer,
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
     // Should not throw for size — it will proceed to parse and may fail
@@ -813,7 +893,8 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
     const headerOnlyBuffer = await createExcelBuffer([]);
     const file = createMockFile({
       buffer: headerOnlyBuffer,
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
     const options: ImportTimetableOptions = {
       file,
@@ -821,7 +902,9 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
       semesterId: 'semester-1',
     };
 
-    await expect(service.importFromExcel(options)).rejects.toThrow(BadRequestException);
+    await expect(service.importFromExcel(options)).rejects.toThrow(
+      BadRequestException,
+    );
     await expect(service.importFromExcel(options)).rejects.toThrow(
       'File không chứa dữ liệu để import',
     );
@@ -833,13 +916,16 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
     ]);
     const file = createMockFile({
       buffer: validBuffer,
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
     // Mock dependencies so we only test file validation passes
     jest.spyOn(service, 'lookupEntities').mockResolvedValue({
       validSlots: [],
-      errors: [{ row: 2, field: 'Giáo viên', message: 'Not found', value: 'GV001' }],
+      errors: [
+        { row: 2, field: 'Giáo viên', message: 'Not found', value: 'GV001' },
+      ],
     });
 
     const options: ImportTimetableOptions = {
@@ -865,7 +951,9 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
 
     jest.spyOn(service, 'lookupEntities').mockResolvedValue({
       validSlots: [],
-      errors: [{ row: 2, field: 'Giáo viên', message: 'Not found', value: 'GV001' }],
+      errors: [
+        { row: 2, field: 'Giáo viên', message: 'Not found', value: 'GV001' },
+      ],
     });
 
     const options: ImportTimetableOptions = {
@@ -879,7 +967,6 @@ describe('TimetableImportService - importFromExcel (file validation)', () => {
     expect(result.totalRows).toBe(1);
   });
 });
-
 
 describe('TimetableImportService - error aggregation logic', () => {
   let service: TimetableImportService;
@@ -895,16 +982,31 @@ describe('TimetableImportService - error aggregation logic', () => {
   const SEMESTER_ID = 'semester-uuid-001';
 
   const mockTeachers = [
-    { id: 'teacher-uuid-1', employeeCode: 'GV001', schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'teacher-uuid-1',
+      employeeCode: 'GV001',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as TeacherEntity[];
   const mockSubjects = [
-    { id: 'subject-uuid-1', code: 'TOAN', schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'subject-uuid-1',
+      code: 'TOAN',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as SubjectEntity[];
   const mockClasses = [
     { id: 'class-uuid-1', name: '10A1', schoolId: SCHOOL_ID, deletedAt: null },
   ] as ClassEntity[];
   const mockPeriods = [
-    { id: 'period-uuid-1', periodNumber: 1, schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'period-uuid-1',
+      periodNumber: 1,
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as PeriodDefinitionEntity[];
   const mockRooms = [
     { id: 'room-uuid-1', code: 'P101', schoolId: SCHOOL_ID, deletedAt: null },
@@ -926,10 +1028,12 @@ describe('TimetableImportService - error aggregation logic', () => {
             id: 'version-uuid-1',
             ...data,
           })),
-          save: jest.fn().mockImplementation(async (_entity: any, data: any) => {
-            if (Array.isArray(data)) return data;
-            return { id: 'version-uuid-1', ...data };
-          }),
+          save: jest
+            .fn()
+            .mockImplementation(async (_entity: any, data: any) => {
+              if (Array.isArray(data)) return data;
+              return { id: 'version-uuid-1', ...data };
+            }),
         };
         return cb(mockManager);
       }),
@@ -940,10 +1044,19 @@ describe('TimetableImportService - error aggregation logic', () => {
         TimetableImportService,
         { provide: DataSource, useValue: mockDataSource },
         { provide: TimetableVersionRepository, useValue: mockVersionRepo },
-        { provide: getRepositoryToken(TeacherEntity), useValue: mockTeacherRepo },
-        { provide: getRepositoryToken(SubjectEntity), useValue: mockSubjectRepo },
+        {
+          provide: getRepositoryToken(TeacherEntity),
+          useValue: mockTeacherRepo,
+        },
+        {
+          provide: getRepositoryToken(SubjectEntity),
+          useValue: mockSubjectRepo,
+        },
         { provide: getRepositoryToken(ClassEntity), useValue: mockClassRepo },
-        { provide: getRepositoryToken(PeriodDefinitionEntity), useValue: mockPeriodRepo },
+        {
+          provide: getRepositoryToken(PeriodDefinitionEntity),
+          useValue: mockPeriodRepo,
+        },
         { provide: getRepositoryToken(RoomEntity), useValue: mockRoomRepo },
       ],
     }).compile();
@@ -956,12 +1069,17 @@ describe('TimetableImportService - error aggregation logic', () => {
       ['10A1', 1, 1, 'TOAN', 'GV001', 'P101'], // dayOfWeek = 1 → invalid
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -978,12 +1096,17 @@ describe('TimetableImportService - error aggregation logic', () => {
       ['10A1', 2, 1, 'TOAN', 'UNKNOWN_GV', 'P101'],
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -1000,12 +1123,17 @@ describe('TimetableImportService - error aggregation logic', () => {
       ['10A1', 2, 1, 'UNKNOWN_MON', 'GV001', 'P101'],
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -1022,12 +1150,17 @@ describe('TimetableImportService - error aggregation logic', () => {
       ['UNKNOWN_CLASS', 2, 1, 'TOAN', 'GV001', 'P101'],
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -1045,12 +1178,17 @@ describe('TimetableImportService - error aggregation logic', () => {
       ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'], // duplicate
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.errors).toContainEqual(
       expect.objectContaining({
@@ -1063,17 +1201,22 @@ describe('TimetableImportService - error aggregation logic', () => {
 
   it('should return ALL errors without stopping at first error', async () => {
     const buffer = await createExcelBuffer([
-      ['10A1', 1, 1, 'TOAN', 'GV001', 'P101'],    // invalid dayOfWeek
-      ['UNKNOWN', 2, 1, 'TOAN', 'GV001', 'P101'],  // invalid class (lookup error)
-      ['10A1', 8, 1, 'TOAN', 'GV001', 'P101'],     // invalid dayOfWeek
+      ['10A1', 1, 1, 'TOAN', 'GV001', 'P101'], // invalid dayOfWeek
+      ['UNKNOWN', 2, 1, 'TOAN', 'GV001', 'P101'], // invalid class (lookup error)
+      ['10A1', 8, 1, 'TOAN', 'GV001', 'P101'], // invalid dayOfWeek
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     // Should have errors from all 3 rows, not just the first one
     expect(result.errors.length).toBeGreaterThanOrEqual(3);
@@ -1090,12 +1233,17 @@ describe('TimetableImportService - error aggregation logic', () => {
       ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'],
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     for (const error of result.errors) {
       expect(error).toHaveProperty('row');
@@ -1110,7 +1258,6 @@ describe('TimetableImportService - error aggregation logic', () => {
   });
 });
 
-
 describe('TimetableImportService - importFromExcel (integration logic)', () => {
   let service: TimetableImportService;
   let mockVersionRepo: Partial<TimetableVersionRepository>;
@@ -1121,11 +1268,26 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
   const SEMESTER_ID = 'semester-uuid-001';
 
   const mockTeachers = [
-    { id: 'teacher-uuid-1', employeeCode: 'GV001', schoolId: SCHOOL_ID, deletedAt: null },
-    { id: 'teacher-uuid-2', employeeCode: 'GV002', schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'teacher-uuid-1',
+      employeeCode: 'GV001',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
+    {
+      id: 'teacher-uuid-2',
+      employeeCode: 'GV002',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as TeacherEntity[];
   const mockSubjects = [
-    { id: 'subject-uuid-1', code: 'TOAN', schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'subject-uuid-1',
+      code: 'TOAN',
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
     { id: 'subject-uuid-2', code: 'LY', schoolId: SCHOOL_ID, deletedAt: null },
   ] as SubjectEntity[];
   const mockClasses = [
@@ -1133,8 +1295,18 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
     { id: 'class-uuid-2', name: '10A2', schoolId: SCHOOL_ID, deletedAt: null },
   ] as ClassEntity[];
   const mockPeriods = [
-    { id: 'period-uuid-1', periodNumber: 1, schoolId: SCHOOL_ID, deletedAt: null },
-    { id: 'period-uuid-2', periodNumber: 2, schoolId: SCHOOL_ID, deletedAt: null },
+    {
+      id: 'period-uuid-1',
+      periodNumber: 1,
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
+    {
+      id: 'period-uuid-2',
+      periodNumber: 2,
+      schoolId: SCHOOL_ID,
+      deletedAt: null,
+    },
   ] as PeriodDefinitionEntity[];
   const mockRooms = [
     { id: 'room-uuid-1', code: 'P101', schoolId: SCHOOL_ID, deletedAt: null },
@@ -1153,7 +1325,11 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
         })),
         save: jest.fn().mockImplementation(async (_entity: any, data: any) => {
           if (Array.isArray(data)) return data;
-          return { id: 'new-version-uuid', name: data.name || 'Import TKB - v3', ...data };
+          return {
+            id: 'new-version-uuid',
+            name: data.name || 'Import TKB - v3',
+            ...data,
+          };
         }),
       };
       return cb(mockManager);
@@ -1165,11 +1341,26 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
         TimetableImportService,
         { provide: DataSource, useValue: mockDataSource },
         { provide: TimetableVersionRepository, useValue: mockVersionRepo },
-        { provide: getRepositoryToken(TeacherEntity), useValue: { find: jest.fn().mockResolvedValue(mockTeachers) } },
-        { provide: getRepositoryToken(SubjectEntity), useValue: { find: jest.fn().mockResolvedValue(mockSubjects) } },
-        { provide: getRepositoryToken(ClassEntity), useValue: { find: jest.fn().mockResolvedValue(mockClasses) } },
-        { provide: getRepositoryToken(PeriodDefinitionEntity), useValue: { find: jest.fn().mockResolvedValue(mockPeriods) } },
-        { provide: getRepositoryToken(RoomEntity), useValue: { find: jest.fn().mockResolvedValue(mockRooms) } },
+        {
+          provide: getRepositoryToken(TeacherEntity),
+          useValue: { find: jest.fn().mockResolvedValue(mockTeachers) },
+        },
+        {
+          provide: getRepositoryToken(SubjectEntity),
+          useValue: { find: jest.fn().mockResolvedValue(mockSubjects) },
+        },
+        {
+          provide: getRepositoryToken(ClassEntity),
+          useValue: { find: jest.fn().mockResolvedValue(mockClasses) },
+        },
+        {
+          provide: getRepositoryToken(PeriodDefinitionEntity),
+          useValue: { find: jest.fn().mockResolvedValue(mockPeriods) },
+        },
+        {
+          provide: getRepositoryToken(RoomEntity),
+          useValue: { find: jest.fn().mockResolvedValue(mockRooms) },
+        },
       ],
     }).compile();
 
@@ -1181,12 +1372,17 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
       ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'],
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.versionId).toBe('new-version-uuid');
     expect(result.versionName).toContain('Import TKB');
@@ -1195,16 +1391,21 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
 
   it('should NOT create version when all rows are invalid', async () => {
     const buffer = await createExcelBuffer([
-      ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'],  // invalid dayOfWeek
-      ['10A1', 8, 1, 'TOAN', 'GV001', 'P101'],  // invalid dayOfWeek
+      ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'], // invalid dayOfWeek
+      ['10A1', 8, 1, 'TOAN', 'GV001', 'P101'], // invalid dayOfWeek
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.versionId).toBeNull();
     expect(result.versionName).toBeNull();
@@ -1213,18 +1414,23 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
 
   it('should return correct totalRows/successCount/errorCount', async () => {
     const buffer = await createExcelBuffer([
-      ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'],    // valid
-      ['10A2', 3, 2, 'LY', 'GV002', ''],           // valid (no room)
-      ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'],     // invalid dayOfWeek
-      ['UNKNOWN', 4, 1, 'TOAN', 'GV001', 'P101'],  // invalid class (lookup)
+      ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'], // valid
+      ['10A2', 3, 2, 'LY', 'GV002', ''], // valid (no room)
+      ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'], // invalid dayOfWeek
+      ['UNKNOWN', 4, 1, 'TOAN', 'GV001', 'P101'], // invalid class (lookup)
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.totalRows).toBe(4);
     expect(result.successCount).toBe(2);
@@ -1237,12 +1443,17 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
       ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'],
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.versionId).toBeDefined();
     expect(result.versionId).not.toBeNull();
@@ -1252,16 +1463,21 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
 
   it('should return errors array even when some rows succeed', async () => {
     const buffer = await createExcelBuffer([
-      ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'],    // valid
-      ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'],     // invalid
+      ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'], // valid
+      ['10A1', 0, 1, 'TOAN', 'GV001', 'P101'], // invalid
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.successCount).toBe(1);
     expect(result.errorCount).toBe(1);
@@ -1271,18 +1487,23 @@ describe('TimetableImportService - importFromExcel (integration logic)', () => {
 
   it('should handle mixed validation and lookup errors correctly', async () => {
     const buffer = await createExcelBuffer([
-      ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'],        // valid
-      ['10A1', 1, 1, 'TOAN', 'GV001', 'P101'],         // validation error (dayOfWeek)
-      ['UNKNOWN', 3, 1, 'TOAN', 'GV001', 'P101'],      // lookup error (class not found)
-      ['10A2', 4, 2, 'LY', 'GV002', ''],               // valid
+      ['10A1', 2, 1, 'TOAN', 'GV001', 'P101'], // valid
+      ['10A1', 1, 1, 'TOAN', 'GV001', 'P101'], // validation error (dayOfWeek)
+      ['UNKNOWN', 3, 1, 'TOAN', 'GV001', 'P101'], // lookup error (class not found)
+      ['10A2', 4, 2, 'LY', 'GV002', ''], // valid
     ]);
     const file = {
-      mimetype: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimetype:
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       size: 1024,
       buffer,
     } as Express.Multer.File;
 
-    const result = await service.importFromExcel({ file, schoolId: SCHOOL_ID, semesterId: SEMESTER_ID });
+    const result = await service.importFromExcel({
+      file,
+      schoolId: SCHOOL_ID,
+      semesterId: SEMESTER_ID,
+    });
 
     expect(result.totalRows).toBe(4);
     expect(result.successCount).toBe(2);

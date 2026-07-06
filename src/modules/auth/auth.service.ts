@@ -1,10 +1,19 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  Optional,
+  Inject,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from './user.repository';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UserEntity } from './entities/user.entity';
+import { UserRole } from '../../common/enums/role.enum';
+import { TeacherSchoolAssignmentService } from '../teacher-school-assignment/teacher-school-assignment.service';
 
 export interface LoginResponse {
   accessToken: string;
@@ -22,13 +31,20 @@ export interface JwtPayload {
   email: string;
   role: string;
   schoolId: string | null;
+  accessibleSchoolIds?: string[];
+  tokenVersion?: number;
 }
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
+    @Optional()
+    @Inject('TEACHER_SCHOOL_ASSIGNMENT_SERVICE')
+    private readonly teacherSchoolAssignmentService: TeacherSchoolAssignmentService | null,
   ) {}
 
   async login(dto: LoginDto): Promise<LoginResponse> {
@@ -37,7 +53,7 @@ export class AuthService {
     // Update last login
     await this.userRepository.update(user.id, { lastLoginAt: new Date() });
 
-    const accessToken = this.generateToken(user);
+    const accessToken = await this.generateToken(user);
 
     return {
       accessToken,
@@ -69,13 +85,39 @@ export class AuthService {
     return user;
   }
 
-  generateToken(user: UserEntity): string {
+  async generateToken(user: UserEntity): Promise<string> {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       schoolId: user.schoolId,
+      tokenVersion: Math.floor(Date.now() / 1000),
     };
+
+    // Populate accessibleSchoolIds for teachers
+    if (
+      user.role === UserRole.TEACHER &&
+      user.teacherId &&
+      this.teacherSchoolAssignmentService
+    ) {
+      try {
+        const accessibleSchoolIds =
+          await this.teacherSchoolAssignmentService.getAccessibleSchoolIds(
+            user.teacherId,
+          );
+        if (accessibleSchoolIds.length > 0) {
+          payload.accessibleSchoolIds = accessibleSchoolIds;
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to fetch accessible school IDs for teacher ${user.teacherId}: ${error}`,
+        );
+        // Fallback: use single schoolId if available
+        if (user.schoolId) {
+          payload.accessibleSchoolIds = [user.schoolId];
+        }
+      }
+    }
 
     return this.jwtService.sign(payload);
   }

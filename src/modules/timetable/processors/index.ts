@@ -1,5 +1,5 @@
 export { TimetableGenerationProcessor } from './timetable-generation.processor';
 export {
-  TimetableGenerationJobData,
-  TimetableGenerationResult,
+  GenerationJobResult,
+  PipelineStage,
 } from './timetable-generation.processor';

@@ -11,7 +11,7 @@ import { UpdateTimetableVersionDto } from '../../../src/modules/timetable/dto/up
 import { SaveTimetableVersionDto } from '../../../src/modules/timetable/dto/save-timetable-version.dto';
 import { CreateSlotDto } from '../../../src/modules/timetable/dto/create-slot.dto';
 import { TimetableVersionQueryDto } from '../../../src/modules/timetable/dto/timetable-query.dto';
-import { TimetableStatus } from '../../../src/common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../src/common/enums/status.enum';
 
 type TransactionCallback = (entityManager: EntityManager) => Promise<unknown>;
 
@@ -29,11 +29,22 @@ describe('TimetableVersionService', () => {
     semester: {} as TimetableVersionEntity['semester'],
     name: 'TKB v1 - HK1 2025-2026',
     versionNumber: 1,
-    status: TimetableStatus.DRAFT,
+    status: TimetableVersionStatus.DRAFT,
     effectiveDate: '2025-09-01',
     publishedAt: null,
     publishedBy: null,
     note: null,
+    jobId: null,
+    generationStartedAt: null,
+    generationCompletedAt: null,
+    generationDurationMs: null,
+    errorMessage: null,
+    errorStack: null,
+    hasConflicts: false,
+    conflictCount: 0,
+    conflictDetails: null,
+    totalSlots: 0,
+    version: 1,
     slots: [],
     createdAt: new Date('2025-01-01'),
     updatedAt: new Date('2025-01-01'),
@@ -44,7 +55,7 @@ describe('TimetableVersionService', () => {
     ...mockVersion,
     id: '22222222-2222-2222-2222-222222222222',
     versionNumber: 2,
-    status: TimetableStatus.PUBLISHED,
+    status: TimetableVersionStatus.PUBLISHED,
     publishedAt: new Date('2025-01-15'),
     publishedBy: 'user-1',
   };
@@ -110,17 +121,19 @@ describe('TimetableVersionService', () => {
 
       const result = await service.create(dto);
 
-      expect(versionRepo.getNextVersionNumber).toHaveBeenCalledWith(dto.semesterId);
+      expect(versionRepo.getNextVersionNumber).toHaveBeenCalledWith(
+        dto.semesterId,
+      );
       expect(versionRepo.create).toHaveBeenCalledWith({
         semesterId: dto.semesterId,
         name: dto.name,
         versionNumber: 3,
-        status: TimetableStatus.DRAFT,
+        status: TimetableVersionStatus.DRAFT,
         effectiveDate: '2025-09-01',
         note: 'Ghi chú',
       });
       expect(result.versionNumber).toBe(3);
-      expect(result.status).toBe(TimetableStatus.DRAFT);
+      expect(result.status).toBe(TimetableVersionStatus.DRAFT);
     });
 
     it('should handle optional fields as null', async () => {
@@ -138,7 +151,7 @@ describe('TimetableVersionService', () => {
         semesterId: dto.semesterId,
         name: dto.name,
         versionNumber: 1,
-        status: TimetableStatus.DRAFT,
+        status: TimetableVersionStatus.DRAFT,
         effectiveDate: null,
         note: null,
       });
@@ -154,7 +167,14 @@ describe('TimetableVersionService', () => {
         sortOrder: 'ASC',
       };
 
-      const versions = [mockVersion, { ...mockVersion, id: '33333333-3333-3333-3333-333333333333', versionNumber: 2 }];
+      const versions = [
+        mockVersion,
+        {
+          ...mockVersion,
+          id: '33333333-3333-3333-3333-333333333333',
+          versionNumber: 2,
+        },
+      ];
       versionRepo.findAll.mockResolvedValue([versions, 2]);
 
       const result = await service.findAll(query);
@@ -199,8 +219,12 @@ describe('TimetableVersionService', () => {
     it('should throw NotFoundException if not found', async () => {
       versionRepo.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.findById('non-existent-id')).rejects.toThrow('Không tìm thấy phiên bản TKB');
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy phiên bản TKB',
+      );
     });
   });
 
@@ -212,7 +236,11 @@ describe('TimetableVersionService', () => {
         note: 'Cập nhật',
       };
 
-      const updatedVersion: TimetableVersionEntity = { ...mockVersion, name: 'TKB v1 - Updated', note: 'Cập nhật' };
+      const updatedVersion: TimetableVersionEntity = {
+        ...mockVersion,
+        name: 'TKB v1 - Updated',
+        note: 'Cập nhật',
+      };
       versionRepo.findById.mockResolvedValue(mockVersion);
       versionRepo.update.mockResolvedValue(updatedVersion);
 
@@ -230,17 +258,22 @@ describe('TimetableVersionService', () => {
 
       const dto: UpdateTimetableVersionDto = { name: 'New name' };
 
-      await expect(service.update(mockPublishedVersion.id, dto)).rejects.toThrow(BadRequestException);
-      await expect(service.update(mockPublishedVersion.id, dto)).rejects.toThrow(
-        'Chỉ có thể cập nhật phiên bản ở trạng thái nháp',
-      );
+      await expect(
+        service.update(mockPublishedVersion.id, dto),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(mockPublishedVersion.id, dto),
+      ).rejects.toThrow('Chỉ có thể cập nhật phiên bản ở trạng thái nháp');
     });
 
     it('should only include provided fields in the update payload', async () => {
       const dto: UpdateTimetableVersionDto = { name: 'Only name' };
 
       versionRepo.findById.mockResolvedValue(mockVersion);
-      versionRepo.update.mockResolvedValue({ ...mockVersion, name: 'Only name' });
+      versionRepo.update.mockResolvedValue({
+        ...mockVersion,
+        name: 'Only name',
+      });
 
       await service.update(mockVersion.id, dto);
 
@@ -264,7 +297,9 @@ describe('TimetableVersionService', () => {
     it('should throw BadRequestException if version is not DRAFT', async () => {
       versionRepo.findById.mockResolvedValue(mockPublishedVersion);
 
-      await expect(service.delete(mockPublishedVersion.id)).rejects.toThrow(BadRequestException);
+      await expect(service.delete(mockPublishedVersion.id)).rejects.toThrow(
+        BadRequestException,
+      );
       await expect(service.delete(mockPublishedVersion.id)).rejects.toThrow(
         'Chỉ có thể xóa phiên bản ở trạng thái nháp',
       );
@@ -278,7 +313,7 @@ describe('TimetableVersionService', () => {
     it('should publish DRAFT version successfully', async () => {
       const publishedResult = {
         ...mockVersion,
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         publishedAt: new Date(),
         publishedBy: userId,
       };
@@ -290,7 +325,7 @@ describe('TimetableVersionService', () => {
       const result = await service.publish(mockVersion.id, userId);
 
       expect(versionRepo.publish).toHaveBeenCalledWith(mockVersion.id, userId);
-      expect(result.status).toBe(TimetableStatus.PUBLISHED);
+      expect(result.status).toBe(TimetableVersionStatus.PUBLISHED);
     });
 
     it('should archive existing published version before publishing', async () => {
@@ -303,11 +338,11 @@ describe('TimetableVersionService', () => {
       versionRepo.findPublished.mockResolvedValue(existingPublished);
       versionRepo.update.mockResolvedValue({
         ...existingPublished,
-        status: TimetableStatus.ARCHIVED,
+        status: TimetableVersionStatus.ARCHIVED,
       });
       versionRepo.publish.mockResolvedValue({
         ...mockVersion,
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         publishedAt: new Date(),
         publishedBy: userId,
       });
@@ -315,7 +350,7 @@ describe('TimetableVersionService', () => {
       await service.publish(mockVersion.id, userId);
 
       expect(versionRepo.update).toHaveBeenCalledWith(existingPublished.id, {
-        status: TimetableStatus.ARCHIVED,
+        status: TimetableVersionStatus.ARCHIVED,
       });
       expect(versionRepo.publish).toHaveBeenCalledWith(mockVersion.id, userId);
     });
@@ -323,10 +358,12 @@ describe('TimetableVersionService', () => {
     it('should throw BadRequestException if version is not DRAFT', async () => {
       versionRepo.findById.mockResolvedValue(mockPublishedVersion);
 
-      await expect(service.publish(mockPublishedVersion.id, userId)).rejects.toThrow(BadRequestException);
-      await expect(service.publish(mockPublishedVersion.id, userId)).rejects.toThrow(
-        'Chỉ có thể công bố phiên bản ở trạng thái nháp',
-      );
+      await expect(
+        service.publish(mockPublishedVersion.id, userId),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.publish(mockPublishedVersion.id, userId),
+      ).rejects.toThrow('Chỉ có thể công bố phiên bản ở trạng thái nháp');
     });
   });
 
@@ -383,19 +420,28 @@ describe('TimetableVersionService', () => {
         }),
       };
 
-      (dataSource.transaction as jest.Mock).mockImplementation(async (cb: TransactionCallback) => {
-        return cb(mockManager as EntityManager);
-      });
+      (dataSource.transaction as jest.Mock).mockImplementation(
+        async (cb: TransactionCallback) => {
+          return cb(mockManager as EntityManager);
+        },
+      );
 
       const result = await service.rollback(mockVersion.id);
 
-      expect(versionRepo.findByIdWithSlots).toHaveBeenCalledWith(mockVersion.id);
-      expect(versionRepo.getNextVersionNumber).toHaveBeenCalledWith(sourceVersionWithSlots.semesterId);
-      expect(mockManager.create).toHaveBeenCalledWith(TimetableVersionEntity, expect.objectContaining({
-        semesterId: sourceVersionWithSlots.semesterId,
-        versionNumber: 3,
-        status: TimetableStatus.DRAFT,
-      }));
+      expect(versionRepo.findByIdWithSlots).toHaveBeenCalledWith(
+        mockVersion.id,
+      );
+      expect(versionRepo.getNextVersionNumber).toHaveBeenCalledWith(
+        sourceVersionWithSlots.semesterId,
+      );
+      expect(mockManager.create).toHaveBeenCalledWith(
+        TimetableVersionEntity,
+        expect.objectContaining({
+          semesterId: sourceVersionWithSlots.semesterId,
+          versionNumber: 3,
+          status: TimetableVersionStatus.DRAFT,
+        }),
+      );
       expect(result).toBeDefined();
     });
 
@@ -415,9 +461,11 @@ describe('TimetableVersionService', () => {
         }),
       };
 
-      (dataSource.transaction as jest.Mock).mockImplementation(async (cb: TransactionCallback) => {
-        return cb(mockManager as EntityManager);
-      });
+      (dataSource.transaction as jest.Mock).mockImplementation(
+        async (cb: TransactionCallback) => {
+          return cb(mockManager as EntityManager);
+        },
+      );
 
       await service.rollback(mockVersion.id);
 
@@ -452,7 +500,9 @@ describe('TimetableVersionService', () => {
     it('should throw NotFoundException if source version not found', async () => {
       versionRepo.findByIdWithSlots.mockResolvedValue(null);
 
-      await expect(service.rollback('non-existent-id')).rejects.toThrow(NotFoundException);
+      await expect(service.rollback('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
       await expect(service.rollback('non-existent-id')).rejects.toThrow(
         'Không tìm thấy phiên bản TKB nguồn',
       );
@@ -474,15 +524,20 @@ describe('TimetableVersionService', () => {
         }),
       };
 
-      (dataSource.transaction as jest.Mock).mockImplementation(async (cb: TransactionCallback) => {
-        return cb(mockManager as EntityManager);
-      });
+      (dataSource.transaction as jest.Mock).mockImplementation(
+        async (cb: TransactionCallback) => {
+          return cb(mockManager as EntityManager);
+        },
+      );
 
       await service.rollback(mockVersion.id);
 
       // save should only be called once (for version), not for slots
       expect(mockManager.save).toHaveBeenCalledTimes(1);
-      expect(mockManager.save).toHaveBeenCalledWith(TimetableVersionEntity, expect.anything());
+      expect(mockManager.save).toHaveBeenCalledWith(
+        TimetableVersionEntity,
+        expect.anything(),
+      );
     });
   });
 
@@ -514,29 +569,34 @@ describe('TimetableVersionService', () => {
     it('should reject empty name', async () => {
       const dto = { ...validDto, name: '' };
 
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow('Tên phiên bản không được để trống');
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        'Tên phiên bản không được để trống',
+      );
     });
 
     it('should reject whitespace-only name', async () => {
       const dto = { ...validDto, name: '   \t\n  ' };
 
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow('Tên phiên bản không được để trống');
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        'Tên phiên bản không được để trống',
+      );
     });
-
 
     it('should reject name longer than 100 characters', async () => {
       const dto = { ...validDto, name: 'A'.repeat(101) };
 
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow('Tên phiên bản tối đa 100 ký tự');
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        'Tên phiên bản tối đa 100 ký tự',
+      );
     });
 
     it('should accept name with exactly 100 characters', async () => {
@@ -554,7 +614,9 @@ describe('TimetableVersionService', () => {
         async (cb: TransactionCallback) => cb(mockManager as EntityManager),
       );
 
-      await expect(service.saveAsNewVersion(dto, schoolId)).resolves.toBeDefined();
+      await expect(
+        service.saveAsNewVersion(dto, schoolId),
+      ).resolves.toBeDefined();
     });
 
     // --- Slots validation tests ---
@@ -562,19 +624,26 @@ describe('TimetableVersionService', () => {
     it('should reject empty slots array', async () => {
       const dto = { ...validDto, slots: [] };
 
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow('TKB trống không thể lưu phiên bản');
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        'TKB trống không thể lưu phiên bản',
+      );
     });
 
     it('should reject undefined slots', async () => {
-      const dto = { ...validDto, slots: undefined as unknown as CreateSlotDto[] };
+      const dto = {
+        ...validDto,
+        slots: undefined as unknown as CreateSlotDto[],
+      };
 
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.saveAsNewVersion(dto, schoolId))
-        .rejects.toThrow('TKB trống không thể lưu phiên bản');
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.saveAsNewVersion(dto, schoolId)).rejects.toThrow(
+        'TKB trống không thể lưu phiên bản',
+      );
     });
 
     // --- Transaction and version_number auto-increment tests ---
@@ -595,7 +664,9 @@ describe('TimetableVersionService', () => {
 
       await service.saveAsNewVersion(validDto, schoolId);
 
-      expect(versionRepo.getNextVersionNumber).toHaveBeenCalledWith(validDto.semesterId);
+      expect(versionRepo.getNextVersionNumber).toHaveBeenCalledWith(
+        validDto.semesterId,
+      );
       expect(mockManager.create).toHaveBeenCalledWith(
         TimetableVersionEntity,
         expect.objectContaining({ versionNumber: 5 }),
@@ -620,8 +691,14 @@ describe('TimetableVersionService', () => {
 
       expect(dataSource.transaction).toHaveBeenCalledTimes(1);
       // Version saved first, then slots
-      expect(mockManager.save).toHaveBeenCalledWith(TimetableVersionEntity, expect.anything());
-      expect(mockManager.save).toHaveBeenCalledWith(TimetableSlotEntity, expect.any(Array));
+      expect(mockManager.save).toHaveBeenCalledWith(
+        TimetableVersionEntity,
+        expect.anything(),
+      );
+      expect(mockManager.save).toHaveBeenCalledWith(
+        TimetableSlotEntity,
+        expect.any(Array),
+      );
     });
 
     it('should create version with DRAFT status and trimmed name', async () => {
@@ -645,7 +722,7 @@ describe('TimetableVersionService', () => {
         TimetableVersionEntity,
         expect.objectContaining({
           name: 'TKB mới',
-          status: TimetableStatus.DRAFT,
+          status: TimetableVersionStatus.DRAFT,
           semesterId: validDto.semesterId,
           versionNumber: 3,
         }),
@@ -756,7 +833,7 @@ describe('TimetableVersionService', () => {
       id: '33333333-3333-3333-3333-333333333333',
       name: 'TKB cũ',
       versionNumber: 1,
-      status: TimetableStatus.ARCHIVED,
+      status: TimetableVersionStatus.ARCHIVED,
       slots: [
         {
           id: 'slot-a',
@@ -773,7 +850,9 @@ describe('TimetableVersionService', () => {
     };
 
     it('should clone PUBLISHED version successfully', async () => {
-      versionRepo.findByIdWithSlots.mockResolvedValue(publishedVersionWithSlots);
+      versionRepo.findByIdWithSlots.mockResolvedValue(
+        publishedVersionWithSlots,
+      );
       versionRepo.getNextVersionNumber.mockResolvedValue(3);
 
       const mockManager: Partial<EntityManager> = {
@@ -793,7 +872,7 @@ describe('TimetableVersionService', () => {
       expect(mockManager.create).toHaveBeenCalledWith(
         TimetableVersionEntity,
         expect.objectContaining({
-          status: TimetableStatus.DRAFT,
+          status: TimetableVersionStatus.DRAFT,
           versionNumber: 3,
         }),
       );
@@ -820,7 +899,7 @@ describe('TimetableVersionService', () => {
       expect(mockManager.create).toHaveBeenCalledWith(
         TimetableVersionEntity,
         expect.objectContaining({
-          status: TimetableStatus.DRAFT,
+          status: TimetableVersionStatus.DRAFT,
           versionNumber: 4,
         }),
       );
@@ -829,28 +908,34 @@ describe('TimetableVersionService', () => {
     it('should reject cloning DRAFT version', async () => {
       const draftVersionWithSlots: TimetableVersionEntity = {
         ...mockVersion,
-        status: TimetableStatus.DRAFT,
+        status: TimetableVersionStatus.DRAFT,
         slots: [],
       };
       versionRepo.findByIdWithSlots.mockResolvedValue(draftVersionWithSlots);
 
-      await expect(service.cloneVersion(mockVersion.id))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.cloneVersion(mockVersion.id))
-        .rejects.toThrow('Chỉ có thể tạo bản sao từ phiên bản đã công bố hoặc lưu trữ');
+      await expect(service.cloneVersion(mockVersion.id)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.cloneVersion(mockVersion.id)).rejects.toThrow(
+        'Chỉ có thể tạo bản sao từ phiên bản đã công bố hoặc lưu trữ',
+      );
     });
 
     it('should reject non-existent version', async () => {
       versionRepo.findByIdWithSlots.mockResolvedValue(null);
 
-      await expect(service.cloneVersion('non-existent-id'))
-        .rejects.toThrow(NotFoundException);
-      await expect(service.cloneVersion('non-existent-id'))
-        .rejects.toThrow('Không tìm thấy phiên bản TKB');
+      await expect(service.cloneVersion('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.cloneVersion('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy phiên bản TKB',
+      );
     });
 
     it('should copy all slots from source to new version', async () => {
-      versionRepo.findByIdWithSlots.mockResolvedValue(publishedVersionWithSlots);
+      versionRepo.findByIdWithSlots.mockResolvedValue(
+        publishedVersionWithSlots,
+      );
       versionRepo.getNextVersionNumber.mockResolvedValue(3);
 
       const mockManager: Partial<EntityManager> = {
@@ -894,7 +979,9 @@ describe('TimetableVersionService', () => {
     });
 
     it('should auto-generate name from source version', async () => {
-      versionRepo.findByIdWithSlots.mockResolvedValue(publishedVersionWithSlots);
+      versionRepo.findByIdWithSlots.mockResolvedValue(
+        publishedVersionWithSlots,
+      );
       versionRepo.getNextVersionNumber.mockResolvedValue(3);
 
       const mockManager: Partial<EntityManager> = {
@@ -919,7 +1006,9 @@ describe('TimetableVersionService', () => {
     });
 
     it('should have incremented version_number', async () => {
-      versionRepo.findByIdWithSlots.mockResolvedValue(publishedVersionWithSlots);
+      versionRepo.findByIdWithSlots.mockResolvedValue(
+        publishedVersionWithSlots,
+      );
       versionRepo.getNextVersionNumber.mockResolvedValue(7);
 
       const mockManager: Partial<EntityManager> = {
@@ -986,40 +1075,47 @@ describe('TimetableVersionService', () => {
         async (cb: TransactionCallback) => cb(mockManager as EntityManager),
       );
 
-      await expect(service.overwriteSlots(mockVersion.id, newSlots))
-        .resolves.toBeUndefined();
+      await expect(
+        service.overwriteSlots(mockVersion.id, newSlots),
+      ).resolves.toBeUndefined();
     });
 
     it('should reject overwrite on PUBLISHED version', async () => {
       versionRepo.findById.mockResolvedValue(mockPublishedVersion);
 
-      await expect(service.overwriteSlots(mockPublishedVersion.id, newSlots))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.overwriteSlots(mockPublishedVersion.id, newSlots))
-        .rejects.toThrow('Chỉ có thể chỉnh sửa phiên bản ở trạng thái nháp');
+      await expect(
+        service.overwriteSlots(mockPublishedVersion.id, newSlots),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.overwriteSlots(mockPublishedVersion.id, newSlots),
+      ).rejects.toThrow('Chỉ có thể chỉnh sửa phiên bản ở trạng thái nháp');
     });
 
     it('should reject overwrite on ARCHIVED version', async () => {
       const archivedVersion: TimetableVersionEntity = {
         ...mockVersion,
         id: '44444444-4444-4444-4444-444444444444',
-        status: TimetableStatus.ARCHIVED,
+        status: TimetableVersionStatus.ARCHIVED,
       };
       versionRepo.findById.mockResolvedValue(archivedVersion);
 
-      await expect(service.overwriteSlots(archivedVersion.id, newSlots))
-        .rejects.toThrow(BadRequestException);
-      await expect(service.overwriteSlots(archivedVersion.id, newSlots))
-        .rejects.toThrow('Chỉ có thể chỉnh sửa phiên bản ở trạng thái nháp');
+      await expect(
+        service.overwriteSlots(archivedVersion.id, newSlots),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.overwriteSlots(archivedVersion.id, newSlots),
+      ).rejects.toThrow('Chỉ có thể chỉnh sửa phiên bản ở trạng thái nháp');
     });
 
     it('should reject non-existent version', async () => {
       versionRepo.findById.mockResolvedValue(null);
 
-      await expect(service.overwriteSlots('non-existent-id', newSlots))
-        .rejects.toThrow(NotFoundException);
-      await expect(service.overwriteSlots('non-existent-id', newSlots))
-        .rejects.toThrow('Không tìm thấy phiên bản TKB');
+      await expect(
+        service.overwriteSlots('non-existent-id', newSlots),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.overwriteSlots('non-existent-id', newSlots),
+      ).rejects.toThrow('Không tìm thấy phiên bản TKB');
     });
 
     it('should soft-delete existing slots and insert new slots in transaction', async () => {
@@ -1103,8 +1199,9 @@ describe('TimetableVersionService', () => {
         async (cb: TransactionCallback) => cb(mockManager as EntityManager),
       );
 
-      await expect(service.overwriteSlots(mockVersion.id, []))
-        .resolves.toBeUndefined();
+      await expect(
+        service.overwriteSlots(mockVersion.id, []),
+      ).resolves.toBeUndefined();
 
       // Soft-delete still called
       expect(mockQueryBuilder.execute).toHaveBeenCalled();

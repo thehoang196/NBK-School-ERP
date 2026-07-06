@@ -10,7 +10,10 @@ export class CalculateDto {
   @IsUUID()
   payPeriodId: string;
 
-  @ApiPropertyOptional({ description: 'Danh sách ID giáo viên (nếu để trống sẽ tính cho tất cả)', type: [String] })
+  @ApiPropertyOptional({
+    description: 'Danh sách ID giáo viên (nếu để trống sẽ tính cho tất cả)',
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })

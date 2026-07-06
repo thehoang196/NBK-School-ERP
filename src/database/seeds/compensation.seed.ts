@@ -158,7 +158,18 @@ export async function seedCompensation(dataSource: DataSource): Promise<void> {
       `INSERT INTO pay_components (id, school_id, code, name, type, sort_order, is_taxable, is_insurance_applicable, is_statutory, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        ON CONFLICT (id) DO NOTHING`,
-      [pc.id, pc.school_id, pc.code, pc.name, pc.type, pc.sort_order, pc.is_taxable, pc.is_insurance_applicable, pc.is_statutory, pc.status],
+      [
+        pc.id,
+        pc.school_id,
+        pc.code,
+        pc.name,
+        pc.type,
+        pc.sort_order,
+        pc.is_taxable,
+        pc.is_insurance_applicable,
+        pc.is_statutory,
+        pc.status,
+      ],
     );
   }
 
@@ -168,7 +179,17 @@ export async function seedCompensation(dataSource: DataSource): Promise<void> {
       `INSERT INTO compensation_variables (id, code, name, data_type, default_value, scope, scope_id, scope_level, description)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (id) DO NOTHING`,
-      [v.id, v.code, v.name, v.data_type, v.default_value, v.scope, v.scope_id, v.scope_level, v.description],
+      [
+        v.id,
+        v.code,
+        v.name,
+        v.data_type,
+        v.default_value,
+        v.scope,
+        v.scope_id,
+        v.scope_level,
+        v.description,
+      ],
     );
   }
 

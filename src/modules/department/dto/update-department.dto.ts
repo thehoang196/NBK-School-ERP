@@ -1,17 +1,17 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, Matches } from 'class-validator';
+import { PartialType, OmitType, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsUUID, ValidateIf } from 'class-validator';
+import { CreateDepartmentDto } from './create-department.dto';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export class UpdateDepartmentDto {
-  @ApiPropertyOptional({ description: 'Tên tổ bộ môn', example: 'Tổ Toán - Tin' })
+export class UpdateDepartmentDto extends PartialType(
+  OmitType(CreateDepartmentDto, ['schoolId', 'headTeacherId'] as const),
+) {
+  @ApiPropertyOptional({
+    description: 'ID tổ trưởng (UUID của giáo viên, gửi null để xóa tổ trưởng)',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+    nullable: true,
+  })
   @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiPropertyOptional({ description: 'ID tổ trưởng' })
-  @IsOptional()
-  @IsString()
-  @Matches(UUID_REGEX, { message: 'headTeacherId phải là UUID hợp lệ' })
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID('4', { message: 'headTeacherId phải là UUID hợp lệ' })
   headTeacherId?: string | null;
 }

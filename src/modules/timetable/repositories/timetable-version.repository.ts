@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { TimetableVersionEntity } from '../entities/timetable-version.entity';
 import { TimetableVersionQueryDto } from '../dto/timetable-query.dto';
-import { TimetableStatus } from '../../../common/enums/status.enum';
+import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 
 @Injectable()
 export class TimetableVersionRepository {
@@ -12,12 +12,13 @@ export class TimetableVersionRepository {
     private readonly repo: Repository<TimetableVersionEntity>,
   ) {}
 
-  async findAll(query: TimetableVersionQueryDto): Promise<[TimetableVersionEntity[], number]> {
+  async findAll(
+    query: TimetableVersionQueryDto,
+  ): Promise<[TimetableVersionEntity[], number]> {
     const { page, limit, semesterId, status } = query;
     const skip = (page - 1) * limit;
 
-    const qb = this.repo.createQueryBuilder('tv')
-      .where('tv.deletedAt IS NULL');
+    const qb = this.repo.createQueryBuilder('tv').where('tv.deletedAt IS NULL');
 
     if (semesterId) {
       qb.andWhere('tv.semester_id = :semesterId', { semesterId });
@@ -26,9 +27,7 @@ export class TimetableVersionRepository {
       qb.andWhere('tv.status = :status', { status });
     }
 
-    qb.orderBy('tv.version_number', 'DESC')
-      .skip(skip)
-      .take(limit);
+    qb.orderBy('tv.version_number', 'DESC').skip(skip).take(limit);
 
     return qb.getManyAndCount();
   }
@@ -40,11 +39,13 @@ export class TimetableVersionRepository {
     });
   }
 
-  async findPublished(semesterId: string): Promise<TimetableVersionEntity | null> {
+  async findPublished(
+    semesterId: string,
+  ): Promise<TimetableVersionEntity | null> {
     return this.repo.findOne({
       where: {
         semesterId,
-        status: TimetableStatus.PUBLISHED,
+        status: TimetableVersionStatus.PUBLISHED,
         deletedAt: IsNull(),
       },
       relations: { slots: true },
@@ -82,19 +83,27 @@ export class TimetableVersionRepository {
     return (result?.maxVersion || 0) + 1;
   }
 
-  async create(data: Partial<TimetableVersionEntity>): Promise<TimetableVersionEntity> {
+  async create(
+    data: Partial<TimetableVersionEntity>,
+  ): Promise<TimetableVersionEntity> {
     const entity = this.repo.create(data);
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<TimetableVersionEntity>): Promise<TimetableVersionEntity | null> {
+  async update(
+    id: string,
+    data: Partial<TimetableVersionEntity>,
+  ): Promise<TimetableVersionEntity | null> {
     await this.repo.update(id, data);
     return this.findById(id);
   }
 
-  async publish(id: string, userId: string): Promise<TimetableVersionEntity | null> {
+  async publish(
+    id: string,
+    userId: string,
+  ): Promise<TimetableVersionEntity | null> {
     await this.repo.update(id, {
-      status: TimetableStatus.PUBLISHED,
+      status: TimetableVersionStatus.PUBLISHED,
       publishedAt: new Date(),
       publishedBy: userId,
     });

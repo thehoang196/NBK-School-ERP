@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { FormulaRepository } from '../repositories/formula.repository';
 import { PayComponentRepository } from '../repositories/pay-component.repository';
 import { VariableRepository } from '../repositories/variable.repository';
@@ -38,7 +42,9 @@ export class FormulaService {
     private readonly auditLogRepository: AuditLogRepository,
   ) {}
 
-  async findAll(query: FormulaQueryDto): Promise<PaginatedResponse<FormulaEntity>> {
+  async findAll(
+    query: FormulaQueryDto,
+  ): Promise<PaginatedResponse<FormulaEntity>> {
     const [data, total] = await this.formulaRepository.findAll(query);
     const totalPages = Math.ceil(total / query.limit);
 
@@ -63,9 +69,15 @@ export class FormulaService {
     return entity;
   }
 
-  async create(dto: CreateFormulaDto, createdBy?: string): Promise<FormulaEntity> {
+  async create(
+    dto: CreateFormulaDto,
+    createdBy?: string,
+  ): Promise<FormulaEntity> {
     // Parse and validate formula
-    const validation = await this.validateExpression(dto.expression, dto.schoolId);
+    const validation = await this.validateExpression(
+      dto.expression,
+      dto.schoolId,
+    );
     if (!validation.valid) {
       throw new BadRequestException(
         `Công thức không hợp lệ: ${validation.errors.join('; ')}`,
@@ -76,7 +88,11 @@ export class FormulaService {
     const parser = new Parser(dto.expression);
     const ast = parser.parse();
 
-    const version = await this.formulaRepository.getMaxVersion(dto.payComponentId, dto.schoolId) + 1;
+    const version =
+      (await this.formulaRepository.getMaxVersion(
+        dto.payComponentId,
+        dto.schoolId,
+      )) + 1;
 
     const entity = await this.formulaRepository.create({
       payComponentId: dto.payComponentId,
@@ -105,11 +121,18 @@ export class FormulaService {
     return entity;
   }
 
-  async update(id: string, dto: UpdateFormulaDto, createdBy?: string): Promise<FormulaEntity> {
+  async update(
+    id: string,
+    dto: UpdateFormulaDto,
+    createdBy?: string,
+  ): Promise<FormulaEntity> {
     const existing = await this.findById(id);
 
     // Parse and validate new expression
-    const validation = await this.validateExpression(dto.expression, existing.schoolId);
+    const validation = await this.validateExpression(
+      dto.expression,
+      existing.schoolId,
+    );
     if (!validation.valid) {
       throw new BadRequestException(
         `Công thức không hợp lệ: ${validation.errors.join('; ')}`,
@@ -121,10 +144,11 @@ export class FormulaService {
     const ast = parser.parse();
 
     // Create new version instead of modifying existing
-    const version = await this.formulaRepository.getMaxVersion(
-      existing.payComponentId,
-      existing.schoolId,
-    ) + 1;
+    const version =
+      (await this.formulaRepository.getMaxVersion(
+        existing.payComponentId,
+        existing.schoolId,
+      )) + 1;
 
     const entity = await this.formulaRepository.create({
       payComponentId: existing.payComponentId,
@@ -133,10 +157,9 @@ export class FormulaService {
       parsedAst: ast as unknown as Record<string, unknown>,
       dependencies: validation.dependencies || null,
       variableRefs: validation.variableRefs || null,
-      version,
+      formulaVersion: version,
       changelog: dto.changelog || `Version ${version} updated`,
       status: FormulaStatus.DRAFT,
-      createdBy: createdBy || null,
     });
 
     if (createdBy) {
@@ -144,7 +167,10 @@ export class FormulaService {
         entityType: 'formula',
         entityId: entity.id,
         action: 'update',
-        oldValue: { expression: existing.expression, version: existing.version },
+        oldValue: {
+          expression: existing.expression,
+          version: existing.formulaVersion,
+        },
         newValue: { expression: dto.expression, version },
         performedBy: createdBy,
       });
@@ -161,7 +187,10 @@ export class FormulaService {
     }
 
     // Re-validate before publishing
-    const validation = await this.validateExpression(formula.expression, formula.schoolId);
+    const validation = await this.validateExpression(
+      formula.expression,
+      formula.schoolId,
+    );
     if (!validation.valid) {
       throw new BadRequestException(
         `Không thể publish - công thức không hợp lệ: ${validation.errors.join('; ')}`,
@@ -181,15 +210,20 @@ export class FormulaService {
     }
 
     // Unpublish any existing published version for same pay component
-    const existingPublished = await this.formulaRepository.findPublishedByPayComponent(
-      formula.payComponentId,
-      formula.schoolId,
-    );
+    const existingPublished =
+      await this.formulaRepository.findPublishedByPayComponent(
+        formula.payComponentId,
+        formula.schoolId,
+      );
     if (existingPublished && existingPublished.id !== formula.id) {
-      await this.formulaRepository.update(existingPublished.id, { status: FormulaStatus.DRAFT });
+      await this.formulaRepository.update(existingPublished.id, {
+        status: FormulaStatus.DRAFT,
+      });
     }
 
-    const updated = await this.formulaRepository.update(id, { status: FormulaStatus.PUBLISHED });
+    const updated = await this.formulaRepository.update(id, {
+      status: FormulaStatus.PUBLISHED,
+    });
     if (!updated) {
       throw new NotFoundException('Không tìm thấy công thức');
     }
@@ -208,7 +242,11 @@ export class FormulaService {
     return updated;
   }
 
-  async rollback(id: string, targetVersion: number, performedBy?: string): Promise<FormulaEntity> {
+  async rollback(
+    id: string,
+    targetVersion: number,
+    performedBy?: string,
+  ): Promise<FormulaEntity> {
     const current = await this.findById(id);
 
     // Find the target version
@@ -216,16 +254,17 @@ export class FormulaService {
       current.payComponentId,
       current.schoolId,
     );
-    const targetFormula = versions.find((f) => f.version === targetVersion);
+    const targetFormula = versions.find((f) => f.formulaVersion === targetVersion);
     if (!targetFormula) {
       throw new NotFoundException(`Không tìm thấy phiên bản ${targetVersion}`);
     }
 
     // Create new version with old content
-    const newVersion = await this.formulaRepository.getMaxVersion(
-      current.payComponentId,
-      current.schoolId,
-    ) + 1;
+    const newVersion =
+      (await this.formulaRepository.getMaxVersion(
+        current.payComponentId,
+        current.schoolId,
+      )) + 1;
 
     const entity = await this.formulaRepository.create({
       payComponentId: current.payComponentId,
@@ -234,10 +273,9 @@ export class FormulaService {
       parsedAst: targetFormula.parsedAst,
       dependencies: targetFormula.dependencies,
       variableRefs: targetFormula.variableRefs,
-      version: newVersion,
+      formulaVersion: newVersion,
       changelog: `Rollback from version ${targetVersion}`,
       status: FormulaStatus.DRAFT,
-      createdBy: performedBy || null,
     });
 
     if (performedBy) {
@@ -245,7 +283,7 @@ export class FormulaService {
         entityType: 'formula',
         entityId: entity.id,
         action: 'update',
-        oldValue: { version: current.version },
+        oldValue: { version: current.formulaVersion },
         newValue: { version: newVersion, rollbackFrom: targetVersion },
         performedBy,
         metadata: { type: 'rollback', targetVersion },
@@ -255,7 +293,12 @@ export class FormulaService {
     return entity;
   }
 
-  async clone(id: string, newPayComponentId: string, schoolId: string, performedBy?: string): Promise<FormulaEntity> {
+  async clone(
+    id: string,
+    newPayComponentId: string,
+    schoolId: string,
+    performedBy?: string,
+  ): Promise<FormulaEntity> {
     const source = await this.findById(id);
 
     const entity = await this.formulaRepository.create({
@@ -265,22 +308,30 @@ export class FormulaService {
       parsedAst: source.parsedAst,
       dependencies: source.dependencies,
       variableRefs: source.variableRefs,
-      version: 1,
-      changelog: `Cloned from formula ${source.id} (version ${source.version})`,
+      formulaVersion: 1,
+      changelog: `Cloned from formula ${source.id} (version ${source.formulaVersion})`,
       status: FormulaStatus.DRAFT,
-      createdBy: performedBy || null,
     });
 
     return entity;
   }
 
-  async getVersionHistory(payComponentId: string, schoolId: string): Promise<FormulaEntity[]> {
-    return this.formulaRepository.findByPayComponentId(payComponentId, schoolId);
+  async getVersionHistory(
+    payComponentId: string,
+    schoolId: string,
+  ): Promise<FormulaEntity[]> {
+    return this.formulaRepository.findByPayComponentId(
+      payComponentId,
+      schoolId,
+    );
   }
 
   async getVersionsByFormulaId(id: string): Promise<FormulaEntity[]> {
     const formula = await this.findById(id);
-    return this.formulaRepository.findByPayComponentId(formula.payComponentId, formula.schoolId);
+    return this.formulaRepository.findByPayComponentId(
+      formula.payComponentId,
+      formula.schoolId,
+    );
   }
 
   async validate(dto: ValidateFormulaDto): Promise<FormulaValidationResult> {
@@ -289,7 +340,10 @@ export class FormulaService {
 
   // Private methods
 
-  private async validateExpression(expression: string, schoolId?: string): Promise<FormulaValidationResult> {
+  private async validateExpression(
+    expression: string,
+    schoolId?: string,
+  ): Promise<FormulaValidationResult> {
     const errors: string[] = [];
 
     // Step 1: Parse
@@ -299,7 +353,10 @@ export class FormulaService {
       ast = parser.parse();
     } catch (e) {
       if (e instanceof ParseError) {
-        return { valid: false, errors: [`Parse error at position ${e.position}: ${e.message}`] };
+        return {
+          valid: false,
+          errors: [`Parse error at position ${e.position}: ${e.message}`],
+        };
       }
       return { valid: false, errors: [`Parse error: ${(e as Error).message}`] };
     }
@@ -328,7 +385,10 @@ export class FormulaService {
     variables.forEach((v) => variableCodes.add(v.code));
 
     // Step 3: Validate identifiers and function calls
-    const allKnownIdentifiers = new Set([...payComponentCodes, ...variableCodes]);
+    const allKnownIdentifiers = new Set([
+      ...payComponentCodes,
+      ...variableCodes,
+    ]);
     const functionNames = getAvailableFunctionNames();
 
     const validator = new FormulaValidator({
@@ -371,15 +431,19 @@ export class FormulaService {
     newDependencies: string[],
   ): Promise<string | null> {
     // Build existing dependency graph
-    const publishedFormulas = await this.formulaRepository.findPublishedBySchool(schoolId);
+    const publishedFormulas =
+      await this.formulaRepository.findPublishedBySchool(schoolId);
     const graph = new Map<string, string[]>();
 
     // Get pay component code for this formula
-    const payComponent = await this.payComponentRepository.findById(payComponentId);
+    const payComponent =
+      await this.payComponentRepository.findById(payComponentId);
     if (!payComponent) return null;
 
     for (const formula of publishedFormulas) {
-      const pc = await this.payComponentRepository.findById(formula.payComponentId);
+      const pc = await this.payComponentRepository.findById(
+        formula.payComponentId,
+      );
       if (pc && formula.dependencies) {
         graph.set(pc.code, formula.dependencies);
       }

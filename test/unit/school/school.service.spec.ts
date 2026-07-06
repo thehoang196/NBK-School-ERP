@@ -45,7 +45,9 @@ describe('SchoolService', () => {
     }).compile();
 
     service = module.get<SchoolService>(SchoolService);
-    schoolRepository = module.get(SchoolRepository) as jest.Mocked<SchoolRepository>;
+    schoolRepository = module.get(
+      SchoolRepository,
+    ) as jest.Mocked<SchoolRepository>;
   });
 
   afterEach(() => {
@@ -98,8 +100,12 @@ describe('SchoolService', () => {
     it('should throw NotFoundException when school not found', async () => {
       schoolRepository.findById.mockResolvedValue(null);
 
-      await expect(service.findById('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.findById('non-existent-id')).rejects.toThrow('Không tìm thấy trường');
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.findById('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy trường',
+      );
     });
   });
 
@@ -139,8 +145,12 @@ describe('SchoolService', () => {
     it('should throw ConflictException when code already exists', async () => {
       schoolRepository.findByCode.mockResolvedValue(mockSchool);
 
-      await expect(service.create(createDto)).rejects.toThrow(ConflictException);
-      await expect(service.create(createDto)).rejects.toThrow('Mã trường đã tồn tại');
+      await expect(service.create(createDto)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(service.create(createDto)).rejects.toThrow(
+        'Mã trường đã tồn tại',
+      );
     });
   });
 
@@ -156,14 +166,21 @@ describe('SchoolService', () => {
 
       expect(result).toEqual(updatedSchool);
       expect(schoolRepository.findById).toHaveBeenCalledWith(mockSchool.id);
-      expect(schoolRepository.update).toHaveBeenCalledWith(mockSchool.id, updateDto);
+      expect(schoolRepository.update).toHaveBeenCalledWith(
+        mockSchool.id,
+        updateDto,
+      );
     });
 
     it('should throw NotFoundException when school not found', async () => {
       schoolRepository.findById.mockResolvedValue(null);
 
-      await expect(service.update('non-existent-id', updateDto)).rejects.toThrow(NotFoundException);
-      await expect(service.update('non-existent-id', updateDto)).rejects.toThrow('Không tìm thấy trường');
+      await expect(
+        service.update('non-existent-id', updateDto),
+      ).rejects.toThrow(NotFoundException);
+      await expect(
+        service.update('non-existent-id', updateDto),
+      ).rejects.toThrow('Không tìm thấy trường');
     });
 
     it('should throw ConflictException when updating to duplicate code', async () => {
@@ -172,8 +189,12 @@ describe('SchoolService', () => {
       schoolRepository.findById.mockResolvedValue(mockSchool);
       schoolRepository.findByCode.mockResolvedValue(existingSchool);
 
-      await expect(service.update(mockSchool.id, updateWithCode)).rejects.toThrow(ConflictException);
-      await expect(service.update(mockSchool.id, updateWithCode)).rejects.toThrow('Mã trường đã tồn tại');
+      await expect(
+        service.update(mockSchool.id, updateWithCode),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.update(mockSchool.id, updateWithCode),
+      ).rejects.toThrow('Mã trường đã tồn tại');
     });
 
     it('should not check code conflict when code is unchanged', async () => {
@@ -203,8 +224,12 @@ describe('SchoolService', () => {
     it('should throw NotFoundException when school not found', async () => {
       schoolRepository.findById.mockResolvedValue(null);
 
-      await expect(service.remove('non-existent-id')).rejects.toThrow(NotFoundException);
-      await expect(service.remove('non-existent-id')).rejects.toThrow('Không tìm thấy trường');
+      await expect(service.remove('non-existent-id')).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.remove('non-existent-id')).rejects.toThrow(
+        'Không tìm thấy trường',
+      );
     });
   });
 });

@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, MaxLength, IsOptional, IsUUID, IsEnum, IsEmail } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  IsOptional,
+  IsUUID,
+  IsEnum,
+  IsEmail,
+} from 'class-validator';
 import { SchoolStatus } from '../../../common/enums/status.enum';
 
 export class CreateSchoolDto {

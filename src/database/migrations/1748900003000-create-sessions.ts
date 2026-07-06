@@ -41,7 +41,9 @@ export class CreateSessions1748900003000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX "IDX_sessions_sort_order"`);
     await queryRunner.query(`DROP INDEX "IDX_sessions_school_id"`);
-    await queryRunner.query(`ALTER TABLE "sessions" DROP CONSTRAINT "FK_sessions_school"`);
+    await queryRunner.query(
+      `ALTER TABLE "sessions" DROP CONSTRAINT "FK_sessions_school"`,
+    );
     await queryRunner.query(`DROP TABLE "sessions"`);
   }
 }

@@ -11,16 +11,33 @@ export class RoomRepository {
     private readonly repo: Repository<RoomEntity>,
   ) {}
 
-  async findAll(query: RoomQueryDto): Promise<[RoomEntity[], number]> {
-    const { page, limit, sortBy, sortOrder, schoolId, roomType, status, search } = query;
+  async findBySchool(schoolId: string): Promise<RoomEntity[]> {
+    return this.repo.find({
+      where: { schoolId, deletedAt: IsNull() },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAll(
+    query: RoomQueryDto,
+    schoolId: string,
+  ): Promise<[RoomEntity[], number]> {
+    const {
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+      roomType,
+      status,
+      building,
+      search,
+    } = query;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repo.createQueryBuilder('room')
-      .where('room.deletedAt IS NULL');
-
-    if (schoolId) {
-      queryBuilder.andWhere('room.schoolId = :schoolId', { schoolId });
-    }
+    const queryBuilder = this.repo
+      .createQueryBuilder('room')
+      .where('room.deletedAt IS NULL')
+      .andWhere('room.schoolId = :schoolId', { schoolId });
 
     if (roomType) {
       queryBuilder.andWhere('room.roomType = :roomType', { roomType });
@@ -28,6 +45,10 @@ export class RoomRepository {
 
     if (status) {
       queryBuilder.andWhere('room.status = :status', { status });
+    }
+
+    if (building) {
+      queryBuilder.andWhere('room.building = :building', { building });
     }
 
     if (search) {
@@ -48,10 +69,15 @@ export class RoomRepository {
     return queryBuilder.getManyAndCount();
   }
 
-  async findById(id: string): Promise<RoomEntity | null> {
+  async findById(id: string, schoolId: string): Promise<RoomEntity | null> {
     return this.repo.findOne({
-      where: { id, deletedAt: IsNull() },
-      relations: { school: true },
+      where: { id, schoolId, deletedAt: IsNull() },
+    });
+  }
+
+  async findByCode(code: string, schoolId: string): Promise<RoomEntity | null> {
+    return this.repo.findOne({
+      where: { code, schoolId, deletedAt: IsNull() },
     });
   }
 
@@ -60,12 +86,16 @@ export class RoomRepository {
     return this.repo.save(entity);
   }
 
-  async update(id: string, data: Partial<RoomEntity>): Promise<RoomEntity | null> {
-    await this.repo.update(id, data);
-    return this.findById(id);
+  async update(
+    id: string,
+    schoolId: string,
+    data: Partial<RoomEntity>,
+  ): Promise<RoomEntity | null> {
+    await this.repo.update({ id, schoolId, deletedAt: IsNull() }, data);
+    return this.findById(id, schoolId);
   }
 
-  async softDelete(id: string): Promise<void> {
-    await this.repo.softDelete(id);
+  async softDelete(id: string, schoolId: string): Promise<void> {
+    await this.repo.softDelete({ id, schoolId });
   }
 }

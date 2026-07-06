@@ -4,6 +4,7 @@ import { SemesterEntity } from '../../academic/entities/semester.entity';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 import { ClassEntity } from '../../class/entities/class.entity';
 import { SubjectEntity } from '../../subject/entities/subject.entity';
+import { SchoolEntity } from '../../school/entities/school.entity';
 
 @Entity('teaching_assignments')
 @Unique(['semesterId', 'teacherId', 'classId', 'subjectId'])
@@ -35,6 +36,21 @@ export class TeachingAssignmentEntity extends BaseEntity {
   @ManyToOne(() => SubjectEntity)
   @JoinColumn({ name: 'subject_id' })
   subject: SubjectEntity;
+
+  @Column({ name: 'school_id', type: 'uuid' })
+  schoolId: string;
+
+  @ManyToOne(() => SchoolEntity)
+  @JoinColumn({ name: 'school_id' })
+  school: SchoolEntity;
+
+  @Column({
+    name: 'assignment_status',
+    type: 'varchar',
+    length: 30,
+    default: 'active',
+  })
+  assignmentStatus: string;
 
   @Column({ name: 'periods_per_week', type: 'int' })
   periodsPerWeek: number;

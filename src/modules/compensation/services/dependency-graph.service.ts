@@ -13,7 +13,10 @@ export class DependencyGraphService {
    * Build adjacency list from formulas.
    * Key = pay component code, Value = list of codes it depends on.
    */
-  buildGraph(formulas: FormulaEntity[], codeMap: Map<string, string>): Map<string, string[]> {
+  buildGraph(
+    formulas: FormulaEntity[],
+    codeMap: Map<string, string>,
+  ): Map<string, string[]> {
     const graph = new Map<string, string[]>();
 
     for (const formula of formulas) {
