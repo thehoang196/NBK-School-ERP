@@ -40,4 +40,10 @@ export class FormulaEntity extends BaseEntity {
 
   @Column({ type: 'enum', enum: FormulaStatus, default: FormulaStatus.DRAFT })
   status: FormulaStatus;
+
+  @Column({ name: 'effective_from', type: 'date', nullable: true })
+  effectiveFrom: string | null;
+
+  @Column({ name: 'effective_to', type: 'date', nullable: true })
+  effectiveTo: string | null;
 }

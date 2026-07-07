@@ -37,7 +37,11 @@ export async function seedTeachingAssignments(
   }
 
   // Find prerequisite data
-  const school = await schoolRepo.findOne({ where: { code: 'TH01' } });
+  const school = await schoolRepo
+    .createQueryBuilder('school')
+    .withDeleted()
+    .where('school.code = :code', { code: 'TH01' })
+    .getOne();
   if (!school) {
     console.log('⚠️  School TH01 not found. Please run base seed first.');
     return;
@@ -104,9 +108,11 @@ export async function seedTeachingAssignments(
   ];
 
   for (const data of assignmentData) {
-    const teacher = await teacherRepo.findOne({
-      where: { employeeCode: data.teacherCode },
-    });
+    const teacher = await teacherRepo
+      .createQueryBuilder('teacher')
+      .withDeleted()
+      .where('teacher.employee_code = :code', { code: data.teacherCode })
+      .getOne();
     if (!teacher) {
       console.log(`⚠️  Teacher ${data.teacherCode} not found, skipping...`);
       continue;
@@ -138,6 +144,7 @@ export async function seedTeachingAssignments(
     }
 
     await assignmentRepo.save({
+      schoolId: school.id,
       semesterId: semester.id,
       teacherId: teacher.id,
       classId: classEntity.id,

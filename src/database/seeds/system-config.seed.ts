@@ -1,5 +1,5 @@
 import { DataSource } from 'typeorm';
-import * as bcrypt from 'bcrypt';
+import * as argon2 from 'argon2';
 import { UserEntity } from '../../modules/auth/entities/user.entity';
 import { SchoolEntity } from '../../modules/school/entities/school.entity';
 import { CampusEntity } from '../../modules/school/entities/campus.entity';
@@ -29,11 +29,20 @@ export async function seedSystemConfig(
 
   const defaultPassword =
     process.env['SEED_DEFAULT_PASSWORD'] || 'Nbk@2024!';
-  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  const hashedPassword = await argon2.hash(defaultPassword, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
 
   // ─── Organization (Parent School) ──────────────────────────────────────
 
-  let orgSchool = await schoolRepo.findOne({ where: { code: 'NBK-ORG' } });
+  let orgSchool = await schoolRepo
+    .createQueryBuilder('school')
+    .withDeleted()
+    .where('school.code = :code', { code: 'NBK-ORG' })
+    .getOne();
   if (!orgSchool) {
     orgSchool = await schoolRepo.save({
       code: 'NBK-ORG',
@@ -52,7 +61,11 @@ export async function seedSystemConfig(
 
   // ─── Child Schools ─────────────────────────────────────────────────────
 
-  let schoolTH = await schoolRepo.findOne({ where: { code: 'NBK-TH' } });
+  let schoolTH = await schoolRepo
+    .createQueryBuilder('school')
+    .withDeleted()
+    .where('school.code = :code', { code: 'NBK-TH' })
+    .getOne();
   if (!schoolTH) {
     schoolTH = await schoolRepo.save({
       code: 'NBK-TH',
@@ -69,7 +82,11 @@ export async function seedSystemConfig(
     console.log('  ⏭️  School TH exists:', schoolTH.code);
   }
 
-  let schoolTHCS = await schoolRepo.findOne({ where: { code: 'NBK-THCS' } });
+  let schoolTHCS = await schoolRepo
+    .createQueryBuilder('school')
+    .withDeleted()
+    .where('school.code = :code', { code: 'NBK-THCS' })
+    .getOne();
   if (!schoolTHCS) {
     schoolTHCS = await schoolRepo.save({
       code: 'NBK-THCS',
@@ -110,7 +127,11 @@ export async function seedSystemConfig(
   ];
 
   for (const c of campuses) {
-    const existing = await campusRepo.findOne({ where: { code: c.code } });
+    const existing = await campusRepo
+      .createQueryBuilder('campus')
+      .withDeleted()
+      .where('campus.code = :code', { code: c.code })
+      .getOne();
     if (!existing) {
       await campusRepo.save({ ...c, status: CampusStatus.ACTIVE });
       console.log(`  ✅ Campus created: ${c.code}`);
@@ -161,14 +182,22 @@ export async function seedSystemConfig(
   ];
 
   for (const u of users) {
-    const existing = await userRepo.findOne({ where: { email: u.email } });
+    const existing = await userRepo
+      .createQueryBuilder('user')
+      .withDeleted()
+      .where('user.email = :email', { email: u.email })
+      .getOne();
     if (!existing) {
-      await userRepo.save({
-        ...u,
-        password: hashedPassword,
-        isActive: true,
-      });
-      console.log(`  ✅ User created: ${u.email} (${u.role})`);
+      try {
+        await userRepo.save({
+          ...u,
+          password: hashedPassword,
+          isActive: true,
+        });
+        console.log(`  ✅ User created: ${u.email} (${u.role})`);
+      } catch (error: any) {
+        console.log(`  ⚠️  User skipped: ${u.email} (${u.role}) — ${error.message || error.driverError?.message || 'unknown error'}`);
+      }
     } else {
       console.log(`  ⏭️  User exists: ${u.email}`);
     }

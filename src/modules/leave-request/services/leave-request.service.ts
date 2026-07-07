@@ -37,6 +37,7 @@ export class LeaveRequestService {
 
   /**
    * Giáo viên tạo đơn xin nghỉ.
+   * Validate: ngày hợp lệ + không trùng đơn khác.
    */
   async create(
     dto: CreateLeaveRequestDto,
@@ -48,7 +49,7 @@ export class LeaveRequestService {
       throw new BadRequestException('Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc');
     }
 
-    // Check overlapping requests
+    // Check overlapping requests (exclude cancelled/rejected)
     const overlapping = await this.leaveRequestRepo.findByTeacherAndDateRange(
       teacherId,
       schoolId,
@@ -74,10 +75,17 @@ export class LeaveRequestService {
       createdBy: teacherId,
     });
 
+    this.logger.log(
+      `Leave request created: id=${request.id}, teacher=${teacherId}, school=${schoolId}`,
+    );
+
     this.eventEmitter.emit('leave-request.created', {
       schoolId,
       teacherId,
       requestId: request.id,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      leaveType: dto.leaveType,
     });
 
     return request;
@@ -85,6 +93,7 @@ export class LeaveRequestService {
 
   /**
    * Admin/BGH duyệt đơn nghỉ.
+   * Chỉ duyệt được đơn PENDING.
    */
   async approve(
     id: string,
@@ -108,12 +117,15 @@ export class LeaveRequestService {
       updatedBy: approvedBy,
     });
 
+    this.logger.log(`Leave request approved: id=${id}, by=${approvedBy}`);
+
     this.eventEmitter.emit('leave-request.approved', {
       schoolId,
       teacherId: request.teacherId,
       requestId: id,
       startDate: request.startDate,
       endDate: request.endDate,
+      approvedBy,
     });
 
     return this.findById(id, schoolId);
@@ -121,6 +133,7 @@ export class LeaveRequestService {
 
   /**
    * Admin/BGH từ chối đơn nghỉ.
+   * Chỉ từ chối được đơn PENDING.
    */
   async reject(
     id: string,
@@ -144,10 +157,14 @@ export class LeaveRequestService {
       updatedBy: rejectedBy,
     });
 
+    this.logger.log(`Leave request rejected: id=${id}, by=${rejectedBy}, reason=${reason}`);
+
     this.eventEmitter.emit('leave-request.rejected', {
       schoolId,
       teacherId: request.teacherId,
       requestId: id,
+      rejectedBy,
+      reason,
     });
 
     return this.findById(id, schoolId);
@@ -176,6 +193,20 @@ export class LeaveRequestService {
       updatedBy: teacherId,
     });
 
+    this.logger.log(`Leave request cancelled: id=${id}, by=${teacherId}`);
+
     return this.findById(id, schoolId);
+  }
+
+  /**
+   * Lấy danh sách đơn theo teacherId (cho GV xem đơn của mình).
+   */
+  async findByTeacher(
+    teacherId: string,
+    schoolId: string,
+    query: LeaveRequestQueryDto,
+  ): Promise<{ items: LeaveRequestEntity[]; total: number }> {
+    query.teacherId = teacherId;
+    return this.findAll(schoolId, query);
   }
 }

@@ -49,7 +49,11 @@ export class TeacherController {
     @Query() query: TeacherQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.teacherService.findAll(query, user.schoolId!);
+    const schoolId = query.schoolId || user.schoolId;
+    if (!schoolId) {
+      return { success: true, data: [], message: 'Lấy danh sách thành công', meta: { page: 1, limit: query.limit, total: 0, totalPages: 0 } };
+    }
+    return this.teacherService.findAll(query, schoolId);
   }
 
   @Get(':id')

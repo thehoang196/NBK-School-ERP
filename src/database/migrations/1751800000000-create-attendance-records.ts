@@ -4,9 +4,29 @@ export class CreateAttendanceRecords1751800000000 implements MigrationInterface 
   name = 'CreateAttendanceRecords1751800000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Create leave_type enum
+    // Create enum types FIRST (before table that references them)
     await queryRunner.query(`
-      CREATE TYPE "leave_type_enum" AS ENUM ('annual', 'sick', 'unpaid', 'maternity', 'holiday', 'other')
+      DO $$ BEGIN
+        CREATE TYPE "attendance_status_enum" AS ENUM ('present', 'late', 'absent', 'leave', 'half_day');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$
+    `);
+
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "attendance_method_enum" AS ENUM ('qr', 'gps', 'nfc', 'manual');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$
+    `);
+
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "leave_type_enum" AS ENUM ('annual', 'sick', 'unpaid', 'maternity', 'holiday', 'other');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$
     `);
 
     // Create attendance_records table
@@ -46,28 +66,12 @@ export class CreateAttendanceRecords1751800000000 implements MigrationInterface 
     await queryRunner.query(`
       CREATE INDEX "idx_attendance_records_school_date" ON "attendance_records" ("school_id", "work_date")
     `);
-
-    // Create attendance_status_enum if not exists
-    await queryRunner.query(`
-      DO $$ BEGIN
-        CREATE TYPE "attendance_status_enum" AS ENUM ('present', 'late', 'absent', 'leave', 'half_day');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$
-    `);
-
-    // Create attendance_method_enum if not exists
-    await queryRunner.query(`
-      DO $$ BEGIN
-        CREATE TYPE "attendance_method_enum" AS ENUM ('qr', 'gps', 'nfc', 'manual');
-      EXCEPTION
-        WHEN duplicate_object THEN null;
-      END $$
-    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "attendance_records"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "leave_type_enum"`);
+    await queryRunner.query('DROP TABLE IF EXISTS "attendance_records"');
+    await queryRunner.query('DROP TYPE IF EXISTS "leave_type_enum"');
+    await queryRunner.query('DROP TYPE IF EXISTS "attendance_method_enum"');
+    await queryRunner.query('DROP TYPE IF EXISTS "attendance_status_enum"');
   }
 }

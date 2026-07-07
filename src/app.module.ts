@@ -31,10 +31,12 @@ import { TeacherSchoolAssignmentModule } from './modules/teacher-school-assignme
 import { HealthModule } from './modules/health/health.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CacheModule } from './modules/cache/cache.module';
+import { ContextModule } from './modules/context';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { CurriculumModule } from './modules/curriculum/curriculum.module';
 import { LoggerModule } from './common/logger';
 import { TenantModule } from './common/tenant';
+import { SeederModule } from './database/seeder';
 
 @Module({
   imports: [
@@ -72,6 +74,7 @@ import { TenantModule } from './common/tenant';
     TenantModule,
     AuditModule,
     CacheModule,
+    ContextModule,
     JobsModule,
     LoggerModule,
     HealthModule,
@@ -96,6 +99,7 @@ import { TenantModule } from './common/tenant';
     ValidationRulesModule,
     FeatureFlagModule,
     TeacherSchoolAssignmentModule,
+    SeederModule,
   ],
   providers: [
     {

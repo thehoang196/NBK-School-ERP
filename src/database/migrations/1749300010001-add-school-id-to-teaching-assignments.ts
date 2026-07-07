@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddSchoolIdToTeachingAssignments174930001000 implements MigrationInterface {
-  name = 'AddSchoolIdToTeachingAssignments174930001000';
+export class AddSchoolIdToTeachingAssignments1749300010001 implements MigrationInterface {
+  name = 'AddSchoolIdToTeachingAssignments1749300010001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Step 1: Add school_id column (nullable initially for backfill)

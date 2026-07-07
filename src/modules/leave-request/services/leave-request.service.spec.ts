@@ -84,7 +84,11 @@ describe('LeaveRequestService', () => {
       expect(result.id).toBe('lr-001');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'leave-request.created',
-        expect.objectContaining({ teacherId: mockTeacherId }),
+        expect.objectContaining({
+          teacherId: mockTeacherId,
+          schoolId: mockSchoolId,
+          requestId: 'lr-001',
+        }),
       );
     });
 
@@ -141,7 +145,11 @@ describe('LeaveRequestService', () => {
       );
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'leave-request.approved',
-        expect.any(Object),
+        expect.objectContaining({
+          requestId: 'lr-001',
+          teacherId: mockTeacherId,
+          approvedBy: mockAdminId,
+        }),
       );
     });
 
@@ -174,6 +182,23 @@ describe('LeaveRequestService', () => {
           rejectionReason: 'Không đủ điều kiện',
         }),
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'leave-request.rejected',
+        expect.objectContaining({
+          requestId: 'lr-001',
+          rejectedBy: mockAdminId,
+          reason: 'Không đủ điều kiện',
+        }),
+      );
+    });
+
+    it('should throw BadRequestException when request is not PENDING', async () => {
+      const approvedRequest = { ...mockRequest, status: LeaveRequestStatus.APPROVED };
+      repo.findById.mockResolvedValue(approvedRequest as any);
+
+      await expect(
+        service.reject('lr-001', mockSchoolId, mockAdminId, 'test'),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -214,11 +239,35 @@ describe('LeaveRequestService', () => {
   });
 
   describe('findById', () => {
+    it('should return request when found', async () => {
+      repo.findById.mockResolvedValue(mockRequest as any);
+      const result = await service.findById('lr-001', mockSchoolId);
+      expect(result.id).toBe('lr-001');
+    });
+
     it('should throw NotFoundException when not found', async () => {
       repo.findById.mockResolvedValue(null);
 
       await expect(service.findById('invalid', mockSchoolId)).rejects.toThrow(
         NotFoundException,
+      );
+    });
+  });
+
+  describe('findByTeacher', () => {
+    it('should filter by teacher and return results', async () => {
+      repo.findAll.mockResolvedValue([[mockRequest as any], 1]);
+
+      const result = await service.findByTeacher(mockTeacherId, mockSchoolId, {
+        page: 1,
+        limit: 10,
+        sortOrder: 'ASC',
+      } as any);
+
+      expect(result.total).toBe(1);
+      expect(repo.findAll).toHaveBeenCalledWith(
+        mockSchoolId,
+        expect.objectContaining({ teacherId: mockTeacherId }),
       );
     });
   });

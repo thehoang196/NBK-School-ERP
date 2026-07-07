@@ -3,16 +3,19 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { UserRepository } from './user.repository';
 import { UserEntity } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserQueryDto } from './dto/user-query.dto';
+import { PasswordService } from './services/password.service';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly passwordService: PasswordService,
+  ) {}
 
   async findAll(
     query: UserQueryDto,
@@ -35,7 +38,7 @@ export class UserService {
       throw new ConflictException('Email đã tồn tại trong hệ thống');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await this.passwordService.hash(dto.password);
 
     return this.userRepository.create({
       name: dto.name,

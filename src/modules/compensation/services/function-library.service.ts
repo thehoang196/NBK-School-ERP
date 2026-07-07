@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   FUNCTION_LIBRARY,
   FunctionDefinition,
 } from '../formula-engine/function-library';
+import { TeachingMetricsService, SubjectActivityMapping } from './teaching-metrics.service';
+import { AttendanceSummaryService } from '../../attendance/services/attendance-summary.service';
+import { TeachingActivityType } from '../enums';
 
 export interface FunctionDocItem {
   name: string;
@@ -15,6 +18,8 @@ export interface FunctionDocItem {
 
 @Injectable()
 export class FunctionLibraryService {
+  private readonly logger = new Logger(FunctionLibraryService.name);
+
   private readonly categoryMap: Record<string, string> = {
     SUM: 'math',
     ROUND: 'math',
@@ -26,8 +31,14 @@ export class FunctionLibraryService {
     IF: 'logic',
     TeachingHours: 'business',
     TeachingHoursBySubject: 'business',
+    TeachingHoursByType: 'business',
     AttendanceDays: 'business',
   };
+
+  constructor(
+    private readonly teachingMetricsService: TeachingMetricsService,
+    private readonly attendanceSummaryService: AttendanceSummaryService,
+  ) {}
 
   /**
    * Get all available functions with their documentation.
@@ -68,50 +79,93 @@ export class FunctionLibraryService {
   }
 
   /**
-   * TeachingHours: In production, queries actual_timetable_slots.
+   * TeachingHours: Queries actual_timetable_slots.
    * Returns total slots for a teacher within a pay period date range.
-   * Placeholder: returns value from context or 0.
    */
   async getTeachingHours(
     teacherId: string,
+    schoolId: string,
     startDate: string,
     endDate: string,
   ): Promise<number> {
-    // TODO: Integrate with timetable module
-    // Query: SELECT COUNT(*) FROM actual_timetable_slots
-    //   WHERE teacher_id = :teacherId
-    //   AND slot_date BETWEEN :startDate AND :endDate
-    //   AND status = 'published'
-    return 0;
+    return this.teachingMetricsService.getTotalTeachingHours(
+      teacherId,
+      schoolId,
+      startDate,
+      endDate,
+    );
   }
 
   /**
-   * TeachingHoursBySubject: Similar but filtered by subject_id.
+   * TeachingHoursBySubject: Filtered by subject_id.
    */
   async getTeachingHoursBySubject(
     teacherId: string,
+    schoolId: string,
     startDate: string,
     endDate: string,
     subjectId: string,
   ): Promise<number> {
-    // TODO: Integrate with timetable module
-    // Query: SELECT COUNT(*) FROM actual_timetable_slots
-    //   WHERE teacher_id = :teacherId
-    //   AND subject_id = :subjectId
-    //   AND slot_date BETWEEN :startDate AND :endDate
-    //   AND status = 'published'
-    return 0;
+    return this.teachingMetricsService.getTeachingHoursBySubject(
+      teacherId,
+      schoolId,
+      startDate,
+      endDate,
+      subjectId,
+    );
   }
 
   /**
-   * AttendanceDays: Placeholder for attendance module integration.
+   * TeachingHoursByType: Filtered by activity type.
+   * Requires subject→activity mapping (resolved from rule engine or config).
+   */
+  async getTeachingHoursByType(
+    teacherId: string,
+    schoolId: string,
+    startDate: string,
+    endDate: string,
+    activityType: TeachingActivityType,
+    subjectActivityMappings: SubjectActivityMapping[],
+  ): Promise<number> {
+    return this.teachingMetricsService.getTeachingHoursByType(
+      teacherId,
+      schoolId,
+      startDate,
+      endDate,
+      activityType,
+      subjectActivityMappings,
+    );
+  }
+
+  /**
+   * AttendanceDays: Gets actual work days from attendance summary.
+   * Returns NGAY_CONG (actual_work_days) from the attendance summary for the month.
    */
   async getAttendanceDays(
     teacherId: string,
+    schoolId: string,
     startDate: string,
     endDate: string,
   ): Promise<number> {
-    // TODO: Integrate with attendance module when available
-    return 0;
+    // Extract month/year from startDate
+    const date = new Date(startDate);
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+
+    const summary = await this.attendanceSummaryService.findByTeacher(
+      teacherId,
+      schoolId,
+      month,
+      year,
+    );
+
+    if (!summary) {
+      this.logger.warn(
+        `Không có dữ liệu chấm công cho GV ${teacherId}, tháng ${month}/${year}`,
+      );
+      return 0;
+    }
+
+    return Number(summary.actualWorkDays);
   }
 }

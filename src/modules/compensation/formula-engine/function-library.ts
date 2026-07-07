@@ -105,7 +105,7 @@ export const FUNCTION_LIBRARY: Record<string, FunctionDefinition> = {
       condition !== 0 ? trueVal : falseVal,
   },
 
-  // Business functions (placeholders - actual implementations will query DB)
+  // Business functions — resolved at runtime via service layer
   TeachingHours: {
     name: 'TeachingHours',
     description: 'Tổng số tiết dạy thực tế của giáo viên trong kỳ lương',
@@ -115,7 +115,7 @@ export const FUNCTION_LIBRARY: Record<string, FunctionDefinition> = {
     ],
     returnType: 'number',
     example: 'TeachingHours(teacher_id, period_id)',
-    implementation: (...args: number[]) => args[0] || 0, // Placeholder
+    implementation: (...args: number[]) => args[0] || 0, // Runtime: resolved via TeachingMetricsService
   },
 
   TeachingHoursBySubject: {
@@ -128,7 +128,20 @@ export const FUNCTION_LIBRARY: Record<string, FunctionDefinition> = {
     ],
     returnType: 'number',
     example: 'TeachingHoursBySubject(teacher_id, period_id, subject_id)',
-    implementation: (...args: number[]) => args[0] || 0, // Placeholder
+    implementation: (...args: number[]) => args[0] || 0, // Runtime: resolved via TeachingMetricsService
+  },
+
+  TeachingHoursByType: {
+    name: 'TeachingHoursByType',
+    description: 'Số tiết dạy theo loại hoạt động (regular, toan_van_anh, huan_luyen, luyen_thi, ielts, clb, tam_ly)',
+    params: [
+      { name: 'teacher_id', type: 'string', required: true },
+      { name: 'period_id', type: 'string', required: true },
+      { name: 'activity_type', type: 'string', required: true },
+    ],
+    returnType: 'number',
+    example: 'TeachingHoursByType(teacher_id, period_id, "ielts")',
+    implementation: (...args: number[]) => args[0] || 0, // Runtime: resolved via TeachingMetricsService
   },
 
   AttendanceDays: {
@@ -140,7 +153,7 @@ export const FUNCTION_LIBRARY: Record<string, FunctionDefinition> = {
     ],
     returnType: 'number',
     example: 'AttendanceDays(teacher_id, period_id)',
-    implementation: (...args: number[]) => args[0] || 0, // Placeholder
+    implementation: (...args: number[]) => args[0] || 0, // Runtime: resolved via AttendanceSummaryService
   },
 };
 

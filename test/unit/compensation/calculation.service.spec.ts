@@ -12,6 +12,8 @@ import { RuleEvaluator } from '../../../src/modules/compensation/services/rule-e
 import { DependencyGraphService } from '../../../src/modules/compensation/services/dependency-graph.service';
 import { PayPeriodService } from '../../../src/modules/compensation/services/pay-period.service';
 import { PolicyService } from '../../../src/modules/compensation/services/policy.service';
+import { TeachingMetricsService } from '../../../src/modules/compensation/services/teaching-metrics.service';
+import { AttendanceVariableResolverService } from '../../../src/modules/compensation/services/attendance-variable-resolver.service';
 import {
   PayPeriodStatus,
   PayComponentType,
@@ -117,6 +119,7 @@ describe('CalculationService', () => {
           provide: FormulaRepository,
           useValue: {
             findPublishedBySchool: jest.fn(),
+            findPublishedBySchoolAndDate: jest.fn(),
           },
         },
         {
@@ -157,6 +160,26 @@ describe('CalculationService', () => {
             resolvePolicy: jest.fn(),
           },
         },
+        {
+          provide: TeachingMetricsService,
+          useValue: {
+            getTotalTeachingHours: jest.fn().mockResolvedValue(0),
+          },
+        },
+        {
+          provide: AttendanceVariableResolverService,
+          useValue: {
+            resolve: jest.fn().mockResolvedValue({
+              NGAY_CONG: 22,
+              CONG_CHUAN: 26,
+              TANG_CA: 0,
+              NGAY_NGHI_PHEP: 0,
+              NGAY_NGHI_KHONG_LUONG: 0,
+              NGAY_DI_MUON: 0,
+              NGAY_VANG: 0,
+            }),
+          },
+        },
       ],
     }).compile();
 
@@ -182,7 +205,7 @@ describe('CalculationService', () => {
     it('should reject calculation when no published formulas', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue([]);
+      formulaRepository.findPublishedBySchoolAndDate.mockResolvedValue([]);
 
       await expect(
         service.calculate({ schoolId: 'school-1', payPeriodId: 'pp-1' }, []),
@@ -192,7 +215,7 @@ describe('CalculationService', () => {
     it('should calculate salary for teachers successfully', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue(
+      formulaRepository.findPublishedBySchoolAndDate.mockResolvedValue(
         mockFormulas as never,
       );
       payComponentRepository.findAll.mockResolvedValue([
@@ -240,7 +263,7 @@ describe('CalculationService', () => {
     it('should continue calculating other teachers when one fails', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue(
+      formulaRepository.findPublishedBySchoolAndDate.mockResolvedValue(
         mockFormulas as never,
       );
       payComponentRepository.findAll.mockResolvedValue([
@@ -296,7 +319,7 @@ describe('CalculationService', () => {
     it('should be idempotent - deletes existing drafts before creating new ones', async () => {
       payPeriodService.findById.mockResolvedValue(mockPayPeriod as never);
       payPeriodService.updateStatus.mockResolvedValue(undefined as never);
-      formulaRepository.findPublishedBySchool.mockResolvedValue(
+      formulaRepository.findPublishedBySchoolAndDate.mockResolvedValue(
         mockFormulas as never,
       );
       payComponentRepository.findAll.mockResolvedValue([

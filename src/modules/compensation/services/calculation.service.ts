@@ -11,6 +11,8 @@ import {
 import { DependencyGraphService } from './dependency-graph.service';
 import { PayPeriodService } from './pay-period.service';
 import { PolicyService } from './policy.service';
+import { TeachingMetricsService } from './teaching-metrics.service';
+import { AttendanceVariableResolverService } from './attendance-variable-resolver.service';
 import { PayComponentEntity } from '../entities/pay-component.entity';
 import { FormulaEntity } from '../entities/formula.entity';
 import { SalarySlipEntity } from '../entities/salary-slip.entity';
@@ -62,6 +64,8 @@ export class CalculationService {
     private readonly dependencyGraphService: DependencyGraphService,
     private readonly payPeriodService: PayPeriodService,
     private readonly policyService: PolicyService,
+    private readonly teachingMetricsService: TeachingMetricsService,
+    private readonly attendanceResolver: AttendanceVariableResolverService,
   ) {}
 
   /**
@@ -86,9 +90,12 @@ export class CalculationService {
       PayPeriodStatus.PROCESSING,
     );
 
-    // 2. Get all published formulas for the school
+    // 2. Get all published formulas for the school (with effective dating)
     const formulas =
-      await this.formulaRepository.findPublishedBySchool(schoolId);
+      await this.formulaRepository.findPublishedBySchoolAndDate(
+        schoolId,
+        payPeriod.startDate,
+      );
     if (formulas.length === 0) {
       throw new BadRequestException(
         'Không có công thức nào đã publish cho trường này',
@@ -200,6 +207,42 @@ export class CalculationService {
       position: teacher.position,
       subject: teacher.subject,
     };
+
+    // Step A.1: Auto-resolve attendance variables (NGAY_CONG, CONG_CHUAN, etc.)
+    try {
+      const startDate = new Date(periodStartDate);
+      const month = startDate.getMonth() + 1;
+      const year = startDate.getFullYear();
+      const attendanceVars = await this.attendanceResolver.resolve(
+        teacher.id,
+        schoolId,
+        month,
+        year,
+      );
+      Object.assign(variableValues, attendanceVars);
+    } catch (error) {
+      this.logger.warn(
+        `Không thể resolve biến chấm công cho GV ${teacher.id}: ${(error as Error).message}`,
+      );
+    }
+
+    // Step A.2: Auto-resolve teaching metrics (TEACHING_HOURS, etc.)
+    try {
+      const endDate = this.getEndDateFromStart(periodStartDate);
+      const totalHours = await this.teachingMetricsService.getTotalTeachingHours(
+        teacher.id,
+        schoolId,
+        periodStartDate,
+        endDate,
+      );
+      if (totalHours > 0) {
+        variableValues['TEACHING_HOURS'] = totalHours;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Không thể resolve biến tiết dạy cho GV ${teacher.id}: ${(error as Error).message}`,
+      );
+    }
 
     // Step B: Evaluate rules
     const ruleResults = await this.ruleEvaluator.evaluate(schoolId, context);
@@ -318,5 +361,16 @@ export class CalculationService {
     });
 
     return slip;
+  }
+
+  /**
+   * Get end date of the month from a start date string (YYYY-MM-DD).
+   */
+  private getEndDateFromStart(startDate: string): string {
+    const date = new Date(startDate);
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
   }
 }

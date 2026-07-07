@@ -1,10 +1,13 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserRole } from '../../../common/enums/role.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 
 @Entity('users')
+@Index('idx_users_company_school_id', ['companySchoolId'], {
+  where: '"company_school_id" IS NOT NULL',
+})
 export class UserEntity extends BaseEntity {
   @Column({ type: 'varchar', length: 100 })
   name: string;
@@ -31,6 +34,13 @@ export class UserEntity extends BaseEntity {
   @ManyToOne(() => TeacherEntity, { nullable: true })
   @JoinColumn({ name: 'teacher_id' })
   teacher: TeacherEntity | null;
+
+  @Column({ name: 'company_school_id', type: 'uuid', nullable: true })
+  companySchoolId: string | null;
+
+  @ManyToOne(() => SchoolEntity, { nullable: true })
+  @JoinColumn({ name: 'company_school_id' })
+  companySchool: SchoolEntity | null;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;

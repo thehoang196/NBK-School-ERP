@@ -7,8 +7,8 @@ import {
   TableUnique,
 } from 'typeorm';
 
-export class CreateFeatureFlags174930002000 implements MigrationInterface {
-  name = 'CreateFeatureFlags174930002000';
+export class CreateFeatureFlags1749300020000 implements MigrationInterface {
+  name = 'CreateFeatureFlags1749300020000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(

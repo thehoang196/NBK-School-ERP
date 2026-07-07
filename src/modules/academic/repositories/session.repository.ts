@@ -21,8 +21,12 @@ export class SessionRepository {
 
     const queryBuilder = this.repo
       .createQueryBuilder('session')
-      .where('session.deletedAt IS NULL')
-      .andWhere('session.schoolId = :schoolId', { schoolId });
+      .where('session.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('session.schoolId = :schoolId', { schoolId });
+    }
 
     if (campusId) {
       queryBuilder.andWhere('session.campusId = :campusId', { campusId });

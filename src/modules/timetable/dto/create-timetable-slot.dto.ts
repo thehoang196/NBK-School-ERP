@@ -38,10 +38,10 @@ export class CreateTimetableSlotDto {
   @IsNotEmpty()
   classId: string;
 
-  @ApiProperty({ description: 'ID giáo viên' })
+  @ApiPropertyOptional({ description: 'ID giáo viên (có thể phân công sau)' })
+  @IsOptional()
   @Matches(UUID_REGEX, { message: 'teacherId phải là UUID hợp lệ' })
-  @IsNotEmpty()
-  teacherId: string;
+  teacherId?: string;
 
   @ApiProperty({ description: 'ID môn học' })
   @Matches(UUID_REGEX, { message: 'subjectId phải là UUID hợp lệ' })

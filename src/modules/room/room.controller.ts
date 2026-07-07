@@ -49,7 +49,7 @@ export class RoomController {
     @Query() query: RoomQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.roomService.findAll(query, user.schoolId!);
+    return this.roomService.findAll(query, query.schoolId || user.schoolId || '');
   }
 
   @Get(':id')

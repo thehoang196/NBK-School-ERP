@@ -5,7 +5,15 @@ import { DataSource } from 'typeorm';
  * Creates sample pay components, variables, formulas, and rules.
  */
 export async function seedCompensation(dataSource: DataSource): Promise<void> {
-  const schoolId = '550e8400-e29b-41d4-a716-446655440000'; // Default school from seed
+  // Lấy schoolId thật từ DB thay vì hardcode UUID
+  const schools = await dataSource.query(
+    `SELECT id FROM schools WHERE code = 'NBK-TH' AND deleted_at IS NULL LIMIT 1`,
+  );
+  if (!schools.length) {
+    console.log('⚠️  School NBK-TH not found, skipping compensation seed.');
+    return;
+  }
+  const schoolId = schools[0].id;
 
   // 1. Pay Components
   const payComponents = [
@@ -155,8 +163,8 @@ export async function seedCompensation(dataSource: DataSource): Promise<void> {
   // Insert pay components
   for (const pc of payComponents) {
     await dataSource.query(
-      `INSERT INTO pay_components (id, school_id, code, name, type, sort_order, is_taxable, is_insurance_applicable, is_statutory, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO pay_components (id, school_id, code, name, type, sort_order, is_taxable, is_insurance_applicable, is_statutory, status, version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 1)
        ON CONFLICT (id) DO NOTHING`,
       [
         pc.id,
@@ -176,8 +184,8 @@ export async function seedCompensation(dataSource: DataSource): Promise<void> {
   // Insert variables
   for (const v of variables) {
     await dataSource.query(
-      `INSERT INTO compensation_variables (id, code, name, data_type, default_value, scope, scope_id, scope_level, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO compensation_variables (id, code, name, data_type, default_value, scope, scope_id, scope_level, description, version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 1)
        ON CONFLICT (id) DO NOTHING`,
       [
         v.id,

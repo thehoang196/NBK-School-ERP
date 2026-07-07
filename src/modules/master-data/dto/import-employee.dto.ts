@@ -56,6 +56,7 @@ export class ImportEmployeeDto {
   @ApiPropertyOptional({
     description: 'Các trường bổ sung từ import',
     type: 'object',
+    additionalProperties: true,
   })
   @IsOptional()
   @IsObject()

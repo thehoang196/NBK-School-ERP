@@ -1,9 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsEnum, IsUUID } from 'class-validator';
-import { PaginationDto } from '../../../../common/dto/pagination.dto';
+import { SchoolScopedQueryDto } from '../../../../common/dto/school-scoped-query.dto';
 import { AcademicStatus } from '../../../../common/enums/status.enum';
 
-export class SemesterQueryDto extends PaginationDto {
+export class SemesterQueryDto extends SchoolScopedQueryDto {
   @ApiPropertyOptional({
     description: 'Lọc theo ID năm học',
     example: '550e8400-e29b-41d4-a716-446655440000',

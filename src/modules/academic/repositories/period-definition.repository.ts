@@ -20,8 +20,12 @@ export class PeriodDefinitionRepository {
 
     const queryBuilder = this.repo
       .createQueryBuilder('periodDefinition')
-      .where('periodDefinition.deletedAt IS NULL')
-      .andWhere('periodDefinition.schoolId = :schoolId', { schoolId });
+      .where('periodDefinition.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('periodDefinition.schoolId = :schoolId', { schoolId });
+    }
 
     if (sessionId) {
       queryBuilder.andWhere('periodDefinition.sessionId = :sessionId', {

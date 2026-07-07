@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { PayrollRunStatus } from '../enums';
 import { SchoolEntity } from '../../school/entities/school.entity';
@@ -9,6 +9,7 @@ import { PayPeriodEntity } from './pay-period.entity';
  * Workflow: DRAFT → REVIEWED → APPROVED → PAID
  */
 @Entity('payroll_runs')
+@Index('idx_payroll_runs_school_deleted', ['schoolId', 'deletedAt'])
 export class PayrollRunEntity extends BaseEntity {
   @Column({ name: 'school_id', type: 'uuid' })
   schoolId: string;

@@ -1,36 +1,42 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException, ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import { UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
 import { AuthService } from '../../../src/modules/auth/auth.service';
 import { UserRepository } from '../../../src/modules/auth/user.repository';
 import { UserEntity } from '../../../src/modules/auth/entities/user.entity';
 import { UserRole } from '../../../src/common/enums/role.enum';
+import { PasswordService } from '../../../src/modules/auth/services/password.service';
 import { TeacherSchoolAssignmentService } from '../../../src/modules/teacher-school-assignment/teacher-school-assignment.service';
-
-jest.mock('bcrypt');
+import { ContextSessionService } from '../../../src/modules/context/services/context-session.service';
 
 describe('AuthService', () => {
   let service: AuthService;
   let userRepository: jest.Mocked<UserRepository>;
   let jwtService: jest.Mocked<JwtService>;
+  let passwordService: jest.Mocked<PasswordService>;
   let teacherSchoolAssignmentService: jest.Mocked<TeacherSchoolAssignmentService>;
+  let contextSessionService: jest.Mocked<ContextSessionService>;
 
   const mockUser: UserEntity = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'Test User',
     email: 'test@stms.vn',
-    password: '$2b$10$hashedpassword',
+    password: '$argon2id$v=19$m=65536,t=3,p=4$hashedpassword',
     role: UserRole.SCHOOL_ADMIN,
     schoolId: '123e4567-e89b-12d3-a456-426614174001',
     school: null,
     teacherId: null,
     teacher: null,
+    companySchoolId: null,
+    companySchool: null,
     isActive: true,
     lastLoginAt: null,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
   };
 
   beforeEach(async () => {
@@ -47,8 +53,21 @@ describe('AuthService', () => {
       sign: jest.fn(),
     };
 
+    const mockPasswordService = {
+      hash: jest.fn(),
+      verify: jest.fn(),
+      needsRehash: jest.fn(),
+    };
+
     const mockTeacherSchoolAssignmentService = {
       getAccessibleSchoolIds: jest.fn(),
+    };
+
+    const mockContextSessionService = {
+      setActiveContext: jest.fn().mockResolvedValue(undefined),
+      getActiveContext: jest.fn().mockResolvedValue(null),
+      deleteSession: jest.fn().mockResolvedValue(undefined),
+      refreshTtl: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -56,9 +75,14 @@ describe('AuthService', () => {
         AuthService,
         { provide: UserRepository, useValue: mockUserRepository },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: PasswordService, useValue: mockPasswordService },
         {
           provide: 'TEACHER_SCHOOL_ASSIGNMENT_SERVICE',
           useValue: mockTeacherSchoolAssignmentService,
+        },
+        {
+          provide: 'CONTEXT_SESSION_SERVICE',
+          useValue: mockContextSessionService,
         },
       ],
     }).compile();
@@ -66,9 +90,16 @@ describe('AuthService', () => {
     service = module.get<AuthService>(AuthService);
     userRepository = module.get(UserRepository) as jest.Mocked<UserRepository>;
     jwtService = module.get(JwtService) as jest.Mocked<JwtService>;
+    passwordService = module.get(PasswordService) as jest.Mocked<PasswordService>;
     teacherSchoolAssignmentService = module.get(
       'TEACHER_SCHOOL_ASSIGNMENT_SERVICE',
     ) as jest.Mocked<TeacherSchoolAssignmentService>;
+    contextSessionService = module.get(
+      'CONTEXT_SESSION_SERVICE',
+    ) as jest.Mocked<ContextSessionService>;
+
+    // Suppress logger output during tests
+    jest.spyOn(Logger.prototype, 'warn').mockImplementation();
   });
 
   afterEach(() => {
@@ -80,7 +111,8 @@ describe('AuthService', () => {
 
     it('should login successfully with valid credentials', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      passwordService.verify.mockResolvedValue(true);
+      passwordService.needsRehash.mockReturnValue(false);
       jwtService.sign.mockReturnValue('jwt-token');
       userRepository.update.mockResolvedValue(mockUser);
 
@@ -97,7 +129,7 @@ describe('AuthService', () => {
         },
       });
       expect(userRepository.findByEmail).toHaveBeenCalledWith('test@stms.vn');
-      expect(bcrypt.compare).toHaveBeenCalledWith(
+      expect(passwordService.verify).toHaveBeenCalledWith(
         'password123',
         mockUser.password,
       );
@@ -129,7 +161,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException when password is invalid', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      passwordService.verify.mockResolvedValue(false);
 
       await expect(service.login(loginDto)).rejects.toThrow(
         UnauthorizedException,
@@ -142,13 +174,33 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException when user is inactive', async () => {
       const inactiveUser = { ...mockUser, isActive: false };
       userRepository.findByEmail.mockResolvedValue(inactiveUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      passwordService.verify.mockResolvedValue(true);
+      passwordService.needsRehash.mockReturnValue(false);
 
       await expect(service.login(loginDto)).rejects.toThrow(
         UnauthorizedException,
       );
       await expect(service.login(loginDto)).rejects.toThrow(
         'Tài khoản đã bị khóa',
+      );
+    });
+
+    it('should rehash password when using legacy bcrypt hash', async () => {
+      const legacyUser = { ...mockUser, password: '$2b$10$oldbcrypthash' };
+      userRepository.findByEmail.mockResolvedValue(legacyUser);
+      passwordService.verify.mockResolvedValue(true);
+      passwordService.needsRehash.mockReturnValue(true);
+      passwordService.hash.mockResolvedValue('$argon2id$newhash');
+      jwtService.sign.mockReturnValue('jwt-token');
+      userRepository.update.mockResolvedValue(legacyUser);
+
+      await service.login(loginDto);
+
+      expect(passwordService.needsRehash).toHaveBeenCalledWith(legacyUser.password);
+      expect(passwordService.hash).toHaveBeenCalledWith('password123');
+      expect(userRepository.update).toHaveBeenCalledWith(
+        legacyUser.id,
+        expect.objectContaining({ password: '$argon2id$newhash' }),
       );
     });
   });
@@ -164,7 +216,7 @@ describe('AuthService', () => {
 
     it('should register a new user successfully', async () => {
       userRepository.findByEmail.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$hashedpassword');
+      passwordService.hash.mockResolvedValue('$argon2id$hashedpassword');
       const createdUser = {
         ...mockUser,
         name: registerDto.name,
@@ -177,11 +229,11 @@ describe('AuthService', () => {
 
       expect(result).toEqual(createdUser);
       expect(userRepository.findByEmail).toHaveBeenCalledWith('new@stms.vn');
-      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
+      expect(passwordService.hash).toHaveBeenCalledWith('password123');
       expect(userRepository.create).toHaveBeenCalledWith({
         name: registerDto.name,
         email: registerDto.email,
-        password: '$2b$10$hashedpassword',
+        password: '$argon2id$hashedpassword',
         role: registerDto.role,
         schoolId: registerDto.schoolId,
       });
@@ -201,7 +253,7 @@ describe('AuthService', () => {
     it('should handle registration without schoolId', async () => {
       const dtoWithoutSchool = { ...registerDto, schoolId: undefined };
       userRepository.findByEmail.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$hashedpassword');
+      passwordService.hash.mockResolvedValue('$argon2id$hashedpassword');
       userRepository.create.mockResolvedValue(mockUser);
 
       await service.register(dtoWithoutSchool);
@@ -215,13 +267,14 @@ describe('AuthService', () => {
   describe('validateUser', () => {
     it('should return user when credentials are valid', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      passwordService.verify.mockResolvedValue(true);
+      passwordService.needsRehash.mockReturnValue(false);
 
       const result = await service.validateUser('test@stms.vn', 'password123');
 
       expect(result).toEqual(mockUser);
       expect(userRepository.findByEmail).toHaveBeenCalledWith('test@stms.vn');
-      expect(bcrypt.compare).toHaveBeenCalledWith(
+      expect(passwordService.verify).toHaveBeenCalledWith(
         'password123',
         mockUser.password,
       );
@@ -237,7 +290,7 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException when password is invalid', async () => {
       userRepository.findByEmail.mockResolvedValue(mockUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      passwordService.verify.mockResolvedValue(false);
 
       await expect(
         service.validateUser('test@stms.vn', 'wrongpassword'),
@@ -247,7 +300,8 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException when user is inactive', async () => {
       const inactiveUser = { ...mockUser, isActive: false };
       userRepository.findByEmail.mockResolvedValue(inactiveUser);
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      passwordService.verify.mockResolvedValue(true);
+      passwordService.needsRehash.mockReturnValue(false);
 
       await expect(
         service.validateUser('test@stms.vn', 'password123'),
@@ -387,6 +441,46 @@ describe('AuthService', () => {
       const result = await service.findUserById('non-existent-id');
 
       expect(result).toBeNull();
+    });
+  });
+
+  // ─── logout (Session Cleanup) ─────────────────────────────────────────────────
+
+  describe('logout', () => {
+    it('should call deleteSession on contextSessionService with userId', async () => {
+      const userId = '123e4567-e89b-12d3-a456-426614174000';
+
+      await service.logout(userId);
+
+      expect(contextSessionService.deleteSession).toHaveBeenCalledWith(userId);
+      expect(contextSessionService.deleteSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not throw when contextSessionService.deleteSession succeeds', async () => {
+      contextSessionService.deleteSession.mockResolvedValue(undefined);
+
+      await expect(service.logout(mockUser.id)).resolves.toBeUndefined();
+    });
+
+    it('should not throw when contextSessionService.deleteSession fails (non-blocking)', async () => {
+      contextSessionService.deleteSession.mockRejectedValue(
+        new Error('Redis connection refused'),
+      );
+
+      // Logout MUST succeed even if Redis is unavailable
+      await expect(service.logout(mockUser.id)).resolves.toBeUndefined();
+    });
+
+    it('should log warning when deleteSession fails', async () => {
+      contextSessionService.deleteSession.mockRejectedValue(
+        new Error('Redis timeout'),
+      );
+
+      await service.logout(mockUser.id);
+
+      expect(Logger.prototype.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to delete context session on logout'),
+      );
     });
   });
 });

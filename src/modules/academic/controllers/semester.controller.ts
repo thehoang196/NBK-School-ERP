@@ -49,7 +49,7 @@ export class SemesterController {
     @Query() query: SemesterQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.semesterService.findAll(user.schoolId ?? '', query);
+    return this.semesterService.findAll(query.schoolId || user.schoolId || '', query);
   }
 
   @Get(':id')

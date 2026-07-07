@@ -47,7 +47,7 @@ export class RegisterFieldDto {
   @MaxLength(100)
   displayLabel: string;
 
-  @ApiPropertyOptional({ description: 'Quy tắc validation', type: 'object' })
+  @ApiPropertyOptional({ description: 'Quy tắc validation', type: 'object', additionalProperties: true })
   @IsOptional()
   @IsObject()
   validationRules?: ValidationRules;

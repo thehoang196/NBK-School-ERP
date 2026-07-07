@@ -51,7 +51,11 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
   // --- Find or create prerequisite data ---
 
   // School
-  const school = await schoolRepo.findOne({ where: { code: 'TH01' } });
+  const school = await schoolRepo
+    .createQueryBuilder('school')
+    .withDeleted()
+    .where('school.code = :code', { code: 'TH01' })
+    .getOne();
   if (!school) {
     console.log('⚠️  School TH01 not found. Please run base seed first.');
     return;
@@ -222,9 +226,11 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
 
   const teachers: TeacherEntity[] = [];
   for (const td of teacherData) {
-    let teacher = await teacherRepo.findOne({
-      where: { employeeCode: td.employeeCode },
-    });
+    let teacher = await teacherRepo
+      .createQueryBuilder('teacher')
+      .withDeleted()
+      .where('teacher.employee_code = :code', { code: td.employeeCode })
+      .getOne();
     if (!teacher) {
       teacher = await teacherRepo.save({
         schoolId: school.id,
@@ -331,6 +337,7 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
 
   // --- Create Timetable Version ---
   const version = await versionRepo.save({
+    schoolId: school.id,
     semesterId: semester.id,
     name: 'TKB Nháp - HK1 2024-2025',
     versionNumber: 1,
@@ -519,6 +526,7 @@ export async function seedTimetable(dataSource: DataSource): Promise<void> {
   ];
 
   const slotsToInsert = slotSchedule.map((slot) => ({
+    schoolId: school.id,
     versionId: version.id,
     dayOfWeek: slot.dayOfWeek,
     periodId: periods[slot.periodIndex].id,

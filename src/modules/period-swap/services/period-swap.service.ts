@@ -37,6 +37,7 @@ export class PeriodSwapService {
 
   /**
    * GV tạo yêu cầu đổi tiết.
+   * Status khởi tạo: PENDING_TEACHER (chờ GV target đồng ý).
    */
   async create(
     dto: CreatePeriodSwapDto,
@@ -59,6 +60,10 @@ export class PeriodSwapService {
       status: PeriodSwapStatus.PENDING_TEACHER,
       createdBy: requesterId,
     });
+
+    this.logger.log(
+      `Period swap created: id=${swap.id}, requester=${requesterId}, target=${dto.targetId}`,
+    );
 
     this.eventEmitter.emit('period-swap.created', {
       schoolId,
@@ -96,9 +101,13 @@ export class PeriodSwapService {
       updatedBy: targetTeacherId,
     });
 
+    this.logger.log(`Period swap accepted by target: id=${id}, target=${targetTeacherId}`);
+
     this.eventEmitter.emit('period-swap.accepted-by-teacher', {
       schoolId,
       swapId: id,
+      requesterId: swap.requesterId,
+      targetId: targetTeacherId,
     });
 
     return this.findById(id, schoolId);
@@ -131,12 +140,24 @@ export class PeriodSwapService {
       updatedBy: targetTeacherId,
     });
 
+    this.logger.log(
+      `Period swap rejected by target: id=${id}, target=${targetTeacherId}, reason=${reason}`,
+    );
+
+    this.eventEmitter.emit('period-swap.rejected-by-teacher', {
+      schoolId,
+      swapId: id,
+      requesterId: swap.requesterId,
+      targetId: targetTeacherId,
+      reason,
+    });
+
     return this.findById(id, schoolId);
   }
 
   /**
    * Admin duyệt yêu cầu đổi tiết → status = APPROVED.
-   * Sau khi approve, cần emit event để cập nhật actual_timetable_slots.
+   * Sau khi approve, emit event để cập nhật actual_timetable_slots.
    */
   async approveByAdmin(
     id: string,
@@ -158,6 +179,8 @@ export class PeriodSwapService {
       updatedBy: adminId,
     });
 
+    this.logger.log(`Period swap approved by admin: id=${id}, admin=${adminId}`);
+
     this.eventEmitter.emit('period-swap.approved', {
       schoolId,
       swapId: id,
@@ -167,6 +190,7 @@ export class PeriodSwapService {
       requesterPeriod: swap.requesterPeriod,
       targetDate: swap.targetDate,
       targetPeriod: swap.targetPeriod,
+      approvedBy: adminId,
     });
 
     return this.findById(id, schoolId);
@@ -197,6 +221,16 @@ export class PeriodSwapService {
       updatedBy: adminId,
     });
 
+    this.logger.log(`Period swap rejected by admin: id=${id}, admin=${adminId}, reason=${reason}`);
+
+    this.eventEmitter.emit('period-swap.rejected-by-admin', {
+      schoolId,
+      swapId: id,
+      requesterId: swap.requesterId,
+      targetId: swap.targetId,
+      reason,
+    });
+
     return this.findById(id, schoolId);
   }
 
@@ -222,6 +256,8 @@ export class PeriodSwapService {
       status: PeriodSwapStatus.CANCELLED,
       updatedBy: requesterId,
     });
+
+    this.logger.log(`Period swap cancelled: id=${id}, by=${requesterId}`);
 
     return this.findById(id, schoolId);
   }

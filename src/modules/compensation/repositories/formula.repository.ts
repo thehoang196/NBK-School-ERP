@@ -107,6 +107,31 @@ export class FormulaRepository {
     });
   }
 
+  /**
+   * Find published formulas for a school filtered by effective date.
+   * Returns formulas where: effective_from <= date AND (effective_to IS NULL OR effective_to >= date)
+   * If a formula has no effective_from, it's treated as always active (backward compat).
+   */
+  async findPublishedBySchoolAndDate(
+    schoolId: string,
+    date: string,
+  ): Promise<FormulaEntity[]> {
+    return this.repo
+      .createQueryBuilder('f')
+      .where('f.schoolId = :schoolId', { schoolId })
+      .andWhere('f.status = :status', { status: FormulaStatus.PUBLISHED })
+      .andWhere('f.deletedAt IS NULL')
+      .andWhere(
+        '(f.effective_from IS NULL OR f.effective_from <= :date)',
+        { date },
+      )
+      .andWhere(
+        '(f.effective_to IS NULL OR f.effective_to >= :date)',
+        { date },
+      )
+      .getMany();
+  }
+
   async findByVariableRef(variableCode: string): Promise<FormulaEntity[]> {
     return this.repo
       .createQueryBuilder('f')

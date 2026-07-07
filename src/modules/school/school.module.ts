@@ -8,11 +8,24 @@ import { SchoolService } from './school.service';
 import { SchoolRepository } from './school.repository';
 import { CampusRepository } from './campus.repository';
 import { CampusService } from './campus.service';
+import { HierarchyService } from './services/hierarchy.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([SchoolEntity, CampusEntity])],
   controllers: [SchoolController, CampusController],
-  providers: [SchoolService, SchoolRepository, CampusRepository, CampusService],
-  exports: [SchoolService, SchoolRepository, CampusRepository, CampusService],
+  providers: [
+    SchoolService,
+    SchoolRepository,
+    CampusRepository,
+    CampusService,
+    HierarchyService,
+  ],
+  exports: [
+    SchoolService,
+    SchoolRepository,
+    CampusRepository,
+    CampusService,
+    HierarchyService,
+  ],
 })
 export class SchoolModule {}

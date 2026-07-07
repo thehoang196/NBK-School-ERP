@@ -21,6 +21,7 @@ import { CrossCampusErrors } from '../../modules/teacher-school-assignment/error
  *
  * Guard xử lý Data Scope theo school_id (v2 — Multi-School):
  * - SUPER_ADMIN: schoolScope = null (full access)
+ * - COMPANY_ADMIN: schoolScope = accessibleSchoolIds array (multi-school role, computed from companySchoolId hierarchy)
  * - Các role khác:
  *   1. Nếu JWT có `accessibleSchoolIds` → schoolScope = accessibleSchoolIds array
  *   2. Nếu JWT không có `accessibleSchoolIds` → fallback schoolScope = [user.schoolId] (backward compat)
@@ -84,7 +85,24 @@ export class SchoolScopeGuard implements CanActivate {
       return true;
     }
 
-    // Multi-school access (Requirement 2.2)
+    // COMPANY_ADMIN: multi-school role (Requirement 12.4, 12.5)
+    // Uses accessibleSchoolIds from JWT (populated at login from companySchoolId hierarchy)
+    if (user.role === UserRole.COMPANY_ADMIN) {
+      if (user.accessibleSchoolIds && user.accessibleSchoolIds.length > 0) {
+        request.schoolScope = user.accessibleSchoolIds;
+      } else {
+        // COMPANY_ADMIN without accessibleSchoolIds: log warning, return empty scope
+        // This can happen if companySchoolId is null or has no children
+        this.logger.warn(
+          `COMPANY_ADMIN user ${user.id || user.userId} has no accessibleSchoolIds in JWT. ` +
+          `companySchoolId may be null or invalid.`,
+        );
+        request.schoolScope = user.schoolId ? [user.schoolId] : [];
+      }
+      return true;
+    }
+
+    // Multi-school access for other roles (TEACHER, etc.) (Requirement 2.2)
     if (user.accessibleSchoolIds && user.accessibleSchoolIds.length > 0) {
       request.schoolScope = user.accessibleSchoolIds;
     } else {

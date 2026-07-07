@@ -12,8 +12,11 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { UserEntity } from './entities/user.entity';
 import { getJwtConfig } from '../../config/jwt.config';
 import { TokenInvalidationService } from './services/token-invalidation.service';
+import { PasswordService } from './services/password.service';
 import { TeacherSchoolAssignmentModule } from '../teacher-school-assignment/teacher-school-assignment.module';
 import { TeacherSchoolAssignmentService } from '../teacher-school-assignment/teacher-school-assignment.service';
+import { ContextModule } from '../context/context.module';
+import { ContextSessionService } from '../context/services/context-session.service';
 
 @Module({
   imports: [
@@ -25,6 +28,7 @@ import { TeacherSchoolAssignmentService } from '../teacher-school-assignment/tea
       inject: [ConfigService],
     }),
     TeacherSchoolAssignmentModule,
+    ContextModule,
   ],
   controllers: [AuthController, UserController],
   providers: [
@@ -33,11 +37,16 @@ import { TeacherSchoolAssignmentService } from '../teacher-school-assignment/tea
     UserRepository,
     JwtStrategy,
     TokenInvalidationService,
+    PasswordService,
     {
       provide: 'TEACHER_SCHOOL_ASSIGNMENT_SERVICE',
       useExisting: TeacherSchoolAssignmentService,
     },
+    {
+      provide: 'CONTEXT_SESSION_SERVICE',
+      useExisting: ContextSessionService,
+    },
   ],
-  exports: [AuthService, UserService, UserRepository, TokenInvalidationService],
+  exports: [AuthService, UserService, UserRepository, TokenInvalidationService, PasswordService],
 })
 export class AuthModule {}

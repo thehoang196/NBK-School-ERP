@@ -4,36 +4,48 @@ export class AddTimetableVersionPipelineColumns1749700000000 implements Migratio
   name = 'AddTimetableVersionPipelineColumns1749700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Step 1: Add new enum values to timetable_status_enum
-    // PostgreSQL requires ALTER TYPE ... ADD VALUE for each new enum value
+    // Step 1: Add new enum values to timetable version status enum
+    // TypeORM naming: {table}_{column}_enum → timetable_versions_status_enum
+    const enumName = await queryRunner.query(`
+      SELECT t.typname FROM pg_type t
+      JOIN pg_enum e ON t.oid = e.enumtypid
+      WHERE e.enumlabel = 'draft'
+      AND t.typname LIKE '%timetable%status%'
+      LIMIT 1
+    `);
+    const typeName = enumName?.[0]?.typname || 'timetable_versions_status_enum';
+
     await queryRunner.query(
-      `ALTER TYPE "timetable_status_enum" ADD VALUE IF NOT EXISTS 'generating'`,
+      `ALTER TYPE "${typeName}" ADD VALUE IF NOT EXISTS 'generating'`,
     );
     await queryRunner.query(
-      `ALTER TYPE "timetable_status_enum" ADD VALUE IF NOT EXISTS 'generated'`,
+      `ALTER TYPE "${typeName}" ADD VALUE IF NOT EXISTS 'generated'`,
     );
     await queryRunner.query(
-      `ALTER TYPE "timetable_status_enum" ADD VALUE IF NOT EXISTS 'failed'`,
+      `ALTER TYPE "${typeName}" ADD VALUE IF NOT EXISTS 'failed'`,
     );
     await queryRunner.query(
-      `ALTER TYPE "timetable_status_enum" ADD VALUE IF NOT EXISTS 'reviewing'`,
+      `ALTER TYPE "${typeName}" ADD VALUE IF NOT EXISTS 'reviewing'`,
     );
 
-    // Step 2: Add pipeline columns to timetable_versions
-    await queryRunner.query(`
-      ALTER TABLE "timetable_versions"
-      ADD COLUMN "job_id" varchar(100),
-      ADD COLUMN "generation_started_at" TIMESTAMP,
-      ADD COLUMN "generation_completed_at" TIMESTAMP,
-      ADD COLUMN "generation_duration_ms" int,
-      ADD COLUMN "error_message" text,
-      ADD COLUMN "error_stack" text,
-      ADD COLUMN "has_conflicts" boolean NOT NULL DEFAULT false,
-      ADD COLUMN "conflict_count" int NOT NULL DEFAULT 0,
-      ADD COLUMN "conflict_details" jsonb,
-      ADD COLUMN "total_slots" int NOT NULL DEFAULT 0,
-      ADD COLUMN "version" int NOT NULL DEFAULT 1
-    `);
+    // Step 2: Add pipeline columns to timetable_versions (IF NOT EXISTS for safety)
+    const columnsToAdd = [
+      { name: 'job_id', type: 'varchar(100)' },
+      { name: 'generation_started_at', type: 'TIMESTAMP' },
+      { name: 'generation_completed_at', type: 'TIMESTAMP' },
+      { name: 'generation_duration_ms', type: 'int' },
+      { name: 'error_message', type: 'text' },
+      { name: 'error_stack', type: 'text' },
+      { name: 'has_conflicts', type: 'boolean NOT NULL DEFAULT false' },
+      { name: 'conflict_count', type: 'int NOT NULL DEFAULT 0' },
+      { name: 'conflict_details', type: 'jsonb' },
+      { name: 'total_slots', type: 'int NOT NULL DEFAULT 0' },
+    ];
+    for (const col of columnsToAdd) {
+      await queryRunner.query(`
+        ALTER TABLE "timetable_versions" ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type}
+      `);
+    }
 
     // Step 3: Add index on job_id for quick lookup by job
     await queryRunner.query(`

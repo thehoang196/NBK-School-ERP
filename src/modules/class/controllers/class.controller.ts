@@ -48,7 +48,7 @@ export class ClassController {
     @Query() query: ClassQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.classService.findAll(query, user.schoolId);
+    return this.classService.findAll(query, query.schoolId || user.schoolId);
   }
 
   @Get(':id')

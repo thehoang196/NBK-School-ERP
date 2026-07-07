@@ -202,6 +202,7 @@ function buildAuthService(activeAssignments: AssignmentData[]): {
     userRepository as never,
     jwtService as never,
     tsaService as TeacherSchoolAssignmentService,
+    null,
   );
 
   return { authService, jwtService };

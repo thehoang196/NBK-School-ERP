@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEnum, Matches } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsUUID, Matches } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { TeacherStatus, TeacherType } from '../../../common/enums/status.enum';
 
@@ -7,6 +7,14 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class TeacherQueryDto extends PaginationDto {
+  @ApiPropertyOptional({
+    description: 'Lọc theo trường (schoolId)',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'schoolId phải là UUID hợp lệ' })
+  schoolId?: string;
+
   @ApiPropertyOptional({ description: 'Lọc theo tổ bộ môn' })
   @IsOptional()
   @IsString({ message: 'departmentId phải là chuỗi' })

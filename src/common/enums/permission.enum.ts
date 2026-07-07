@@ -89,6 +89,17 @@ export enum Permission {
   USER_READ = 'user:read',
   USER_UPDATE = 'user:update',
   USER_DELETE = 'user:delete',
+
+  // Leave Request
+  LEAVE_REQUEST_CREATE = 'leave-request:create',
+  LEAVE_REQUEST_READ = 'leave-request:read',
+  LEAVE_REQUEST_APPROVE = 'leave-request:approve',
+  LEAVE_REQUEST_REJECT = 'leave-request:reject',
+
+  // Period Swap
+  PERIOD_SWAP_CREATE = 'period-swap:create',
+  PERIOD_SWAP_READ = 'period-swap:read',
+  PERIOD_SWAP_APPROVE = 'period-swap:approve',
 }
 
 /**
@@ -151,6 +162,11 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.USER_READ,
     Permission.USER_UPDATE,
     Permission.USER_DELETE,
+    Permission.LEAVE_REQUEST_READ,
+    Permission.LEAVE_REQUEST_APPROVE,
+    Permission.LEAVE_REQUEST_REJECT,
+    Permission.PERIOD_SWAP_READ,
+    Permission.PERIOD_SWAP_APPROVE,
   ],
   scheduler: [
     Permission.ACADEMIC_YEAR_READ,
@@ -194,6 +210,10 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.TIMETABLE_READ,
     Permission.EVENT_READ,
     Permission.EXPORT_EXECUTE,
+    Permission.LEAVE_REQUEST_CREATE,
+    Permission.LEAVE_REQUEST_READ,
+    Permission.PERIOD_SWAP_CREATE,
+    Permission.PERIOD_SWAP_READ,
   ],
   viewer: [
     Permission.ACADEMIC_YEAR_READ,

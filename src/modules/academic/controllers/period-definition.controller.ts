@@ -56,7 +56,7 @@ export class PeriodDefinitionController {
     @Query() query: PeriodDefinitionQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.periodDefinitionService.findAll(query, user.schoolId ?? '');
+    return this.periodDefinitionService.findAll(query, query.schoolId || user.schoolId || '');
   }
 
   @Get(':id')

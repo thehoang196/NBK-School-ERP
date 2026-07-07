@@ -22,8 +22,12 @@ export class WeekRepository {
 
     const queryBuilder = this.repo
       .createQueryBuilder('week')
-      .where('week.deletedAt IS NULL')
-      .andWhere('week.schoolId = :schoolId', { schoolId });
+      .where('week.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('week.schoolId = :schoolId', { schoolId });
+    }
 
     if (semesterId) {
       queryBuilder.andWhere('week.semesterId = :semesterId', { semesterId });

@@ -36,10 +36,10 @@ export class TimetableSlotEntity extends BaseEntity {
   @JoinColumn({ name: 'class_id' })
   class: ClassEntity;
 
-  @Column({ name: 'teacher_id', type: 'uuid' })
+  @Column({ name: 'teacher_id', type: 'uuid', nullable: true })
   teacherId: string;
 
-  @ManyToOne(() => TeacherEntity)
+  @ManyToOne(() => TeacherEntity, { nullable: true })
   @JoinColumn({ name: 'teacher_id' })
   teacher: TeacherEntity;
 

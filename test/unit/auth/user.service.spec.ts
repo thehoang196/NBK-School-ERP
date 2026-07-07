@@ -1,49 +1,58 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException, ConflictException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import { UserService } from '../../../src/modules/auth/user.service';
 import { UserRepository } from '../../../src/modules/auth/user.repository';
+import { PasswordService } from '../../../src/modules/auth/services/password.service';
 import { UserEntity } from '../../../src/modules/auth/entities/user.entity';
 import { UserRole } from '../../../src/common/enums/role.enum';
-
-jest.mock('bcrypt');
 
 describe('UserService', () => {
   let service: UserService;
   let userRepository: jest.Mocked<UserRepository>;
+  let passwordService: jest.Mocked<PasswordService>;
 
   const mockUser: UserEntity = {
     id: '123e4567-e89b-12d3-a456-426614174000',
     name: 'Nguyễn Văn A',
     email: 'nguyenvana@stms.vn',
-    password: '$2b$10$hashedpassword',
+    password: '$argon2id$v=19$m=65536,t=3,p=4$hashedpassword',
     role: UserRole.TEACHER,
     schoolId: '123e4567-e89b-12d3-a456-426614174001',
     school: null,
     teacherId: null,
     teacher: null,
+    companySchoolId: null,
+    companySchool: null,
     isActive: true,
     lastLoginAt: null,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
   };
 
   const mockUser2: UserEntity = {
     id: '223e4567-e89b-12d3-a456-426614174000',
     name: 'Trần Thị B',
     email: 'tranthib@stms.vn',
-    password: '$2b$10$hashedpassword2',
+    password: '$argon2id$v=19$m=65536,t=3,p=4$hashedpassword2',
     role: UserRole.SCHOOL_ADMIN,
     schoolId: '123e4567-e89b-12d3-a456-426614174001',
     school: null,
     teacherId: null,
     teacher: null,
+    companySchoolId: null,
+    companySchool: null,
     isActive: true,
     lastLoginAt: null,
     createdAt: new Date('2024-01-02'),
     updatedAt: new Date('2024-01-02'),
     deletedAt: null,
+    createdBy: null,
+    updatedBy: null,
+    version: 1,
   };
 
   beforeEach(async () => {
@@ -57,15 +66,23 @@ describe('UserService', () => {
       softDelete: jest.fn(),
     };
 
+    const mockPasswordService = {
+      hash: jest.fn(),
+      verify: jest.fn(),
+      needsRehash: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
         { provide: UserRepository, useValue: mockUserRepository },
+        { provide: PasswordService, useValue: mockPasswordService },
       ],
     }).compile();
 
     service = module.get<UserService>(UserService);
     userRepository = module.get(UserRepository) as jest.Mocked<UserRepository>;
+    passwordService = module.get(PasswordService) as jest.Mocked<PasswordService>;
   });
 
   afterEach(() => {
@@ -146,7 +163,7 @@ describe('UserService', () => {
 
     it('should create a new user successfully', async () => {
       userRepository.findByEmail.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$newhash');
+      passwordService.hash.mockResolvedValue('$argon2id$newhash');
       const createdUser = {
         ...mockUser,
         name: createDto.name,
@@ -158,11 +175,11 @@ describe('UserService', () => {
 
       expect(result).toEqual(createdUser);
       expect(userRepository.findByEmail).toHaveBeenCalledWith(createDto.email);
-      expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
+      expect(passwordService.hash).toHaveBeenCalledWith('password123');
       expect(userRepository.create).toHaveBeenCalledWith({
         name: createDto.name,
         email: createDto.email,
-        password: '$2b$10$newhash',
+        password: '$argon2id$newhash',
         role: createDto.role,
         schoolId: createDto.schoolId,
         teacherId: null,
@@ -188,7 +205,7 @@ describe('UserService', () => {
         role: UserRole.SUPER_ADMIN,
       };
       userRepository.findByEmail.mockResolvedValue(null);
-      (bcrypt.hash as jest.Mock).mockResolvedValue('$2b$10$adminhash');
+      passwordService.hash.mockResolvedValue('$argon2id$adminhash');
       userRepository.create.mockResolvedValue({
         ...mockUser,
         schoolId: null,
@@ -200,7 +217,7 @@ describe('UserService', () => {
       expect(userRepository.create).toHaveBeenCalledWith({
         name: dtoWithoutOptional.name,
         email: dtoWithoutOptional.email,
-        password: '$2b$10$adminhash',
+        password: '$argon2id$adminhash',
         role: dtoWithoutOptional.role,
         schoolId: null,
         teacherId: null,

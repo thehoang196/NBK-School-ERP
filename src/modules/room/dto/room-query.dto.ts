@@ -1,9 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsEnum } from 'class-validator';
-import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { SchoolScopedQueryDto } from '../../../common/dto/school-scoped-query.dto';
 import { RoomType, RoomStatus } from '../../../common/enums/status.enum';
 
-export class RoomQueryDto extends PaginationDto {
+export class RoomQueryDto extends SchoolScopedQueryDto {
   @ApiPropertyOptional({ enum: RoomType, description: 'Lọc theo loại phòng' })
   @IsOptional()
   @IsEnum(RoomType, { message: 'Loại phòng không hợp lệ' })

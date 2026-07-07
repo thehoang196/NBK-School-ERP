@@ -6,6 +6,11 @@
  * Property: For any user with role other than SUPER_ADMIN, all TKB operations
  * SHALL be restricted to data within the user's assigned school_id.
  * A SUPER_ADMIN SHALL access data across all schools without restriction.
+ *
+ * Note: SchoolScopeGuard v2 returns request.schoolScope as:
+ * - null for SUPER_ADMIN (full access bypass)
+ * - string[] (array of accessible school IDs) for all other roles
+ *   When no accessibleSchoolIds in JWT, falls back to [user.schoolId]
  */
 import * as fc from 'fast-check';
 import { ExecutionContext, ForbiddenException } from '@nestjs/common';
@@ -63,7 +68,7 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
     guard = new SchoolScopeGuard();
   });
 
-  it('should set schoolScope to user schoolId for ALL non-SUPER_ADMIN roles', async () => {
+  it('should set schoolScope to array containing user schoolId for ALL non-SUPER_ADMIN roles', async () => {
     await fc.assert(
       fc.asyncProperty(
         uuidArb,
@@ -73,14 +78,15 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
           const user = { id: userId, role, schoolId };
           const { context, request } = createMockContext(user);
 
-          const result = guard.canActivate(context);
+          const result = await guard.canActivate(context);
 
           // Guard should allow the request
           expect(result).toBe(true);
 
-          // schoolScope should be set to the user's schoolId (not null)
-          expect(request.schoolScope).toBe(schoolId);
+          // schoolScope should be an array containing the user's schoolId (not null)
           expect(request.schoolScope).not.toBeNull();
+          expect(Array.isArray(request.schoolScope)).toBe(true);
+          expect(request.schoolScope).toEqual([schoolId]);
         },
       ),
       { numRuns: 100 },
@@ -96,7 +102,7 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
           const user = { id: userId, role: UserRole.SUPER_ADMIN, schoolId };
           const { context, request } = createMockContext(user);
 
-          const result = guard.canActivate(context);
+          const result = await guard.canActivate(context);
 
           // Guard should allow the request
           expect(result).toBe(true);
@@ -119,21 +125,22 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
           const user = { id: userId, role, schoolId };
           const { context, request } = createMockContext(user);
 
-          guard.canActivate(context);
+          await guard.canActivate(context);
 
           // CRITICAL: schoolScope must NEVER be null for non-SUPER_ADMIN
           // This ensures data isolation is enforced at every request
           expect(request.schoolScope).not.toBeNull();
           expect(request.schoolScope).not.toBeUndefined();
-          expect(typeof request.schoolScope).toBe('string');
-          expect((request.schoolScope as string).length).toBeGreaterThan(0);
+          // v2: schoolScope is now an array of accessible school IDs
+          expect(Array.isArray(request.schoolScope)).toBe(true);
+          expect((request.schoolScope as string[]).length).toBeGreaterThan(0);
         },
       ),
       { numRuns: 100 },
     );
   });
 
-  it('should ensure schoolScope matches EXACTLY the user schoolId (no cross-tenant leakage)', async () => {
+  it('should ensure schoolScope contains EXACTLY the user schoolId (no cross-tenant leakage)', async () => {
     await fc.assert(
       fc.asyncProperty(
         uuidArb,
@@ -152,11 +159,12 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
           const user = { id: userId, role, schoolId: userSchoolId };
           const { context, request } = createMockContext(user);
 
-          guard.canActivate(context);
+          await guard.canActivate(context);
 
-          // schoolScope must be the user's own school, never the other school
-          expect(request.schoolScope).toBe(userSchoolId);
-          expect(request.schoolScope).not.toBe(otherSchoolId);
+          // schoolScope must contain user's own school, never the other school
+          const scope = request.schoolScope as string[];
+          expect(scope).toContain(userSchoolId);
+          expect(scope).not.toContain(otherSchoolId);
         },
       ),
       { numRuns: 100 },
@@ -170,6 +178,10 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
      *
      * This verifies that when a service receives a schoolScope,
      * it only returns versions belonging to that school.
+     *
+     * Note: v2 schoolScope is string[] | null:
+     * - null → SUPER_ADMIN bypass, return all
+     * - string[] → filter versions where schoolId is in the scope array
      */
 
     interface MockVersion {
@@ -188,17 +200,17 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
         versionNumber: fc.integer({ min: 1, max: 100 }),
       });
 
-    // Simulate service-level filtering by schoolId
+    // Simulate service-level filtering by schoolScope (v2: array-based)
     function filterVersionsBySchool(
       versions: MockVersion[],
-      schoolScope: string | null,
+      schoolScope: string[] | null,
     ): MockVersion[] {
       if (schoolScope === null) {
         // SUPER_ADMIN: return all versions
         return versions;
       }
-      // Non-SUPER_ADMIN: return only versions matching school
-      return versions.filter((v) => v.schoolId === schoolScope);
+      // Non-SUPER_ADMIN: return only versions matching any school in scope
+      return versions.filter((v) => schoolScope.includes(v.schoolId));
     }
 
     it('non-SUPER_ADMIN should only see versions from their own school', async () => {
@@ -234,12 +246,12 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
             // Simulate guard setting schoolScope
             const user = { id: 'user-1', role, schoolId: userSchoolId };
             const { context, request } = createMockContext(user);
-            guard.canActivate(context);
+            await guard.canActivate(context);
 
             // Filter as service would do
             const result = filterVersionsBySchool(
               allVersions,
-              request.schoolScope as string | null,
+              request.schoolScope as string[] | null,
             );
 
             // User should ONLY see their own school's versions
@@ -303,12 +315,12 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
               schoolId: null,
             };
             const { context, request } = createMockContext(user);
-            guard.canActivate(context);
+            await guard.canActivate(context);
 
             // Filter as service would do
             const result = filterVersionsBySchool(
               allVersions,
-              request.schoolScope as string | null,
+              request.schoolScope as string[] | null,
             );
 
             // SUPER_ADMIN should see ALL versions from all schools
@@ -359,12 +371,12 @@ describe('Feature: timetable-management-features, Property 15: Multi-tenant data
             // Simulate guard setting schoolScope for non-SUPER_ADMIN user
             const user = { id: 'user-1', role, schoolId: userSchoolId };
             const { context, request } = createMockContext(user);
-            guard.canActivate(context);
+            await guard.canActivate(context);
 
             // Filter as service would do — user trying to access another school's data
             const result = filterVersionsBySchool(
               targetVersions,
-              request.schoolScope as string | null,
+              request.schoolScope as string[] | null,
             );
 
             // Should get ZERO results because all versions belong to another school

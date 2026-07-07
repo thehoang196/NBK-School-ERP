@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
 import { AttendanceModule } from '../attendance/attendance.module';
 
 // Entities
@@ -15,6 +16,10 @@ import { SalarySlipEntity } from './entities/salary-slip.entity';
 import { PayrollRunEntity } from './entities/payroll-run.entity';
 import { PayrollApprovalEntity } from './entities/payroll-approval.entity';
 import { PayrollAdjustmentEntity } from './entities/payroll-adjustment.entity';
+import { ActualTimetableSlotEntity } from '../timetable/entities/actual-timetable-slot.entity';
+import { PayrollInputSnapshotEntity } from './entities/payroll-input-snapshot.entity';
+import { TeacherWorkloadEntity } from './entities/teacher-workload.entity';
+import { FormulaVersionEntity } from './entities/formula-version.entity';
 
 // Repositories
 import { PayComponentRepository } from './repositories/pay-component.repository';
@@ -46,7 +51,14 @@ import { FunctionLibraryService } from './services/function-library.service';
 import { PayrollRunService } from './services/payroll-run.service';
 import { PayrollAdjustmentService } from './services/payroll-adjustment.service';
 import { AttendanceVariableResolverService } from './services/attendance-variable-resolver.service';
+import { TeachingMetricsService } from './services/teaching-metrics.service';
 import { PayrollReportingService } from './services/payroll-reporting.service';
+import { PayrollSnapshotService } from './services/payroll-snapshot.service';
+import { TeacherWorkloadService } from './services/teacher-workload.service';
+import { FormulaVersionService } from './services/formula-version.service';
+
+// Processors
+import { PayrollCalculationProcessor } from './processors/payroll-calculation.processor';
 
 // Controllers
 import { PayComponentController } from './controllers/pay-component.controller';
@@ -63,6 +75,7 @@ import { FunctionLibraryController } from './controllers/function-library.contro
 import { PayrollRunController } from './controllers/payroll-run.controller';
 import { PayrollAdjustmentController } from './controllers/payroll-adjustment.controller';
 import { PayrollReportingController } from './controllers/payroll-reporting.controller';
+import { TeacherWorkloadController } from './controllers/teacher-workload.controller';
 
 @Module({
   imports: [
@@ -79,8 +92,13 @@ import { PayrollReportingController } from './controllers/payroll-reporting.cont
       PayrollRunEntity,
       PayrollApprovalEntity,
       PayrollAdjustmentEntity,
+      ActualTimetableSlotEntity,
+      PayrollInputSnapshotEntity,
+      TeacherWorkloadEntity,
+      FormulaVersionEntity,
     ]),
     AttendanceModule,
+    BullModule.registerQueue({ name: 'payroll-calculation' }),
   ],
   controllers: [
     PayComponentController,
@@ -97,6 +115,7 @@ import { PayrollReportingController } from './controllers/payroll-reporting.cont
     PayrollRunController,
     PayrollAdjustmentController,
     PayrollReportingController,
+    TeacherWorkloadController,
   ],
   providers: [
     // Repositories
@@ -128,7 +147,13 @@ import { PayrollReportingController } from './controllers/payroll-reporting.cont
     PayrollRunService,
     PayrollAdjustmentService,
     AttendanceVariableResolverService,
+    TeachingMetricsService,
     PayrollReportingService,
+    PayrollSnapshotService,
+    TeacherWorkloadService,
+    FormulaVersionService,
+    // Processors
+    PayrollCalculationProcessor,
   ],
   exports: [
     PayComponentService,
@@ -146,7 +171,11 @@ import { PayrollReportingController } from './controllers/payroll-reporting.cont
     PayrollRunService,
     PayrollAdjustmentService,
     AttendanceVariableResolverService,
+    TeachingMetricsService,
     PayrollReportingService,
+    PayrollSnapshotService,
+    TeacherWorkloadService,
+    FormulaVersionService,
   ],
 })
 export class CompensationModule {}

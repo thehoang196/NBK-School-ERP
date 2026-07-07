@@ -1,13 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
+import { getRedisConfig } from '../../config/redis.config';
 
 export interface CacheOptions {
   /** TTL in seconds */
   ttl?: number;
-}
-
-interface CacheEntry<T> {
-  value: T;
-  expiresAt: number;
 }
 
 const DEFAULT_TTL_LIST = 300; // 5 minutes
@@ -18,35 +16,84 @@ const DEFAULT_TTL_STATIC = 900; // 15 minutes
  *
  * KHÔNG gọi Redis client trực tiếp từ service. Luôn sử dụng CacheService.
  *
- * Hiện tại: In-memory cache (Map) — fallback khi Redis chưa available.
- * Tương lai: Chuyển internal storage sang Redis (ioredis) mà không thay đổi API.
+ * Backend: Redis (ioredis). Nếu Redis không khả dụng, fallback về in-memory Map.
  *
  * TTL defaults:
  * - List queries: 5 phút (DEFAULT_TTL_LIST)
  * - Static data: 15 phút (DEFAULT_TTL_STATIC)
  */
 @Injectable()
-export class CacheService {
+export class CacheService implements OnModuleDestroy {
   private readonly logger = new Logger(CacheService.name);
-  private readonly store = new Map<string, CacheEntry<unknown>>();
+  private readonly redis: Redis;
+  private isRedisReady = false;
+
+  /** Fallback in-memory store khi Redis không khả dụng */
+  private readonly memoryStore = new Map<
+    string,
+    { value: string; expiresAt: number }
+  >();
+
+  constructor(private readonly configService: ConfigService) {
+    const redisConfig = getRedisConfig(this.configService);
+
+    this.redis = new Redis({
+      host: redisConfig.host,
+      port: redisConfig.port,
+      password: redisConfig.password,
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times: number) => {
+        if (times > 5) {
+          this.logger.warn(
+            'Redis retry limit reached, falling back to in-memory cache',
+          );
+          return null; // Stop retrying
+        }
+        return Math.min(times * 200, 2000);
+      },
+      lazyConnect: false,
+    });
+
+    this.redis.on('connect', () => {
+      this.isRedisReady = true;
+      this.logger.log('Redis connected successfully');
+    });
+
+    this.redis.on('error', (error: Error) => {
+      this.isRedisReady = false;
+      this.logger.warn(`Redis connection error: ${error.message}`);
+    });
+
+    this.redis.on('close', () => {
+      this.isRedisReady = false;
+      this.logger.warn('Redis connection closed');
+    });
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.redis.quit();
+  }
 
   /**
    * Lấy giá trị từ cache.
    * @returns Giá trị cached hoặc null nếu không tồn tại/hết hạn.
    */
   async get<T>(key: string): Promise<T | null> {
-    const entry = this.store.get(key) as CacheEntry<T> | undefined;
-
-    if (!entry) {
-      return null;
+    if (this.isRedisReady) {
+      try {
+        const value = await this.redis.get(key);
+        if (value === null) {
+          return null;
+        }
+        return JSON.parse(value) as T;
+      } catch (error) {
+        this.logger.warn(
+          `Redis GET error for key "${key}": ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return this.getFromMemory<T>(key);
+      }
     }
-
-    if (Date.now() > entry.expiresAt) {
-      this.store.delete(key);
-      return null;
-    }
-
-    return entry.value;
+    return this.getFromMemory<T>(key);
   }
 
   /**
@@ -56,11 +103,20 @@ export class CacheService {
    * @param options TTL options (default: 5 phút)
    */
   async set<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
-    const ttl = (options?.ttl ?? DEFAULT_TTL_LIST) * 1000;
-    this.store.set(key, {
-      value,
-      expiresAt: Date.now() + ttl,
-    });
+    const ttl = options?.ttl ?? DEFAULT_TTL_LIST;
+    const serialized = JSON.stringify(value);
+
+    if (this.isRedisReady) {
+      try {
+        await this.redis.setex(key, ttl, serialized);
+        return;
+      } catch (error) {
+        this.logger.warn(
+          `Redis SET error for key "${key}": ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    this.setInMemory(key, serialized, ttl);
   }
 
   /**
@@ -74,7 +130,17 @@ export class CacheService {
    * Xoá key khỏi cache.
    */
   async del(key: string): Promise<void> {
-    this.store.delete(key);
+    if (this.isRedisReady) {
+      try {
+        await this.redis.del(key);
+        return;
+      } catch (error) {
+        this.logger.warn(
+          `Redis DEL error for key "${key}": ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    this.memoryStore.delete(key);
   }
 
   /**
@@ -82,9 +148,22 @@ export class CacheService {
    * @param pattern Prefix pattern (vd: 'teachers:school-uuid-1')
    */
   async delByPattern(pattern: string): Promise<void> {
-    for (const key of this.store.keys()) {
+    if (this.isRedisReady) {
+      try {
+        const keys = await this.redis.keys(`${pattern}*`);
+        if (keys.length > 0) {
+          await this.redis.del(...keys);
+        }
+        return;
+      } catch (error) {
+        this.logger.warn(
+          `Redis DEL by pattern error for "${pattern}": ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    for (const key of this.memoryStore.keys()) {
       if (key.startsWith(pattern)) {
-        this.store.delete(key);
+        this.memoryStore.delete(key);
       }
     }
   }
@@ -114,14 +193,60 @@ export class CacheService {
    * Flush toàn bộ cache (chỉ dùng cho testing/admin).
    */
   async flush(): Promise<void> {
-    this.store.clear();
-    this.logger.warn('Cache flushed');
+    if (this.isRedisReady) {
+      try {
+        await this.redis.flushdb();
+        this.logger.warn('Redis cache flushed');
+        return;
+      } catch (error) {
+        this.logger.warn(
+          `Redis FLUSH error: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    this.memoryStore.clear();
+    this.logger.warn('In-memory cache flushed');
   }
 
   /**
    * Số lượng entries hiện tại (cho health check/monitoring).
    */
-  size(): number {
-    return this.store.size;
+  async size(): Promise<number> {
+    if (this.isRedisReady) {
+      try {
+        return await this.redis.dbsize();
+      } catch {
+        return this.memoryStore.size;
+      }
+    }
+    return this.memoryStore.size;
+  }
+
+  /**
+   * Check Redis connection status.
+   */
+  isConnected(): boolean {
+    return this.isRedisReady;
+  }
+
+  // ─── Private: In-memory fallback ─────────────────────────────────────
+
+  private getFromMemory<T>(key: string): T | null {
+    const entry = this.memoryStore.get(key);
+    if (!entry) {
+      return null;
+    }
+    if (Date.now() > entry.expiresAt) {
+      this.memoryStore.delete(key);
+      return null;
+    }
+    return JSON.parse(entry.value) as T;
+  }
+
+  private setInMemory(key: string, serialized: string, ttlSeconds: number): void {
+    this.memoryStore.set(key, {
+      value: serialized,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    });
   }
 }

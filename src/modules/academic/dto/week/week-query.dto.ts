@@ -8,9 +8,10 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../../../common/dto/pagination.dto';
+import { SchoolScopedQueryDto } from '../../../../common/dto/school-scoped-query.dto';
 import { WeekType } from '../../enums';
 
-export class WeekQueryDto extends PaginationDto {
+export class WeekQueryDto extends SchoolScopedQueryDto {
   @ApiPropertyOptional({
     description: 'Lọc theo học kỳ',
     example: '550e8400-e29b-41d4-a716-446655440000',

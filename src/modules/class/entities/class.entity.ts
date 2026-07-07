@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { EntityStatus } from '../../../common/enums/status.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
@@ -7,6 +7,7 @@ import { AcademicYearEntity } from '../../academic/entities/academic-year.entity
 import { TeacherEntity } from '../../teacher/entities/teacher.entity';
 
 @Entity('classes')
+@Index('idx_classes_school_deleted', ['schoolId', 'deletedAt'])
 export class ClassEntity extends BaseEntity {
   @Column({ name: 'school_id', type: 'uuid' })
   schoolId: string;

@@ -49,7 +49,7 @@ export class SessionController {
     @Query() query: SessionQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.sessionService.findAll(query, user.schoolId ?? '');
+    return this.sessionService.findAll(query, query.schoolId || user.schoolId || '');
   }
 
   @Get(':id')

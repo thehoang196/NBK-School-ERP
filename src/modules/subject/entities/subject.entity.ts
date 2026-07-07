@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, OneToMany, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SubjectType, RoomType } from '../../../common/enums/status.enum';
 import { SchoolEntity } from '../../school/entities/school.entity';
@@ -6,6 +6,7 @@ import { SubjectGradeEntity } from './subject-grade.entity';
 import { SubjectGroupEntity } from './subject-group.entity';
 
 @Entity('subjects')
+@Index('idx_subjects_school_deleted', ['schoolId', 'deletedAt'])
 export class SubjectEntity extends BaseEntity {
   @Column({ name: 'school_id', type: 'uuid' })
   schoolId: string;

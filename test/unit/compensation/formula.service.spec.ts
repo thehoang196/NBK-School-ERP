@@ -5,6 +5,7 @@ import { FormulaRepository } from '../../../src/modules/compensation/repositorie
 import { PayComponentRepository } from '../../../src/modules/compensation/repositories/pay-component.repository';
 import { VariableRepository } from '../../../src/modules/compensation/repositories/variable.repository';
 import { AuditLogRepository } from '../../../src/modules/compensation/repositories/audit-log.repository';
+import { FormulaVersionService } from '../../../src/modules/compensation/services/formula-version.service';
 import { FormulaStatus } from '../../../src/modules/compensation/enums';
 
 describe('FormulaService', () => {
@@ -85,6 +86,7 @@ describe('FormulaService', () => {
         { provide: PayComponentRepository, useValue: mockPayComponentRepo },
         { provide: VariableRepository, useValue: mockVariableRepo },
         { provide: AuditLogRepository, useValue: mockAuditLogRepo },
+        { provide: FormulaVersionService, useValue: { recordVersion: jest.fn().mockResolvedValue({}) } },
       ],
     }).compile();
 
@@ -220,10 +222,11 @@ describe('FormulaService', () => {
 
   describe('rollback', () => {
     it('should create new version with old content', async () => {
-      const version1 = { ...mockFormula, version: 1, expression: 'A + B' };
+      const version1 = { ...mockFormula, formulaVersion: 1, version: 1, expression: 'A + B' };
       const version2 = {
         ...mockFormula,
         id: 'formula-v2',
+        formulaVersion: 2,
         version: 2,
         expression: 'A * B',
       };
@@ -237,13 +240,14 @@ describe('FormulaService', () => {
       formulaRepository.create.mockResolvedValue({
         ...version1,
         id: 'formula-v3',
+        formulaVersion: 3,
         version: 3,
         changelog: 'Rollback from version 1',
       } as any);
 
       const result = await service.rollback(version2.id, 1);
 
-      expect(result.version).toBe(3);
+      expect(result.formulaVersion).toBe(3);
       expect(result.changelog).toContain('Rollback from version 1');
     });
   });

@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import {
   Gender,
@@ -15,6 +15,7 @@ export interface UnavailableSlot {
 }
 
 @Entity('teachers')
+@Index('idx_teachers_school_deleted', ['schoolId', 'deletedAt'])
 export class TeacherEntity extends BaseEntity {
   @Column({ name: 'school_id', type: 'uuid' })
   schoolId: string;

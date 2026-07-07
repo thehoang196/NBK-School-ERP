@@ -27,8 +27,12 @@ export class GradeRepository {
 
     const queryBuilder = this.repo
       .createQueryBuilder('grade')
-      .where('grade.schoolId = :schoolId', { schoolId })
-      .andWhere('grade.deletedAt IS NULL');
+      .where('grade.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('grade.schoolId = :schoolId', { schoolId });
+    }
 
     if (level !== undefined) {
       queryBuilder.andWhere('grade.level = :level', { level });

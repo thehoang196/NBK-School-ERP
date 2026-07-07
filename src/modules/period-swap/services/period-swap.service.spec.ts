@@ -86,7 +86,7 @@ describe('PeriodSwapService', () => {
       expect(result.id).toBe('swap-001');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'period-swap.created',
-        expect.objectContaining({ requesterId: mockRequesterId }),
+        expect.objectContaining({ requesterId: mockRequesterId, targetId: mockTargetId }),
       );
     });
 
@@ -124,6 +124,10 @@ describe('PeriodSwapService', () => {
         'swap-001',
         expect.objectContaining({ status: PeriodSwapStatus.PENDING_ADMIN }),
       );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'period-swap.accepted-by-teacher',
+        expect.objectContaining({ swapId: 'swap-001' }),
+      );
     });
 
     it('should throw when non-target teacher tries to accept', async () => {
@@ -140,6 +144,45 @@ describe('PeriodSwapService', () => {
 
       await expect(
         service.acceptByTarget('swap-001', mockSchoolId, mockTargetId),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('rejectByTarget', () => {
+    it('should reject and emit event', async () => {
+      repo.findById.mockResolvedValue(mockSwap as any);
+      repo.update.mockResolvedValue(undefined);
+
+      const rejectedSwap = { ...mockSwap, status: PeriodSwapStatus.REJECTED_BY_TEACHER };
+      repo.findById
+        .mockResolvedValueOnce(mockSwap as any)
+        .mockResolvedValueOnce(rejectedSwap as any);
+
+      const result = await service.rejectByTarget(
+        'swap-001',
+        mockSchoolId,
+        mockTargetId,
+        'Không thể đổi',
+      );
+
+      expect(repo.update).toHaveBeenCalledWith(
+        'swap-001',
+        expect.objectContaining({
+          status: PeriodSwapStatus.REJECTED_BY_TEACHER,
+          rejectionReason: 'Không thể đổi',
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'period-swap.rejected-by-teacher',
+        expect.objectContaining({ swapId: 'swap-001', reason: 'Không thể đổi' }),
+      );
+    });
+
+    it('should throw when non-target teacher tries to reject', async () => {
+      repo.findById.mockResolvedValue(mockSwap as any);
+
+      await expect(
+        service.rejectByTarget('swap-001', mockSchoolId, 'other-teacher', 'test'),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -166,7 +209,7 @@ describe('PeriodSwapService', () => {
       );
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'period-swap.approved',
-        expect.objectContaining({ swapId: 'swap-001' }),
+        expect.objectContaining({ swapId: 'swap-001', approvedBy: mockAdminId }),
       );
     });
 
@@ -175,6 +218,46 @@ describe('PeriodSwapService', () => {
 
       await expect(
         service.approveByAdmin('swap-001', mockSchoolId, mockAdminId),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('rejectByAdmin', () => {
+    it('should reject and emit event', async () => {
+      const pendingAdmin = { ...mockSwap, status: PeriodSwapStatus.PENDING_ADMIN };
+      repo.findById.mockResolvedValue(pendingAdmin as any);
+      repo.update.mockResolvedValue(undefined);
+
+      const rejectedSwap = { ...mockSwap, status: PeriodSwapStatus.REJECTED_BY_ADMIN };
+      repo.findById
+        .mockResolvedValueOnce(pendingAdmin as any)
+        .mockResolvedValueOnce(rejectedSwap as any);
+
+      const result = await service.rejectByAdmin(
+        'swap-001',
+        mockSchoolId,
+        mockAdminId,
+        'Không phù hợp',
+      );
+
+      expect(repo.update).toHaveBeenCalledWith(
+        'swap-001',
+        expect.objectContaining({
+          status: PeriodSwapStatus.REJECTED_BY_ADMIN,
+          rejectionReason: 'Không phù hợp',
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'period-swap.rejected-by-admin',
+        expect.objectContaining({ swapId: 'swap-001', reason: 'Không phù hợp' }),
+      );
+    });
+
+    it('should throw when swap is not PENDING_ADMIN', async () => {
+      repo.findById.mockResolvedValue(mockSwap as any); // PENDING_TEACHER
+
+      await expect(
+        service.rejectByAdmin('swap-001', mockSchoolId, mockAdminId, 'test'),
       ).rejects.toThrow(BadRequestException);
     });
   });

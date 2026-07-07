@@ -56,7 +56,7 @@ export class WeekController {
     @Query() query: WeekQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.weekService.findAll(query, user.schoolId ?? '');
+    return this.weekService.findAll(query, query.schoolId || user.schoolId || '');
   }
 
   @Post()

@@ -50,7 +50,7 @@ export class TimetableSlotService {
           versionId: dto.versionId,
           dayOfWeek: dto.dayOfWeek,
           periodId: dto.periodId,
-          teacherId: dto.teacherId,
+          teacherId: dto.teacherId!,
           classId: dto.classId,
           roomId: dto.roomId ?? undefined,
           subjectId: dto.subjectId,

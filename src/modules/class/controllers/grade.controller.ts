@@ -48,7 +48,7 @@ export class GradeController {
     @Query() query: GradeQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.gradeService.findAll(user.schoolId ?? '', query);
+    return this.gradeService.findAll(query.schoolId || user.schoolId || '', query);
   }
 
   @Get(':id')

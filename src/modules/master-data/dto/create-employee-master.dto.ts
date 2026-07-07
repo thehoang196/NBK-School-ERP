@@ -84,7 +84,7 @@ export class CreateEmployeeMasterDto {
   @Min(0)
   workingDays?: number;
 
-  @ApiPropertyOptional({ description: 'Trường mở rộng', type: 'object' })
+  @ApiPropertyOptional({ description: 'Trường mở rộng', type: 'object', additionalProperties: true })
   @IsOptional()
   @IsObject()
   extendedFields?: Record<string, unknown>;

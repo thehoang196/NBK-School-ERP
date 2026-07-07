@@ -21,8 +21,12 @@ export class AcademicYearRepository {
 
     const queryBuilder = this.repo
       .createQueryBuilder('academicYear')
-      .where('academicYear.schoolId = :schoolId', { schoolId })
-      .andWhere('academicYear.deletedAt IS NULL');
+      .where('academicYear.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('academicYear.schoolId = :schoolId', { schoolId });
+    }
 
     if (status) {
       queryBuilder.andWhere('academicYear.status = :status', { status });

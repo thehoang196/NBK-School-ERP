@@ -11,4 +11,7 @@ export interface TenantStore {
 
   /** The authenticated user's ID, or null for unauthenticated/system contexts */
   userId: string | null;
+
+  /** Whether Global View mode is active (X-School-Id: "global", SUPER_ADMIN only) */
+  globalView?: boolean;
 }

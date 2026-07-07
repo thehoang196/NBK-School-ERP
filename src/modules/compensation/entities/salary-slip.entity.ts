@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { SalarySlipStatus } from '../enums';
 import {
@@ -11,6 +11,7 @@ import { SchoolEntity } from '../../school/entities/school.entity';
 import { PayPeriodEntity } from './pay-period.entity';
 
 @Entity('salary_slips')
+@Index('idx_salary_slips_school_deleted', ['schoolId', 'deletedAt'])
 export class SalarySlipEntity extends BaseEntity {
   @Column({ name: 'teacher_id', type: 'uuid' })
   teacherId: string;
@@ -78,4 +79,7 @@ export class SalarySlipEntity extends BaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   errors: CalculationError[] | null;
+
+  @Column({ name: 'payroll_run_id', type: 'uuid', nullable: true })
+  payrollRunId: string | null;
 }

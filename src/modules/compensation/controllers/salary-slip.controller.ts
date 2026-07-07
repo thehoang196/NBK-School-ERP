@@ -14,6 +14,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { SalarySlipService } from '../services/salary-slip.service';
+import { PayrollSnapshotService } from '../services/payroll-snapshot.service';
 import { SalarySlipQueryDto } from '../dto/calculation/salary-slip-query.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -25,7 +26,10 @@ import { UserRole } from '../../../common/enums/role.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('api/v1/compensation/salary-slips')
 export class SalarySlipController {
-  constructor(private readonly salarySlipService: SalarySlipService) {}
+  constructor(
+    private readonly salarySlipService: SalarySlipService,
+    private readonly snapshotService: PayrollSnapshotService,
+  ) {}
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
@@ -59,6 +63,22 @@ export class SalarySlipController {
       success: true,
       data: slip,
       message: 'Xác nhận phiếu lương thành công',
+    };
+  }
+
+  @Get(':id/snapshot')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN)
+  @ApiOperation({ summary: 'Lấy snapshot input tại thời điểm tính lương' })
+  @ApiResponse({ status: 200, description: 'Thành công' })
+  @ApiResponse({ status: 404, description: 'Không tìm thấy snapshot' })
+  async getSnapshot(@Param('id', ParseUUIDPipe) id: string) {
+    const snapshot = await this.snapshotService.findBySalarySlip(id);
+    return {
+      success: true,
+      data: snapshot,
+      message: snapshot
+        ? 'Lấy snapshot thành công'
+        : 'Không tìm thấy snapshot cho phiếu lương này',
     };
   }
 }

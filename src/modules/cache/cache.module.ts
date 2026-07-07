@@ -1,15 +1,16 @@
 import { Module, Global } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { CacheService } from './cache.service';
 
 /**
  * CacheModule — Cache abstraction cho NBK_EMS.
  *
- * Hiện tại dùng in-memory cache (Map) làm fallback khi Redis chưa sẵn sàng.
- * Khi Redis available, chuyển sang Redis client trong CacheService mà
- * không thay đổi interface cho consumer.
+ * Backend: Redis (ioredis) với fallback in-memory khi Redis không khả dụng.
+ * Consumer sử dụng CacheService abstraction, không gọi Redis trực tiếp.
  */
 @Global()
 @Module({
+  imports: [ConfigModule],
   providers: [CacheService],
   exports: [CacheService],
 })

@@ -158,6 +158,25 @@ export class TimetableService {
       throw new BadRequestException('Chỉ có thể chỉnh sửa phiên bản nháp');
     }
 
+    // Resolve schoolId: use request scope, or fallback to version's school (super_admin bypass)
+    const resolvedSchoolId = schoolId || version.schoolId;
+
+    // If no teacher assigned, skip conflict checks and just create the slot
+    if (!dto.teacherId) {
+      const slot = await this.slotRepo.create({
+        versionId: dto.versionId,
+        schoolId: resolvedSchoolId,
+        dayOfWeek: dto.dayOfWeek,
+        periodId: dto.periodId,
+        classId: dto.classId,
+        teacherId: null as unknown as string,
+        subjectId: dto.subjectId,
+        roomId: dto.roomId || null,
+        isDoublePeriod: dto.isDoublePeriod || false,
+      });
+      return { slot, conflicts: [] };
+    }
+
     // Check conflicts via orchestration service
     const conflictResult = await this.conflictOrchestration.checkSingleSlot(
       {
@@ -169,7 +188,7 @@ export class TimetableService {
         roomId: dto.roomId || undefined,
         subjectId: dto.subjectId,
       },
-      schoolId,
+      resolvedSchoolId,
       userId,
     );
 
@@ -186,6 +205,7 @@ export class TimetableService {
     // Create slot (soft conflicts with valid override → proceed)
     const slot = await this.slotRepo.create({
       versionId: dto.versionId,
+      schoolId: resolvedSchoolId,
       dayOfWeek: dto.dayOfWeek,
       periodId: dto.periodId,
       classId: dto.classId,
@@ -215,6 +235,9 @@ export class TimetableService {
       throw new NotFoundException('Không tìm thấy slot');
     }
 
+    // Resolve schoolId: use request scope, or fallback to slot's school (super_admin bypass)
+    const resolvedSchoolId = schoolId || existingSlot.schoolId;
+
     const version = await this.findVersionById(existingSlot.versionId);
     if (version.status !== TimetableVersionStatus.DRAFT) {
       throw new BadRequestException('Chỉ có thể chỉnh sửa phiên bản nháp');
@@ -238,7 +261,7 @@ export class TimetableService {
         subjectId,
         excludeSlotId: id, // Exclude self (Req 1.3)
       },
-      schoolId,
+      resolvedSchoolId,
       userId,
     );
 

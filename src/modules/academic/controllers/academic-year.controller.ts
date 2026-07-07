@@ -51,7 +51,9 @@ export class AcademicYearController {
     @Query() query: AcademicYearQueryDto,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.academicYearService.findAll(user.schoolId ?? '', query);
+    // SUPER_ADMIN: dùng schoolId từ query param; các role khác: từ JWT
+    const schoolId = query.schoolId || user.schoolId || '';
+    return this.academicYearService.findAll(schoolId, query);
   }
 
   @Get(':id')

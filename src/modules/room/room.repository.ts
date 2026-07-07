@@ -36,8 +36,12 @@ export class RoomRepository {
 
     const queryBuilder = this.repo
       .createQueryBuilder('room')
-      .where('room.deletedAt IS NULL')
-      .andWhere('room.schoolId = :schoolId', { schoolId });
+      .where('room.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('room.schoolId = :schoolId', { schoolId });
+    }
 
     if (roomType) {
       queryBuilder.andWhere('room.roomType = :roomType', { roomType });

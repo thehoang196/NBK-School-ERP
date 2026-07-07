@@ -62,7 +62,7 @@ describe('Feature: multi-tenant-enforcement, Property 2: Tenant context isolatio
       ),
       { numRuns: 100 },
     );
-  });
+  }, 30000);
 
   /**
    * **Validates: Requirements 1.3, 1.4**

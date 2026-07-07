@@ -12,7 +12,7 @@ export class AddGradeLevelToPeriodDefinitions1749300004000 implements MigrationI
 
     // Drop the existing unique index on (session_id, period_number)
     await queryRunner.query(`
-      DROP INDEX "IDX_period_definitions_session_number"
+      DROP INDEX IF EXISTS "IDX_period_definitions_session_number"
     `);
 
     // Create new unique index on (session_id, grade_level, period_number)

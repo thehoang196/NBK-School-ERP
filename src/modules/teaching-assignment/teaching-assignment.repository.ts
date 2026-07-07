@@ -19,6 +19,7 @@ export class TeachingAssignmentRepository {
       limit,
       sortBy,
       sortOrder,
+      schoolId,
       semesterId,
       teacherId,
       classId,
@@ -33,6 +34,10 @@ export class TeachingAssignmentRepository {
       .leftJoinAndSelect('ta.class', 'class')
       .leftJoinAndSelect('ta.subject', 'subject')
       .where('ta.deletedAt IS NULL');
+
+    if (schoolId) {
+      queryBuilder.andWhere('ta.school_id = :schoolId', { schoolId });
+    }
 
     if (semesterId) {
       queryBuilder.andWhere('ta.semester_id = :semesterId', { semesterId });

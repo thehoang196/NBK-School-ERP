@@ -1,4 +1,4 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { TimetableVersionStatus } from '../../../common/enums/status.enum';
 import { SemesterEntity } from '../../academic/entities/semester.entity';
@@ -6,13 +6,14 @@ import { SchoolEntity } from '../../school/entities/school.entity';
 import { TimetableSlotEntity } from './timetable-slot.entity';
 
 @Entity('timetable_versions')
+@Index('idx_timetable_versions_school_deleted', ['schoolId', 'deletedAt'])
 export class TimetableVersionEntity extends BaseEntity {
-  @Column({ name: 'school_id', type: 'uuid', nullable: true })
-  schoolId: string | null;
+  @Column({ name: 'school_id', type: 'uuid' })
+  schoolId: string;
 
-  @ManyToOne(() => SchoolEntity, { nullable: true })
+  @ManyToOne(() => SchoolEntity)
   @JoinColumn({ name: 'school_id' })
-  school: SchoolEntity | null;
+  school: SchoolEntity;
 
   @Column({ name: 'semester_id', type: 'uuid' })
   semesterId: string;

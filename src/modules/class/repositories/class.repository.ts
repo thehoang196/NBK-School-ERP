@@ -49,8 +49,12 @@ export class ClassRepository {
       .createQueryBuilder('class')
       .leftJoinAndSelect('class.grade', 'grade')
       .leftJoinAndSelect('class.school', 'school')
-      .where('class.deletedAt IS NULL')
-      .andWhere('class.schoolId = :schoolId', { schoolId });
+      .where('class.deletedAt IS NULL');
+
+    // SUPER_ADMIN: schoolId rỗng → không filter, trả tất cả
+    if (schoolId) {
+      queryBuilder.andWhere('class.schoolId = :schoolId', { schoolId });
+    }
 
     if (gradeId) {
       queryBuilder.andWhere('class.gradeId = :gradeId', { gradeId });

@@ -1,9 +1,19 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService, LoginResponse } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Request } from 'express';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
@@ -35,5 +45,23 @@ export class AuthController {
       role: user.role,
       schoolId: user.schoolId,
     };
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Đăng xuất — xóa context session' })
+  @ApiResponse({ status: 200, description: 'Đăng xuất thành công' })
+  @ApiResponse({ status: 401, description: 'Chưa xác thực' })
+  async logout(@Req() req: Request): Promise<{ message: string }> {
+    const user = req.user as { id?: string; userId?: string };
+    const userId = user.id || user.userId;
+
+    if (userId) {
+      await this.authService.logout(userId);
+    }
+
+    return { message: 'Đăng xuất thành công' };
   }
 }

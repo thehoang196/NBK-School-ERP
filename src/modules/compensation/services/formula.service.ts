@@ -7,6 +7,7 @@ import { FormulaRepository } from '../repositories/formula.repository';
 import { PayComponentRepository } from '../repositories/pay-component.repository';
 import { VariableRepository } from '../repositories/variable.repository';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
+import { FormulaVersionService } from './formula-version.service';
 import { FormulaEntity } from '../entities/formula.entity';
 import { CreateFormulaDto } from '../dto/formula/create-formula.dto';
 import { UpdateFormulaDto } from '../dto/formula/update-formula.dto';
@@ -40,6 +41,7 @@ export class FormulaService {
     private readonly payComponentRepository: PayComponentRepository,
     private readonly variableRepository: VariableRepository,
     private readonly auditLogRepository: AuditLogRepository,
+    private readonly formulaVersionService: FormulaVersionService,
   ) {}
 
   async findAll(
@@ -118,6 +120,9 @@ export class FormulaService {
       });
     }
 
+    // Record version history (append-only)
+    await this.formulaVersionService.recordVersion(entity);
+
     return entity;
   }
 
@@ -176,10 +181,13 @@ export class FormulaService {
       });
     }
 
+    // Record version history (append-only)
+    await this.formulaVersionService.recordVersion(entity);
+
     return entity;
   }
 
-  async publish(id: string, performedBy?: string): Promise<FormulaEntity> {
+  async publish(id: string, performedBy?: string, effectiveFrom?: string): Promise<FormulaEntity> {
     const formula = await this.findById(id);
 
     if (formula.status === FormulaStatus.PUBLISHED) {
@@ -209,21 +217,37 @@ export class FormulaService {
       );
     }
 
-    // Unpublish any existing published version for same pay component
+    // Unpublish or close effective date for existing published version for same pay component
     const existingPublished =
       await this.formulaRepository.findPublishedByPayComponent(
         formula.payComponentId,
         formula.schoolId,
       );
     if (existingPublished && existingPublished.id !== formula.id) {
-      await this.formulaRepository.update(existingPublished.id, {
-        status: FormulaStatus.DRAFT,
-      });
+      if (effectiveFrom) {
+        // Auto-close the previous formula's effective_to = new effective_from - 1 day
+        const prevEndDate = new Date(effectiveFrom);
+        prevEndDate.setDate(prevEndDate.getDate() - 1);
+        const effectiveTo = prevEndDate.toISOString().split('T')[0];
+        await this.formulaRepository.update(existingPublished.id, {
+          effectiveTo,
+        });
+      } else {
+        // No effective dating — just demote previous to DRAFT
+        await this.formulaRepository.update(existingPublished.id, {
+          status: FormulaStatus.DRAFT,
+        });
+      }
     }
 
-    const updated = await this.formulaRepository.update(id, {
+    const updateData: Partial<FormulaEntity> = {
       status: FormulaStatus.PUBLISHED,
-    });
+    };
+    if (effectiveFrom) {
+      updateData.effectiveFrom = effectiveFrom;
+    }
+
+    const updated = await this.formulaRepository.update(id, updateData);
     if (!updated) {
       throw new NotFoundException('Không tìm thấy công thức');
     }
@@ -234,7 +258,7 @@ export class FormulaService {
         entityId: id,
         action: 'publish',
         oldValue: { status: FormulaStatus.DRAFT },
-        newValue: { status: FormulaStatus.PUBLISHED },
+        newValue: { status: FormulaStatus.PUBLISHED, effectiveFrom },
         performedBy,
       });
     }
